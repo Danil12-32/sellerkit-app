@@ -1,0 +1,257 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SellerKit Studio</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0d0f12;color:#f5f5f5;font-family:Arial,sans-serif}
+main{max-width:600px;margin:auto;padding:18px 16px 95px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:25px}
+.logo{background:#163b2a;color:#42e995;padding:13px;border-radius:15px;font-size:24px}
+h1{font-size:21px;margin:0}
+small,.muted{color:#92969f}
+h2{font-size:18px;margin:0 0 15px}
+.card{background:#1b1e23;border-radius:20px;padding:19px;margin-bottom:16px}
+.green{color:#42e995}
+.red{color:#ff6565}
+label{display:block;color:#aeb1b9;font-size:13px;margin:15px 0 7px}
+input,select{width:100%;background:#111317;color:white;border:1px solid #353940;border-radius:11px;padding:14px;font-size:16px;outline:none}
+input:focus{border-color:#42e995}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.metric{background:#25292f;padding:15px;border-radius:14px}
+.metric span{display:block;font-size:12px;color:#aaa;margin-bottom:9px}
+.metric strong{font-size:20px;overflow-wrap:anywhere}
+.big{font-size:32px;font-weight:bold;margin:12px 0}
+button{width:100%;border:0;border-radius:13px;background:#39db89;color:#07140d;font-weight:bold;font-size:15px;padding:15px;cursor:pointer}
+.secondary{background:#30343a;color:white;margin-top:10px}
+.line{display:flex;justify-content:space-between;gap:12px;margin:13px 0;font-size:14px}
+.line span:first-child{color:#aeb1b9}
+.line span:last-child{text-align:right}
+hr{border:0;border-top:1px solid #34383d;margin:18px 0}
+nav{position:fixed;bottom:0;left:0;right:0;background:#17191e;border-top:1px solid #30343a;display:flex;justify-content:space-around;padding:15px 5px}
+nav span{font-size:12px;color:#9a9ca3}
+nav .active{color:#42e995}
+.note{font-size:12px;color:#8e939c;line-height:1.6}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="logo">▣</div>
+<div>
+<h1>SellerKit Studio</h1>
+<small>Юнит-экономика маркетплейсов</small>
+</div>
+</header>
+
+<section class="card">
+<div class="muted">Результат расчёта</div>
+<div class="big green" id="profit">0 ₽</div>
+<div class="grid">
+<div class="metric">
+<span>Маржинальность</span>
+<strong id="margin">0%</strong>
+</div>
+<div class="metric">
+<span>Рентабельность затрат</span>
+<strong id="roi">0%</strong>
+</div>
+<div class="metric">
+<span>Прибыль с партии</span>
+<strong id="totalProfit">0 ₽</strong>
+</div>
+<div class="metric">
+<span>Безубыточная цена</span>
+<strong id="breakEven">0 ₽</strong>
+</div>
+</div>
+</section>
+
+<section class="card">
+<h2>📦 Параметры товара</h2>
+<label>Название товара</label>
+<input id="name" placeholder="Например, женская сумка">
+<label>Маркетплейс</label>
+<select id="market">
+<option>Wildberries</option>
+<option>Ozon</option>
+</select>
+<div class="grid">
+<div>
+<label>Цена продажи, ₽</label>
+<input id="price" type="number" min="0" value="2000">
+</div>
+<div>
+<label>Себестоимость, ₽</label>
+<input id="cost" type="number" min="0" value="600">
+</div>
+</div>
+<div class="grid">
+<div>
+<label>Количество, шт.</label>
+<input id="qty" type="number" min="1" step="1" value="100">
+</div>
+<div>
+<label>Комиссия, %</label>
+<input id="commission" type="number" min="0" value="20">
+</div>
+</div>
+</section>
+
+<section class="card">
+<h2>🚚 Расходы на единицу</h2>
+<div class="grid">
+<div>
+<label>Логистика, ₽</label>
+<input id="delivery" type="number" min="0" value="100">
+</div>
+<div>
+<label>Упаковка, ₽</label>
+<input id="pack" type="number" min="0" value="30">
+</div>
+<div>
+<label>Хранение, ₽</label>
+<input id="storage" type="number" min="0" value="10">
+</div>
+<div>
+<label>Прочие расходы, ₽</label>
+<input id="other" type="number" min="0" value="0">
+</div>
+</div>
+<div class="grid">
+<div>
+<label>Реклама, % от выручки</label>
+<input id="ads" type="number" min="0" value="5">
+</div>
+<div>
+<label>Налог, % от выручки</label>
+<input id="tax" type="number" min="0" value="6">
+</div>
+</div>
+<p class="note">Налог рассчитывается как процент от выручки. Для других систем налогообложения потребуется отдельная формула.</p>
+</section>
+
+<section class="card">
+<h2>📊 Детализация</h2>
+<div class="line"><span>Выручка за единицу</span><span id="revenue"></span></div>
+<div class="line"><span>Себестоимость</span><span id="costOut"></span></div>
+<div class="line"><span>Комиссия площадки</span><span id="feeOut"></span></div>
+<div class="line"><span>Реклама</span><span id="adsOut"></span></div>
+<div class="line"><span>Налог</span><span id="taxOut"></span></div>
+<div class="line"><span>Логистика, упаковка и другое</span><span id="extraOut"></span></div>
+<hr>
+<div class="line"><strong>Все расходы</strong><strong id="expenses"></strong></div>
+<div class="line"><strong>Чистый результат*</strong><strong class="green" id="net"></strong></div>
+<div class="line"><span>Вложения в партию (расчётные расходы)</span><span id="investment"></span></div>
+<p class="note">* Прибыль по указанным расходам, а не бухгалтерская чистая прибыль. Возвраты, выкупы, штрафы и НДС отдельно не моделируются.</p>
+</section>
+
+<section class="card">
+<h2>💾 Мой расчёт</h2>
+<button onclick="save()">Сохранить расчёт</button>
+<button class="secondary" onclick="restore()">Загрузить сохранённый</button>
+<button class="secondary" onclick="resetForm()">Сбросить значения</button>
+<p class="note">Расчёт сохраняется локально на этом устройстве. Это пока не облачный личный кабинет.</p>
+</section>
+</main>
+
+<nav>
+<span>⌂ Главная</span>
+<span class="active">▣ Расчёт</span>
+<span>▦ Функции</span>
+<span>♙ Профиль</span>
+</nav>
+
+<script>
+const ids=[
+"name","market","price","cost","qty","commission",
+"delivery","pack","storage","other","ads","tax"
+];
+const defaults={
+name:"",market:"Wildberries",price:2000,cost:600,
+qty:100,commission:20,delivery:100,pack:30,
+storage:10,other:0,ads:5,tax:6
+};
+const el=id=>document.getElementById(id);
+const val=id=>Math.max(0,Number(el(id).value)||0);
+const rub=n=>new Intl.NumberFormat("ru-RU",{
+style:"currency",currency:"RUB",
+maximumFractionDigits:2
+}).format(Number.isFinite(n)?n:0);
+const pct=n=>(Number.isFinite(n)?n:0).toFixed(1)+"%";
+const show=(id,value)=>el(id).textContent=value;
+
+function calculate(){
+const price=val("price");
+const cost=val("cost");
+const qty=Math.floor(val("qty"));
+const fee=price*val("commission")/100;
+const ad=price*val("ads")/100;
+const tax=price*val("tax")/100;
+const extra=["delivery","pack","storage","other"]
+.reduce((sum,id)=>sum+val(id),0);
+const expenses=cost+fee+ad+tax+extra;
+const profit=price-expenses;
+const margin=price>0?profit/price*100:0;
+const roi=expenses>0?profit/expenses*100:0;
+const variableRate=(
+val("commission")+val("ads")+val("tax")
+)/100;
+const fixed=cost+extra;
+const breakEven=variableRate<1?
+fixed/(1-variableRate):NaN;
+
+show("profit",rub(profit));
+el("profit").className="big "+(profit>=0?"green":"red");
+show("margin",pct(margin));
+show("roi",pct(roi));
+show("totalProfit",rub(profit*qty));
+show("breakEven",Number.isFinite(breakEven)?
+rub(breakEven):"Не достигается");
+show("revenue",rub(price));
+show("costOut",rub(cost));
+show("feeOut",rub(fee));
+show("adsOut",rub(ad));
+show("taxOut",rub(tax));
+show("extraOut",rub(extra));
+show("expenses",rub(expenses));
+show("net",rub(profit));
+el("net").className=profit>=0?"green":"red";
+show("investment",rub(expenses*qty));
+}
+
+function save(){
+const data={};
+ids.forEach(id=>data[id]=el(id).value);
+try{
+localStorage.setItem("sellerkit-calc-v1",JSON.stringify(data));
+alert("Расчёт сохранён!");
+}catch(e){alert("Не удалось сохранить расчёт");}
+}
+function restore(){
+try{
+const data=JSON.parse(localStorage.getItem("sellerkit-calc-v1"));
+if(!data){alert("Сохранённых расчётов пока нет");return;}
+ids.forEach(id=>{
+if(data[id]!==undefined)el(id).value=data[id];
+});
+calculate();
+}catch(e){alert("Не удалось загрузить расчёт");}
+}
+function resetForm(){
+ids.forEach(id=>el(id).value=defaults[id]);
+calculate();
+}
+ids.forEach(id=>el(id).addEventListener("input",calculate));
+if(window.Telegram&&Telegram.WebApp){
+Telegram.WebApp.ready();
+Telegram.WebApp.expand();
+}
+calculate();
+</script>
+</body>
+</html>
