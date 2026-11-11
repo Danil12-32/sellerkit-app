@@ -6,54 +6,52 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SellerKit Studio</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 :root{
-  --bg:#0a100d;--card:#17221b;--line:#2c4233;
-  --green:#75efa4;--text:#f0f8f1;--muted:#a3b5a7
+ --bg:#0b110e;--panel:#18241c;--line:#34503c;
+ --green:#78f3a5;--text:#f1fff3;--muted:#a8b9ad
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);
-font-family:system-ui,-apple-system,Arial,sans-serif}
-main{max-width:760px;margin:auto;padding:16px 14px 100px}
-h1{font-size:26px;margin:0 0 8px}
-h2{font-size:20px;margin:0 0 12px}
-h3{font-size:16px}
+font-family:system-ui,Arial,sans-serif}
+main{max-width:800px;margin:auto;padding:15px 14px 100px}
+h1{font-size:26px;margin:0 0 10px}
+h2{font-size:20px;margin:0 0 14px}
 p{line-height:1.5}
-small,.muted{color:var(--muted)}
-.hero{background:linear-gradient(130deg,#245338,#14261b);
-border:1px solid #3b7950;border-radius:22px;padding:22px;margin-bottom:16px}
-.card{background:var(--card);border:1px solid var(--line);
-border-radius:18px;padding:17px;margin:13px 0}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-label{display:block;color:var(--muted);font-size:12px;margin:10px 0 5px}
-input,select,textarea{width:100%;background:#0d1710;color:white;
-border:1px solid #405746;border-radius:11px;padding:12px;font:inherit}
-textarea{min-height:115px;resize:vertical}
+.hero{background:linear-gradient(130deg,#225d3a,#142b1e);
+border:1px solid #498c5e;border-radius:22px;padding:22px}
+.card{background:var(--panel);border:1px solid var(--line);
+border-radius:18px;padding:17px;margin:14px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}
+input,select,textarea{
+width:100%;background:#0c1810;color:white;
+border:1px solid #42624b;border-radius:11px;
+padding:12px;font:inherit
+}
+textarea{min-height:130px;resize:vertical}
 button{background:var(--green);border:0;border-radius:11px;
-padding:11px 13px;color:#092112;font-weight:700;cursor:pointer}
-button.secondary{background:#304337;color:white}
-button:disabled{opacity:.45}
-.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}
-.stat{background:#0e1b12;border-radius:12px;padding:13px}
+padding:12px;color:#102419;font-weight:700;cursor:pointer}
+.secondary{background:#314b39;color:white}
+.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+.page{display:none}
+.page.active{display:block}
+.muted,small{color:var(--muted)}
+.stat{background:#102017;border-radius:12px;padding:13px}
 .stat b{display:block;font-size:21px;margin-top:6px}
-.positive{color:var(--green)}.negative{color:#ff9c9c}
-.page{display:none}.page.active{display:block}
-nav{position:fixed;bottom:0;left:0;right:0;background:#101b13;
-border-top:1px solid var(--line);display:flex;justify-content:center;
-padding:8px 3px calc(8px + env(safe-area-inset-bottom))}
+.good{color:var(--green)}
+.bad{color:#ff9898}
+.notice{background:#203c29;padding:13px;border-radius:12px;margin:12px 0}
+.result{display:flex;justify-content:space-between;align-items:center;
+gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.result button{flex-shrink:0}
+.scroll{max-height:480px;overflow:auto}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;
+justify-content:center;background:#101b13;border-top:1px solid var(--line);
+padding:7px 3px calc(8px + env(safe-area-inset-bottom))}
 nav button{background:transparent;color:var(--muted);
-font-size:11px;flex:1;max-width:140px;padding:10px 3px}
-nav button.active{background:#264332;color:var(--green)}
-.notice{padding:12px;background:#203b29;border-radius:10px;
-border-left:3px solid var(--green);margin:12px 0}
-.result{border-bottom:1px solid var(--line);padding:12px 0;
-display:flex;justify-content:space-between;align-items:center;gap:10px}
-.result button{flex-shrink:0;font-size:12px;padding:8px}
-.scroll{max-height:460px;overflow:auto}
-.hidden{display:none}
-.badge{color:var(--green);font-size:12px}
-.error{color:#ff9c9c}
+flex:1;max-width:150px;font-size:11px;padding:9px 3px}
+nav button.active{background:#294632;color:var(--green)}
 @media(max-width:390px){.card{padding:12px}.grid{gap:8px}}
 </style>
 </head>
@@ -68,21 +66,21 @@ display:flex;justify-content:space-between;align-items:center;gap:10px}
 
 <section class="page active" id="home">
 <div class="card">
-<h2>Рабочий кабинет</h2>
+<h2>Добро пожаловать!</h2>
 <p>Рассчитывай прибыль, находи поисковые запросы и создавай преимущества для карточек товаров.</p>
 <div class="actions">
-<button onclick="openPage('calc')">Калькулятор</button>
+<button onclick="openPage('calc')">Юнит-экономика</button>
 <button class="secondary" onclick="openPage('seo')">SEO Analytics</button>
 <button class="secondary" onclick="openPage('utp')">УТП Studio</button>
 </div>
 </div>
 <div class="card">
-<h3>Что умеет SellerKit?</h3>
-<p>📊 Расчёт прибыли для четырёх площадок.</p>
-<p>🔎 Анализ реальной частотности из Excel Wildberries.</p>
-<p>✍️ Подбор ключей и черновик SEO-текста.</p>
-<p>💡 Преобразование характеристик товара в преимущества.</p>
-<p class="muted">AI, оплата и рефералы будут подключены позже.</p>
+<h2>Возможности</h2>
+<p>📊 Расчёт прибыли для WB, Ozon, Яндекс Маркета и Авито.</p>
+<p>🔎 Автоматический поиск по базе запросов Wildberries.</p>
+<p>✍️ Подбор ключей для SEO-описания.</p>
+<p>💡 Конструктор преимуществ для инфографики.</p>
+<p class="muted">AI, рефералы и подписки подключим позже.</p>
 </div>
 </section>
 
@@ -117,44 +115,43 @@ display:flex;justify-content:space-between;align-items:center;gap:10px}
 <div><label>Упаковка, ₽</label><input id="packaging" type="number" value="30"></div>
 <div><label>Хранение на единицу, ₽</label><input id="storage" type="number" value="10"></div>
 <div><label>Доп. доставка, ₽</label><input id="delivery" type="number" value="0"></div>
-<div><label>Расходы на возвраты, ₽/продажу</label><input id="returns" type="number" value="0"></div>
-<div><label>Реклама, % выручки</label><input id="ads" type="number" value="8"></div>
-<div><label>Налог, % выручки</label><input id="tax" type="number" value="6"></div>
+<div><label>Возвраты, ₽ на продажу</label><input id="returns" type="number" value="0"></div>
+<div><label>Реклама, %</label><input id="ads" type="number" value="8"></div>
+<div><label>Налог с выручки, %</label><input id="tax" type="number" value="6"></div>
 <div><label>Прочие расходы, ₽</label><input id="other" type="number" value="0"></div>
-<div><label>План продаж, шт.</label><input id="quantity" type="number" value="100"></div>
+<div><label>Количество продаж</label><input id="quantity" type="number" value="100"></div>
 </div>
 <div class="actions">
 <button onclick="saveCalc()">Сохранить</button>
 <button class="secondary" onclick="resetCalc()">Сбросить</button>
 </div>
-<p class="muted"><small>Тарифы вводятся вручную из кабинета площадки. Смена маркетплейса не подставляет комиссии автоматически. Налог считается упрощённо как процент выручки.</small></p>
+<p class="muted"><small>Тарифы вводятся вручную. Для точного расчёта используй тарифы своей категории и схемы из кабинета площадки. Налог рассчитан упрощённо.</small></p>
 </div>
+
 <div class="card">
-<h2>Результат расчёта</h2>
+<h2>Результаты</h2>
 <div class="grid">
-<div class="stat"><small>Прибыль / шт.</small><b id="profit">—</b></div>
+<div class="stat"><small>Прибыль за штуку</small><b id="profit">—</b></div>
 <div class="stat"><small>Маржинальность</small><b id="margin">—</b></div>
 <div class="stat"><small>ROI себестоимости</small><b id="roi">—</b></div>
-<div class="stat"><small>Безубыточная цена</small><b id="breakEven">—</b></div>
-<div class="stat"><small>Расходы / шт.</small><b id="expenses">—</b></div>
+<div class="stat"><small>Цена безубыточности</small><b id="breakEven">—</b></div>
+<div class="stat"><small>Расходы за штуку</small><b id="expenses">—</b></div>
 <div class="stat"><small>Прибыль за план</small><b id="totalProfit">—</b></div>
 </div>
-<p id="calcWarning" class="error"></p>
+<p id="calcWarning" class="bad"></p>
 </div>
 </section>
 
 <section class="page" id="seo">
 <div class="card">
 <h2>🔎 SEO Analytics</h2>
-<p class="muted">Загрузи Excel из аналитики поиска Wildberries. Файл обрабатывается прямо на устройстве.</p>
-<input type="file" id="seoFile" accept=".xlsx,.xls">
-<p id="fileStatus" class="muted">Файл не загружен.</p>
-<div id="periodInfo" class="notice hidden"></div>
+<p>Поиск ключевых слов Wildberries без загрузки Excel.</p>
+<div id="dbStatus" class="notice">Подключение базы запросов…</div>
+
+<label>Поисковая фраза</label>
+<input id="seoSearch" placeholder="Например: джинсы женские">
+
 <div class="grid">
-<div>
-<label>Поисковый запрос</label>
-<input id="seoSearch" placeholder="Например: сумка женская">
-</div>
 <div>
 <label>Минимальная частотность</label>
 <input id="seoMin" type="number" value="0">
@@ -163,68 +160,72 @@ display:flex;justify-content:space-between;align-items:center;gap:10px}
 <label>Сортировка</label>
 <select id="seoSort">
 <option value="volume">По частотности</option>
-<option value="growth">По приросту запросов</option>
+<option value="growth">По приросту</option>
 <option value="alpha">По алфавиту</option>
 </select>
 </div>
-<div>
-<label>Тип поиска</label>
-<select id="seoMatch">
-<option value="all">Все слова</option>
-<option value="phrase">Точная фраза</option>
-</select>
 </div>
-</div>
+
 <div class="actions">
 <button onclick="findKeywords()">Найти ключи</button>
 <button class="secondary" onclick="exportSEO()">Скачать CSV</button>
 </div>
+
 <p id="seoCount" class="muted"></p>
-<div class="scroll" id="seoResults"></div>
+<div id="seoResults" class="scroll"></div>
 </div>
 
 <div class="card">
 <h2>Выбранные ключи</h2>
-<div id="selectedKeys" class="muted">Ключи пока не выбраны.</div>
+<div id="selectedKeys">Ключи пока не выбраны.</div>
 <div class="actions">
-<button class="secondary" onclick="copyKeys()">Копировать ключи</button>
+<button class="secondary" onclick="copyKeys()">Копировать</button>
 <button class="secondary" onclick="clearKeys()">Очистить</button>
 </div>
 </div>
 
 <div class="card">
 <h2>✍️ SEO Studio</h2>
-<div class="grid">
-<div><label>Название товара</label><input id="seoProduct" placeholder="Сумка женская"></div>
-<div><label>Бренд</label><input id="seoBrand" placeholder="Необязательно"></div>
-</div>
-<label>Подтверждённые характеристики</label>
+<label>Название товара</label>
+<input id="seoProduct" placeholder="Сумка женская">
+
+<label>Бренд</label>
+<input id="seoBrand" placeholder="Необязательно">
+
+<label>Реальные характеристики товара</label>
 <textarea id="seoFacts" placeholder="Материал: экокожа; цвет: чёрный; три отделения; регулируемый ремень"></textarea>
+
 <div class="actions">
 <button onclick="createSEO()">Создать черновик</button>
 <button class="secondary" onclick="copyField('seoOutput')">Копировать</button>
 </div>
+
 <textarea id="seoOutput" style="margin-top:12px;min-height:220px" placeholder="Здесь появится SEO-текст"></textarea>
-<p class="muted"><small>Это черновик без нейросети. Выбранные ключи нужно проверить на соответствие товару. Полноценное AI-описание добавим после подключения сервера.</small></p>
+<p class="muted"><small>Пока без нейросети. Черновик нужно проверить перед публикацией.</small></p>
 </div>
 </section>
 
 <section class="page" id="utp">
 <div class="card">
 <h2>💡 УТП Studio</h2>
-<p class="muted">Превращаем реальные характеристики товара в преимущества для покупателя.</p>
+<p>Превращаем характеристики товара в преимущества.</p>
+
 <label>Название товара</label>
 <input id="utpProduct" placeholder="Сумка женская">
-<label>Целевая аудитория / сценарий</label>
+
+<label>Целевая аудитория</label>
 <input id="utpAudience" placeholder="Для повседневного использования">
-<label>Характеристики — по одной на строке</label>
-<textarea id="utpFacts" style="min-height:160px" placeholder="3 отделения&#10;Регулируемый ремень&#10;Застёжка на молнии"></textarea>
+
+<label>Характеристики — каждая с новой строки</label>
+<textarea id="utpFacts" placeholder="3 отделения&#10;Регулируемый ремень&#10;Застёжка на молнии"></textarea>
+
 <div class="actions">
 <button onclick="generateUTP()">Создать УТП</button>
 <button class="secondary" onclick="copyField('utpOutput')">Копировать</button>
 </div>
-<textarea id="utpOutput" style="margin-top:12px;min-height:260px" placeholder="Здесь появятся преимущества товара"></textarea>
-<p class="muted"><small>Пока используется набор проверяемых правил. Неизвестные характеристики не превращаются в выдуманные обещания.</small></p>
+
+<textarea id="utpOutput" style="margin-top:12px;min-height:260px" placeholder="Здесь появятся преимущества"></textarea>
+<p class="muted"><small>Сейчас работает конструктор по правилам. Полноценный AI подключим позже.</small></p>
 </div>
 </section>
 
@@ -232,21 +233,26 @@ display:flex;justify-content:space-between;align-items:center;gap:10px}
 <div class="card">
 <h2>👤 Профиль</h2>
 <p id="telegramUser">SellerKit Studio</p>
+
 <div class="notice">Базовые инструменты бесплатны.</div>
-<h3>🤖 AI Studio — в разработке</h3>
-<p>План: 3 бесплатные AI-генерации новому пользователю.</p>
-<h3>👥 Пригласи друзей</h3>
-<p>В будущем приглашённые друзья смогут приносить бонусные генерации после подтверждения регистрации.</p>
+
+<h3>🤖 AI Studio</h3>
+<p>Планируем 3 бесплатные AI-генерации для новых пользователей.</p>
+
+<h3>👥 Приглашения</h3>
+<p>За приглашённых друзей будут начисляться бонусные генерации.</p>
+
 <h3>⭐ Подписка</h3>
 <p>Планируем оплату AI-доступа через Telegram Stars.</p>
-<p class="muted"><small>Оплата, начисление бонусов и AI пока не подключены. Для них потребуется защищённый сервер и база пользователей.</small></p>
+
+<p class="muted"><small>Это будущие функции. Сейчас оплата и бонусы не подключены.</small></p>
 </div>
 </section>
 
 </main>
 
 <nav>
-<button data-page="home" class="active" onclick="openPage('home')">🏠<br>Главная</button>
+<button class="active" data-page="home" onclick="openPage('home')">🏠<br>Главная</button>
 <button data-page="calc" onclick="openPage('calc')">📊<br>Расчёт</button>
 <button data-page="seo" onclick="openPage('seo')">🔎<br>SEO</button>
 <button data-page="utp" onclick="openPage('utp')">💡<br>УТП</button>
@@ -256,515 +262,453 @@ display:flex;justify-content:space-between;align-items:center;gap:10px}
 <script>
 "use strict";
 
-const $ = id => document.getElementById(id);
-const rub = n => Number.isFinite(n)
-  ? new Intl.NumberFormat("ru-RU",{maximumFractionDigits:2}).format(n)+" ₽"
-  : "—";
-const pct = n => Number.isFinite(n) ? n.toFixed(1)+"%" : "—";
-const fmt = n => new Intl.NumberFormat("ru-RU").format(n||0);
-const num = id => Number($(id).value)||0;
+const $=id=>document.getElementById(id);
+const money=n=>Number.isFinite(n)
+ ?new Intl.NumberFormat("ru-RU",{maximumFractionDigits:2}).format(n)+" ₽"
+ :"—";
+const number=n=>new Intl.NumberFormat("ru-RU").format(n||0);
+const num=id=>Number($(id).value)||0;
 
-function openPage(page){
-  document.querySelectorAll(".page").forEach(el=>{
-    el.classList.toggle("active",el.id===page);
-  });
-  document.querySelectorAll("nav button").forEach(el=>{
-    el.classList.toggle("active",el.dataset.page===page);
-  });
-  window.scrollTo(0,0);
+function openPage(id){
+ document.querySelectorAll(".page").forEach(p=>{
+  p.classList.toggle("active",p.id===id);
+ });
+ document.querySelectorAll("nav button").forEach(b=>{
+  b.classList.toggle("active",b.dataset.page===id);
+ });
+ window.scrollTo(0,0);
 }
 
-/* ЮНИТ-ЭКОНОМИКА */
+/* КАЛЬКУЛЯТОР */
 
-const calcIds=[
-  "market","scheme","price","cost","commission",
-  "acquiring","logistics","handling","packaging",
-  "storage","delivery","returns","ads","tax",
-  "other","quantity"
+const calcFields=[
+ "market","scheme","price","cost","commission",
+ "acquiring","logistics","handling","packaging",
+ "storage","delivery","returns","ads","tax",
+ "other","quantity"
 ];
 
-const calcDefaults=Object.fromEntries(
-  calcIds.map(id=>[id,$(id).value])
+const defaults=Object.fromEntries(
+ calcFields.map(id=>[id,$(id).value])
 );
 
 function calculate(){
-  const price=num("price");
-  const cost=num("cost");
+ const price=num("price");
+ const cost=num("cost");
 
-  const fixed=cost+
-    num("logistics")+
-    num("handling")+
-    num("packaging")+
-    num("storage")+
-    num("delivery")+
-    num("returns")+
-    num("other");
+ const fixed=cost+
+  num("logistics")+num("handling")+
+  num("packaging")+num("storage")+
+  num("delivery")+num("returns")+num("other");
 
-  const rate=(
-    num("commission")+
-    num("acquiring")+
-    num("ads")+
-    num("tax")
-  )/100;
+ const rate=(
+  num("commission")+num("acquiring")+
+  num("ads")+num("tax")
+ )/100;
 
-  const expenses=fixed+price*rate;
-  const profit=price-expenses;
-  const margin=price>0?profit/price*100:NaN;
-  const roi=cost>0?profit/cost*100:NaN;
-  const breakEven=rate<1?fixed/(1-rate):NaN;
-  const quantity=Math.max(0,Math.floor(num("quantity")));
+ const expenses=fixed+price*rate;
+ const profit=price-expenses;
+ const margin=price>0?profit/price*100:NaN;
+ const roi=cost>0?profit/cost*100:NaN;
+ const breakEven=rate<1?fixed/(1-rate):NaN;
+ const quantity=Math.max(0,Math.floor(num("quantity")));
 
-  $("profit").textContent=rub(profit);
-  $("profit").className=profit>=0?"positive":"negative";
-  $("margin").textContent=pct(margin);
-  $("roi").textContent=pct(roi);
-  $("breakEven").textContent=rub(breakEven);
-  $("expenses").textContent=rub(expenses);
-  $("totalProfit").textContent=rub(profit*quantity);
+ $("profit").textContent=money(profit);
+ $("profit").className=profit>=0?"good":"bad";
+ $("margin").textContent=Number.isFinite(margin)
+  ?margin.toFixed(1)+"%":"—";
+ $("roi").textContent=Number.isFinite(roi)
+  ?roi.toFixed(1)+"%":"—";
+ $("breakEven").textContent=money(breakEven);
+ $("expenses").textContent=money(expenses);
+ $("totalProfit").textContent=money(profit*quantity);
 
-  $("calcWarning").textContent=rate>=1
-    ?"Процентные расходы составляют 100% или больше. Безубыточная цена при этих условиях невозможна."
-    :"";
+ $("calcWarning").textContent=rate>=1
+  ?"Процентные расходы достигли 100% или больше."
+  :"";
 }
 
-calcIds.forEach(id=>{
-  $(id).addEventListener("input",calculate);
-  $(id).addEventListener("change",calculate);
+calcFields.forEach(id=>{
+ $(id).addEventListener("input",calculate);
+ $(id).addEventListener("change",calculate);
 });
 
 function saveCalc(){
-  try{
-    const values=Object.fromEntries(
-      calcIds.map(id=>[id,$(id).value])
-    );
-    localStorage.setItem("sellerkit_calc_v2",JSON.stringify(values));
-    alert("Расчёт сохранён на этом устройстве.");
-  }catch(e){
-    alert("Не удалось сохранить расчёт.");
-  }
+ try{
+  const data=Object.fromEntries(
+   calcFields.map(id=>[id,$(id).value])
+  );
+  localStorage.setItem("sellerkit_calc_v3",JSON.stringify(data));
+  alert("Расчёт сохранён!");
+ }catch(e){
+  alert("Не удалось сохранить.");
+ }
 }
 
 function resetCalc(){
-  calcIds.forEach(id=>$(id).value=calcDefaults[id]);
-  calculate();
+ calcFields.forEach(id=>$(id).value=defaults[id]);
+ calculate();
 }
 
 try{
-  const saved=JSON.parse(localStorage.getItem("sellerkit_calc_v2"));
-  if(saved){
-    calcIds.forEach(id=>{
-      if(saved[id]!==undefined)$(id).value=saved[id];
-    });
-  }
+ const saved=JSON.parse(localStorage.getItem("sellerkit_calc_v3"));
+ if(saved){
+  calcFields.forEach(id=>{
+   if(saved[id]!==undefined)$(id).value=saved[id];
+  });
+ }
 }catch(e){}
 calculate();
 
-/* SEO ANALYTICS */
+/* БАЗА SEO */
 
-let seoRows=[];
-let filteredRows=[];
+let database=[];
+let found=[];
+let period="";
 const selected=new Map();
 
-function normalize(s){
-  return String(s||"").toLowerCase()
-    .replace(/ё/g,"е")
-    .replace(/[^a-zа-я0-9]+/gi," ")
-    .trim();
+function normalize(value){
+ return String(value||"").toLowerCase()
+  .replace(/ё/g,"е")
+  .replace(/[^a-zа-я0-9]+/gi," ")
+  .trim();
 }
 
-$("seoFile").addEventListener("change",async event=>{
-  const file=event.target.files[0];
-  if(!file)return;
+async function loadDatabase(){
+ const status=$("dbStatus");
 
-  seoRows=[];
-  filteredRows=[];
-  selected.clear();
-  renderSelected();
-  $("seoResults").replaceChildren();
-  $("fileStatus").textContent="Читаем Excel…";
-  $("fileStatus").classList.remove("error");
-  $("periodInfo").classList.add("hidden");
+ try{
+  const response=await fetch(
+   "./keywords.json?v=20261111",
+   {cache:"no-store"}
+  );
 
-  await new Promise(resolve=>setTimeout(resolve,50));
-
-  try{
-    if(!window.XLSX){
-      throw new Error("Не загрузилась библиотека Excel. Проверь интернет.");
-    }
-
-    const data=await file.arrayBuffer();
-    const book=XLSX.read(data,{type:"array",dense:true});
-    const sheet=book.Sheets["Детальная информация"];
-
-    if(!sheet){
-      throw new Error("Не найден лист «Детальная информация».");
-    }
-
-    const raw=XLSX.utils.sheet_to_json(sheet,{
-      header:1,defval:"",blankrows:false
-    });
-
-    const headerIndex=raw.findIndex(row=>
-      normalize(row[0])==="поисковый запрос" &&
-      String(row[1]).includes("Количество запросов")
-    );
-
-    if(headerIndex<0){
-      throw new Error("Не найдены заголовки поисковых запросов.");
-    }
-
-    seoRows=raw.slice(headerIndex+1)
-      .filter(row=>
-        typeof row[0]==="string" &&
-        row[0].trim() &&
-        Number.isFinite(Number(row[1]))
-      )
-      .map(row=>({
-        query:row[0].trim(),
-        volume:Number(row[1])||0,
-        previous:Number(row[2])||0,
-        daily:Number(row[3])||0,
-        category:String(row[5]||"")
-      }));
-
-    const info=book.Sheets["Общая информация"];
-    let period="";
-
-    if(info){
-      const details=XLSX.utils.sheet_to_json(info,{
-        header:1,defval:""
-      });
-      period=details.slice(1,3)
-        .map(row=>row.join(" "))
-        .join(" | ");
-    }
-
-    $("periodInfo").textContent=period||
-      "Период отчёта не определён.";
-    $("periodInfo").classList.remove("hidden");
-
-    $("fileStatus").textContent=
-      "Загружено "+fmt(seoRows.length)+" запросов.";
-
-    findKeywords();
-  }catch(error){
-    $("fileStatus").textContent="Ошибка: "+error.message;
-    $("fileStatus").classList.add("error");
+  if(!response.ok){
+   throw new Error("HTTP "+response.status);
   }
-});
+
+  const data=await response.json();
+
+  if(!Array.isArray(data.rows)){
+   throw new Error("Неверный формат базы");
+  }
+
+  database=data.rows.map(row=>({
+   query:String(row[0]||""),
+   volume:Number(row[1])||0,
+   previous:Number(row[2])||0,
+   daily:Number(row[3])||0,
+   category:String(row[4]||"")
+  }));
+
+  period=data.period||"Период неизвестен";
+
+  status.textContent=
+   "✅ База готова: "+number(database.length)+
+   " запросов WB. Период: "+period;
+
+ }catch(error){
+  status.textContent=
+   "❌ База не подключена. Проверь файл keywords.json в GitHub. "+
+   error.message;
+ }
+}
 
 function findKeywords(){
-  if(!seoRows.length){
-    $("seoCount").textContent="Сначала загрузи Excel.";
-    return;
-  }
+ if(!database.length){
+  $("seoCount").textContent="База ещё не подключена.";
+  return;
+ }
 
-  const search=normalize($("seoSearch").value);
-  const words=search.split(" ").filter(Boolean);
-  const min=Math.max(0,num("seoMin"));
-  const match=$("seoMatch").value;
+ const search=normalize($("seoSearch").value);
+ const words=search.split(" ").filter(Boolean);
+ const min=Math.max(0,num("seoMin"));
 
-  filteredRows=seoRows.filter(row=>{
-    if(row.volume<min)return false;
-    if(!search)return true;
+ if(!words.length){
+  $("seoCount").textContent="Введи название товара.";
+  return;
+ }
 
-    const query=normalize(row.query);
+ found=database.filter(row=>{
+  if(row.volume<min)return false;
+  const text=normalize(row.query);
+  const queryWords=text.split(" ");
+  return words.every(word=>queryWords.includes(word));
+ });
 
-    if(match==="phrase")return query.includes(search);
+ const sort=$("seoSort").value;
 
-    const queryWords=query.split(" ");
-    return words.every(word=>queryWords.includes(word));
-  });
+ if(sort==="volume"){
+  found.sort((a,b)=>b.volume-a.volume);
+ }else if(sort==="growth"){
+  found.sort((a,b)=>
+   (b.volume-b.previous)-(a.volume-a.previous)
+  );
+ }else{
+  found.sort((a,b)=>a.query.localeCompare(b.query,"ru"));
+ }
 
-  const sort=$("seoSort").value;
+ $("seoCount").textContent=
+  "Найдено "+number(found.length)+
+  " запросов. Показаны первые 100.";
 
-  if(sort==="volume"){
-    filteredRows.sort((a,b)=>b.volume-a.volume);
-  }else if(sort==="growth"){
-    filteredRows.sort((a,b)=>
-      (b.volume-b.previous)-(a.volume-a.previous)
-    );
-  }else{
-    filteredRows.sort((a,b)=>
-      a.query.localeCompare(b.query,"ru")
-    );
-  }
-
-  $("seoCount").textContent=
-    "Найдено: "+fmt(filteredRows.length)+
-    ". Показаны первые 100. CSV содержит все найденные.";
-
-  renderResults();
+ renderResults();
 }
 
 function renderResults(){
-  const box=$("seoResults");
-  box.replaceChildren();
+ const box=$("seoResults");
+ box.replaceChildren();
 
-  const rows=filteredRows.slice(0,100);
+ if(!found.length){
+  box.textContent="Совпадений нет.";
+  return;
+ }
 
-  if(!rows.length){
-    box.textContent="Совпадений нет.";
-    return;
-  }
+ for(const row of found.slice(0,100)){
+  const item=document.createElement("div");
+  item.className="result";
 
-  for(const row of rows){
-    const item=document.createElement("div");
-    item.className="result";
+  const content=document.createElement("div");
 
-    const content=document.createElement("div");
+  const title=document.createElement("strong");
+  title.textContent=row.query;
 
-    const title=document.createElement("strong");
-    title.textContent=row.query;
+  const stats=document.createElement("div");
+  stats.className="muted";
+  stats.style.fontSize="12px";
+  stats.textContent=
+   "За период: "+number(row.volume)+
+   " · ранее: "+number(row.previous)+
+   " · в день: "+number(row.daily);
 
-    const stats=document.createElement("div");
-    stats.className="muted";
-    stats.style.fontSize="12px";
-    stats.textContent=
-      "Запросов: "+fmt(row.volume)+
-      " · ранее: "+fmt(row.previous)+
-      " · в день: "+fmt(row.daily);
+  const category=document.createElement("small");
+  category.textContent=row.category;
 
-    const category=document.createElement("small");
-    category.textContent=row.category;
+  content.append(title,document.createElement("br"),stats,category);
 
-    content.append(title,document.createElement("br"),stats,category);
+  const button=document.createElement("button");
+  button.textContent=selected.has(row.query)?"✓":"＋";
+  button.className=selected.has(row.query)?"secondary":"";
 
-    const button=document.createElement("button");
-    button.textContent=selected.has(row.query)?"✓":"＋";
-    button.className=selected.has(row.query)?"secondary":"";
+  button.onclick=()=>{
+   if(selected.has(row.query)){
+    selected.delete(row.query);
+   }else{
+    selected.set(row.query,row);
+   }
+   renderResults();
+   renderSelected();
+  };
 
-    button.onclick=()=>{
-      if(selected.has(row.query)){
-        selected.delete(row.query);
-      }else{
-        selected.set(row.query,row);
-      }
-      renderResults();
-      renderSelected();
-    };
-
-    item.append(content,button);
-    box.append(item);
-  }
+  item.append(content,button);
+  box.append(item);
+ }
 }
 
 function renderSelected(){
-  const box=$("selectedKeys");
-  box.replaceChildren();
+ const box=$("selectedKeys");
+ box.replaceChildren();
 
-  if(!selected.size){
-    box.textContent="Ключи пока не выбраны.";
-    return;
-  }
+ if(!selected.size){
+  box.textContent="Ключи пока не выбраны.";
+  return;
+ }
 
-  for(const row of selected.values()){
-    const item=document.createElement("div");
-    item.className="result";
+ for(const row of selected.values()){
+  const item=document.createElement("div");
+  item.className="result";
 
-    const label=document.createElement("span");
-    label.textContent=row.query+" · "+fmt(row.volume);
+  const title=document.createElement("span");
+  title.textContent=row.query+" · "+number(row.volume);
 
-    const button=document.createElement("button");
-    button.className="secondary";
-    button.textContent="×";
-    button.onclick=()=>{
-      selected.delete(row.query);
-      renderSelected();
-      renderResults();
-    };
+  const button=document.createElement("button");
+  button.className="secondary";
+  button.textContent="×";
 
-    item.append(label,button);
-    box.append(item);
-  }
+  button.onclick=()=>{
+   selected.delete(row.query);
+   renderSelected();
+   renderResults();
+  };
+
+  item.append(title,button);
+  box.append(item);
+ }
 }
 
 function clearKeys(){
-  selected.clear();
-  renderSelected();
-  renderResults();
+ selected.clear();
+ renderSelected();
+ renderResults();
 }
 
-async function copyText(value){
-  if(!value){
-    alert("Пока нечего копировать.");
-    return;
-  }
-
-  try{
-    await navigator.clipboard.writeText(value);
-    alert("Скопировано!");
-  }catch(e){
-    prompt("Скопируй текст:",value);
-  }
+async function copyText(text){
+ if(!text){
+  alert("Нечего копировать.");
+  return;
+ }
+ try{
+  await navigator.clipboard.writeText(text);
+  alert("Скопировано!");
+ }catch(e){
+  prompt("Скопируй текст:",text);
+ }
 }
 
 function copyKeys(){
-  copyText([...selected.keys()].join("\n"));
+ copyText([...selected.keys()].join("\n"));
 }
 
 function copyField(id){
-  copyText($(id).value);
+ copyText($(id).value);
 }
 
-function csvValue(value){
-  return '"'+String(value??"").replace(/"/g,'""')+'"';
+function csvCell(value){
+ return '"'+String(value??"").replace(/"/g,'""')+'"';
 }
 
 function exportSEO(){
-  if(!filteredRows.length){
-    alert("Сначала найди запросы.");
-    return;
-  }
+ if(!found.length){
+  alert("Сначала найди запросы.");
+  return;
+ }
 
-  const lines=[
-    ["Запрос","Количество запросов","Предыдущий период",
-     "Среднее в день","Категория"].map(csvValue).join(";")
-  ];
+ const lines=[
+  ["Запрос","За период","Предыдущий период",
+   "В день","Категория"].map(csvCell).join(";")
+ ];
 
-  for(const row of filteredRows){
-    lines.push([
-      row.query,row.volume,row.previous,row.daily,row.category
-    ].map(csvValue).join(";"));
-  }
+ for(const row of found){
+  lines.push([
+   row.query,row.volume,row.previous,row.daily,row.category
+  ].map(csvCell).join(";"));
+ }
 
-  const blob=new Blob(["\ufeff"+lines.join("\r\n")],{
-    type:"text/csv;charset=utf-8"
-  });
+ const blob=new Blob(["\ufeff"+lines.join("\r\n")],{
+  type:"text/csv;charset=utf-8"
+ });
 
-  const url=URL.createObjectURL(blob);
-  const link=document.createElement("a");
-  link.href=url;
-  link.download="sellerkit_seo.csv";
-  link.click();
-  setTimeout(()=>URL.revokeObjectURL(url),2000);
+ const url=URL.createObjectURL(blob);
+ const link=document.createElement("a");
+ link.href=url;
+ link.download="sellerkit_seo.csv";
+ link.click();
+
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 
 $("seoSearch").addEventListener("keydown",event=>{
-  if(event.key==="Enter")findKeywords();
-});
-["seoMin","seoSort","seoMatch"].forEach(id=>{
-  $(id).addEventListener("change",findKeywords);
+ if(event.key==="Enter")findKeywords();
 });
 
 /* SEO STUDIO */
 
 function createSEO(){
-  const product=$("seoProduct").value.trim();
-  const brand=$("seoBrand").value.trim();
-  const facts=$("seoFacts").value.trim();
+ const product=$("seoProduct").value.trim();
+ const brand=$("seoBrand").value.trim();
+ const facts=$("seoFacts").value.trim();
 
-  if(!product){
-    alert("Введи название товара.");
-    return;
+ if(!product){
+  alert("Введи название товара.");
+  return;
+ }
+
+ const factList=facts.split(/[;\n]+/)
+  .map(x=>x.trim()).filter(Boolean);
+
+ const verified=normalize(product+" "+facts).split(" ");
+ const matching=[];
+ const toCheck=[];
+
+ for(const key of selected.keys()){
+  const words=normalize(key).split(" ");
+  if(words.every(w=>verified.includes(w))){
+   matching.push(key);
+  }else{
+   toCheck.push(key);
   }
+ }
 
-  const title=[brand,product].filter(Boolean).join(" ");
-
-  const factList=facts.split(/[;\n]+/)
-    .map(value=>value.trim())
-    .filter(Boolean);
-
-  const productWords=normalize(product+" "+facts).split(" ");
-
-  const relevant=[];
-  const unverified=[];
-
-  for(const key of selected.keys()){
-    const words=normalize(key).split(" ");
-    if(words.every(word=>productWords.includes(word))){
-      relevant.push(key);
-    }else{
-      unverified.push(key);
-    }
-  }
-
-  $("seoOutput").value=
-    "ЗАГОЛОВОК — ЧЕРНОВИК\n"+
-    title+"\n\n"+
-    "ОПИСАНИЕ — ЧЕРНОВИК\n"+
-    product+
-    (factList.length?" — "+factList.join(". ")+".":".")+
-    "\n\nКЛЮЧИ С СОВПАДЕНИЕМ СЛОВ\n"+
-    (relevant.join("\n")||"Нет")+
-    "\n\nКЛЮЧИ, ТРЕБУЮЩИЕ ПРОВЕРКИ\n"+
-    (unverified.join("\n")||"Нет")+
-    "\n\nПроверь смысл ключей, факты о товаре и текст перед публикацией.";
+ $("seoOutput").value=
+  "ЗАГОЛОВОК\n"+
+  [brand,product].filter(Boolean).join(" ")+
+  "\n\nОПИСАНИЕ — ЧЕРНОВИК\n"+
+  product+
+  (factList.length?" — "+factList.join(". ")+".":".")+
+  "\n\nКЛЮЧИ С СОВПАДЕНИЕМ СЛОВ\n"+
+  (matching.join("\n")||"Нет")+
+  "\n\nТРЕБУЮТ ПРОВЕРКИ\n"+
+  (toCheck.join("\n")||"Нет")+
+  "\n\nПроверь смысл ключей и факты о товаре.";
 }
 
 /* УТП STUDIO */
 
-const utpRules=[
-  [/отделени/i,"Помогает разложить вещи по отдельным отделениям"],
-  [/регулируем.*рем|рем.*регулируем/i,
-    "Длину ремня можно подстроить под себя"],
-  [/молни/i,"Удобно закрывать с помощью молнии"],
-  [/карман/i,"Отдельное место для мелочей"],
-  [/складн|складыва/i,"Можно сложить для компактного хранения"],
-  [/влагозащит|водонепроница/i,
-    "Защита от влаги в пределах заявленных характеристик"],
-  [/хлопок/i,"В составе материала есть хлопок"],
-  [/экокож/i,"Изделие выполнено из экокожи"],
-  [/натуральн.*кож/i,"Из натуральной кожи при подтверждённом составе"]
+const rules=[
+ [/отделени/i,"Помогает разделить вещи по отделениям"],
+ [/регулируем.*рем|рем.*регулируем/i,
+  "Длину ремня можно подстроить под себя"],
+ [/молни/i,"Удобно закрывать на молнию"],
+ [/карман/i,"Отдельное место для мелочей"],
+ [/складн|складыва/i,"Можно сложить для хранения"],
+ [/хлопок/i,"В составе материала есть хлопок"],
+ [/экокож/i,"Изделие выполнено из экокожи"]
 ];
 
 function generateUTP(){
-  const product=$("utpProduct").value.trim()||"Товар";
-  const audience=$("utpAudience").value.trim();
-  const facts=$("utpFacts").value.split("\n")
-    .map(value=>value.trim())
-    .filter(Boolean);
+ const product=$("utpProduct").value.trim()||"Товар";
+ const audience=$("utpAudience").value.trim();
+ const facts=$("utpFacts").value.split("\n")
+  .map(x=>x.trim()).filter(Boolean);
 
-  if(!facts.length){
-    alert("Добавь характеристики товара.");
-    return;
-  }
+ if(!facts.length){
+  alert("Добавь характеристики.");
+  return;
+ }
 
-  let result="УТП ДЛЯ «"+product+"»\n";
+ let result="УТП ДЛЯ «"+product+"»\n";
 
-  if(audience){
-    result+="Аудитория: "+audience+"\n";
-  }
+ if(audience){
+  result+="Аудитория: "+audience+"\n";
+ }
 
-  result+="\nХАРАКТЕРИСТИКИ И ПРЕИМУЩЕСТВА\n\n";
+ result+="\nХАРАКТЕРИСТИКИ И ПРЕИМУЩЕСТВА\n\n";
 
-  facts.forEach((fact,index)=>{
-    const rule=utpRules.find(item=>item[0].test(fact));
+ facts.forEach((fact,i)=>{
+  const rule=rules.find(r=>r[0].test(fact));
+  result+=(i+1)+". "+fact+"\n";
+  result+="Польза: "+
+   (rule?rule[1]:"Нужно уточнить пользу вручную")+
+   "\n\n";
+ });
 
-    result+=(index+1)+". "+fact+"\n";
-    result+="Преимущество: "+
-      (rule?rule[1]:"Уточни пользу для покупателя вручную")+
-      "\n\n";
-  });
+ result+="ПОДПИСИ ДЛЯ ИНФОГРАФИКИ\n";
 
-  result+="ПОДПИСИ ДЛЯ ИНФОГРАФИКИ\n";
+ facts.forEach(fact=>{
+  result+="• "+fact+"\n";
+ });
 
-  facts.forEach(fact=>{
-    result+="• "+fact+"\n";
-  });
+ result+="\nПроверь все утверждения перед публикацией.";
 
-  result+="\nПроверь каждое утверждение перед публикацией.";
-
-  $("utpOutput").value=result;
+ $("utpOutput").value=result;
 }
 
 /* TELEGRAM */
 
 try{
-  const tg=window.Telegram?.WebApp;
-  if(tg){
-    tg.ready();
-    tg.expand();
-
-    const user=tg.initDataUnsafe?.user;
-
-    if(user){
-      $("telegramUser").textContent=
-        "Telegram: "+(user.first_name||"Пользователь");
-    }
+ const tg=window.Telegram?.WebApp;
+ if(tg){
+  tg.ready();
+  tg.expand();
+  const user=tg.initDataUnsafe?.user;
+  if(user){
+   $("telegramUser").textContent=
+    "Telegram: "+(user.first_name||"Пользователь");
   }
+ }
 }catch(e){}
 
+loadDatabase();
 </script>
 </body>
 </html>
