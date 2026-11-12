@@ -12,26 +12,20 @@
  --green:#78f3a5;--text:#f1fff3;--muted:#a8b9ad
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);
-font-family:system-ui,Arial,sans-serif}
-main{max-width:800px;margin:auto;padding:15px 14px 100px}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Arial,sans-serif}
+main{max-width:800px;margin:auto;padding:15px 14px 105px}
 h1{font-size:26px;margin:0 0 10px}
 h2{font-size:20px;margin:0 0 14px}
+h3{margin:12px 0}
 p{line-height:1.5}
-.hero{background:linear-gradient(130deg,#225d3a,#142b1e);
-border:1px solid #498c5e;border-radius:22px;padding:22px}
-.card{background:var(--panel);border:1px solid var(--line);
-border-radius:18px;padding:17px;margin:14px 0}
+.hero{background:linear-gradient(130deg,#225d3a,#142b1e);border:1px solid #498c5e;border-radius:22px;padding:22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:17px;margin:14px 0}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}
-input,select,textarea{
-width:100%;background:#0c1810;color:white;
-border:1px solid #42624b;border-radius:11px;
-padding:12px;font:inherit
-}
+input,select,textarea{width:100%;background:#0c1810;color:white;border:1px solid #42624b;border-radius:11px;padding:12px;font:inherit}
 textarea{min-height:130px;resize:vertical}
-button{background:var(--green);border:0;border-radius:11px;
-padding:12px;color:#102419;font-weight:700;cursor:pointer}
+button{background:var(--green);border:0;border-radius:11px;padding:12px;color:#102419;font-weight:700;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
 .secondary{background:#314b39;color:white}
 .actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
 .page{display:none}
@@ -42,45 +36,54 @@ padding:12px;color:#102419;font-weight:700;cursor:pointer}
 .good{color:var(--green)}
 .bad{color:#ff9898}
 .notice{background:#203c29;padding:13px;border-radius:12px;margin:12px 0}
-.result{display:flex;justify-content:space-between;align-items:center;
-gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.result{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
 .result button{flex-shrink:0}
 .scroll{max-height:480px;overflow:auto}
-nav{position:fixed;bottom:0;left:0;right:0;display:flex;
-justify-content:center;background:#101b13;border-top:1px solid var(--line);
-padding:7px 3px calc(8px + env(safe-area-inset-bottom))}
-nav button{background:transparent;color:var(--muted);
-flex:1;max-width:150px;font-size:11px;padding:9px 3px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;background:#101b13;border-top:1px solid var(--line);padding:7px 3px calc(8px + env(safe-area-inset-bottom));z-index:10}
+nav button{background:transparent;color:var(--muted);flex:1;max-width:150px;font-size:11px;padding:9px 3px}
 nav button.active{background:#294632;color:var(--green)}
-@media(max-width:390px){.card{padding:12px}.grid{gap:8px}}
+.tile{background:#1b3024;border:1px solid #34503c;border-radius:15px;padding:16px;text-align:left;color:white;display:flex;flex-direction:column;gap:9px;min-height:110px}
+.tile span{font-size:24px}
+.tile small{font-size:12px}
+.balance{background:#203d2d;border-radius:18px;padding:18px}
+.balance strong{display:block;font-size:38px;margin:8px 0}
+.wide{width:100%}
+.topline{display:flex;align-items:center;gap:12px}
+.avatar{background:#244734;border-radius:50%;width:55px;height:55px;display:grid;place-items:center;font-size:26px}
+.back{background:transparent;color:var(--green);padding:4px 0;margin:8px 0}
+.pack{background:#1b3024;border:1px solid var(--line);border-radius:13px;padding:14px;margin:9px 0;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.pill{font-size:12px;color:var(--green)}
+@media(max-width:390px){.card{padding:12px}.grid{gap:8px}.tile{padding:12px}}
 </style>
 </head>
 <body>
 <main>
-
 <header class="hero">
 <h1>⚡ SellerKit Studio</h1>
 <p>Инструменты для селлеров, менеджеров и дизайнеров маркетплейсов.</p>
-<small>Юнит-экономика · SEO Analytics · УТП Studio</small>
+<small>Аналитика · SEO · УТП · AI Studio</small>
 </header>
 
 <section class="page active" id="home">
 <div class="card">
-<h2>Добро пожаловать!</h2>
-<p>Рассчитывай прибыль, находи поисковые запросы и создавай преимущества для карточек товаров.</p>
-<div class="actions">
-<button onclick="openPage('calc')">Юнит-экономика</button>
-<button class="secondary" onclick="openPage('seo')">SEO Analytics</button>
-<button class="secondary" onclick="openPage('utp')">УТП Studio</button>
+<h2>Твой рабочий кабинет</h2>
+<p>Все инструменты для работы с карточками товаров в одном месте.</p>
+<div class="notice">
+<h3>✨ AI Studio</h3>
+<p>Готовим генерацию инфографики по фотографии товара прямо в приложении.</p>
+<button onclick="openPage('ai')">Открыть AI Studio</button>
+</div>
+<div class="grid">
+<button class="tile" onclick="openPage('calc')"><span>📊</span>Юнит-экономика<small>Прибыль и расходы</small></button>
+<button class="tile" onclick="openPage('seo')"><span>🔎</span>SEO Analytics<small>Поисковые запросы WB</small></button>
+<button class="tile" onclick="openPage('utp')"><span>💡</span>УТП Studio<small>Преимущества товара</small></button>
+<button class="tile" onclick="openPage('profile')"><span>👤</span>Личный кабинет<small>Баланс, бонусы и поддержка</small></button>
 </div>
 </div>
 <div class="card">
-<h2>Возможности</h2>
-<p>📊 Расчёт прибыли для WB, Ozon, Яндекс Маркета и Авито.</p>
-<p>🔎 Автоматический поиск по базе запросов Wildberries.</p>
-<p>✍️ Подбор ключей для SEO-описания.</p>
-<p>💡 Конструктор преимуществ для инфографики.</p>
-<p class="muted">AI, рефералы и подписки подключим позже.</p>
+<h2>🎨 Дизайн от Card Lab</h2>
+<p>Нужно профессиональное оформление карточек? Напиши автору проекта.</p>
+<button class="secondary" onclick="contact('design')">Заказать дизайн</button>
 </div>
 </section>
 
@@ -88,24 +91,8 @@ nav button.active{background:#294632;color:var(--green)}
 <div class="card">
 <h2>📊 Юнит-экономика</h2>
 <div class="grid">
-<div>
-<label>Маркетплейс</label>
-<select id="market">
-<option>Wildberries</option>
-<option>Ozon</option>
-<option>Яндекс Маркет</option>
-<option>Авито</option>
-</select>
-</div>
-<div>
-<label>Схема работы</label>
-<select id="scheme">
-<option>FBO / FBY</option>
-<option>FBS</option>
-<option>DBS / доставка продавца</option>
-<option>Другая</option>
-</select>
-</div>
+<div><label>Маркетплейс</label><select id="market"><option>Wildberries</option><option>Ozon</option><option>Яндекс Маркет</option><option>Авито</option></select></div>
+<div><label>Схема работы</label><select id="scheme"><option>FBO / FBY</option><option>FBS</option><option>DBS / доставка продавца</option><option>Другая</option></select></div>
 <div><label>Цена продажи, ₽</label><input id="price" type="number" value="2000"></div>
 <div><label>Себестоимость, ₽</label><input id="cost" type="number" value="650"></div>
 <div><label>Комиссия, %</label><input id="commission" type="number" value="15"></div>
@@ -125,9 +112,8 @@ nav button.active{background:#294632;color:var(--green)}
 <button onclick="saveCalc()">Сохранить</button>
 <button class="secondary" onclick="resetCalc()">Сбросить</button>
 </div>
-<p class="muted"><small>Тарифы вводятся вручную. Для точного расчёта используй тарифы своей категории и схемы из кабинета площадки. Налог рассчитан упрощённо.</small></p>
+<p class="muted"><small>Тарифы вводятся вручную. Налог рассчитан упрощённо.</small></p>
 </div>
-
 <div class="card">
 <h2>Результаты</h2>
 <div class="grid">
@@ -147,34 +133,19 @@ nav button.active{background:#294632;color:var(--green)}
 <h2>🔎 SEO Analytics</h2>
 <p>Поиск ключевых слов Wildberries без загрузки Excel.</p>
 <div id="dbStatus" class="notice">Подключение базы запросов…</div>
-
 <label>Поисковая фраза</label>
 <input id="seoSearch" placeholder="Например: джинсы женские">
-
 <div class="grid">
-<div>
-<label>Минимальная частотность</label>
-<input id="seoMin" type="number" value="0">
+<div><label>Минимальная частотность</label><input id="seoMin" type="number" value="0"></div>
+<div><label>Сортировка</label><select id="seoSort"><option value="volume">По частотности</option><option value="growth">По приросту</option><option value="alpha">По алфавиту</option></select></div>
 </div>
-<div>
-<label>Сортировка</label>
-<select id="seoSort">
-<option value="volume">По частотности</option>
-<option value="growth">По приросту</option>
-<option value="alpha">По алфавиту</option>
-</select>
-</div>
-</div>
-
 <div class="actions">
 <button onclick="findKeywords()">Найти ключи</button>
 <button class="secondary" onclick="exportSEO()">Скачать CSV</button>
 </div>
-
 <p id="seoCount" class="muted"></p>
 <div id="seoResults" class="scroll"></div>
 </div>
-
 <div class="card">
 <h2>Выбранные ключи</h2>
 <div id="selectedKeys">Ключи пока не выбраны.</div>
@@ -183,25 +154,18 @@ nav button.active{background:#294632;color:var(--green)}
 <button class="secondary" onclick="clearKeys()">Очистить</button>
 </div>
 </div>
-
 <div class="card">
 <h2>✍️ SEO Studio</h2>
-<label>Название товара</label>
-<input id="seoProduct" placeholder="Сумка женская">
-
-<label>Бренд</label>
-<input id="seoBrand" placeholder="Необязательно">
-
+<label>Название товара</label><input id="seoProduct" placeholder="Сумка женская">
+<label>Бренд</label><input id="seoBrand" placeholder="Необязательно">
 <label>Реальные характеристики товара</label>
-<textarea id="seoFacts" placeholder="Материал: экокожа; цвет: чёрный; три отделения; регулируемый ремень"></textarea>
-
+<textarea id="seoFacts" placeholder="Материал: экокожа; цвет: чёрный; три отделения"></textarea>
 <div class="actions">
 <button onclick="createSEO()">Создать черновик</button>
 <button class="secondary" onclick="copyField('seoOutput')">Копировать</button>
 </div>
-
 <textarea id="seoOutput" style="margin-top:12px;min-height:220px" placeholder="Здесь появится SEO-текст"></textarea>
-<p class="muted"><small>Пока без нейросети. Черновик нужно проверить перед публикацией.</small></p>
+<p class="muted"><small>Пока без нейросети. Проверь черновик перед публикацией.</small></p>
 </div>
 </section>
 
@@ -209,190 +173,194 @@ nav button.active{background:#294632;color:var(--green)}
 <div class="card">
 <h2>💡 УТП Studio</h2>
 <p>Превращаем характеристики товара в преимущества.</p>
-
-<label>Название товара</label>
-<input id="utpProduct" placeholder="Сумка женская">
-
-<label>Целевая аудитория</label>
-<input id="utpAudience" placeholder="Для повседневного использования">
-
+<label>Название товара</label><input id="utpProduct" placeholder="Сумка женская">
+<label>Целевая аудитория</label><input id="utpAudience" placeholder="Для повседневного использования">
 <label>Характеристики — каждая с новой строки</label>
 <textarea id="utpFacts" placeholder="3 отделения&#10;Регулируемый ремень&#10;Застёжка на молнии"></textarea>
-
 <div class="actions">
 <button onclick="generateUTP()">Создать УТП</button>
 <button class="secondary" onclick="copyField('utpOutput')">Копировать</button>
 </div>
-
 <textarea id="utpOutput" style="margin-top:12px;min-height:260px" placeholder="Здесь появятся преимущества"></textarea>
-<p class="muted"><small>Сейчас работает конструктор по правилам. Полноценный AI подключим позже.</small></p>
+<p class="muted"><small>Конструктор по правилам. Полноценный AI подключим позже.</small></p>
+</div>
+</section>
+
+<section class="page" id="ai">
+<div class="card">
+<h2>✨ AI Studio</h2>
+<p>Здесь будет создаваться инфографика без перехода в чат с ботом.</p>
+<label>Фотография товара</label>
+<input type="file" id="aiPhoto" accept="image/*">
+<label>Пожелания к дизайну</label>
+<textarea id="aiPrompt" placeholder="Например: тёмно-зелёный фон, крупный товар, три преимущества"></textarea>
+<div class="notice">Генерация ещё не подключена. Фотографии пока никуда не отправляются, кредиты не списываются.</div>
+<button disabled class="wide">Создать инфографику — скоро</button>
 </div>
 </section>
 
 <section class="page" id="profile">
 <div class="card">
-<h2>👤 Профиль</h2>
-<p id="telegramUser">SellerKit Studio</p>
-
-<div class="notice">Базовые инструменты бесплатны.</div>
-
-<h3>🤖 AI Studio</h3>
-<p>Планируем 3 бесплатные AI-генерации для новых пользователей.</p>
-
-<h3>👥 Приглашения</h3>
-<p>За приглашённых друзей будут начисляться бонусные генерации.</p>
-
-<h3>⭐ Подписка</h3>
-<p>Планируем оплату AI-доступа через Telegram Stars.</p>
-
-<p class="muted"><small>Это будущие функции. Сейчас оплата и бонусы не подключены.</small></p>
+<div class="topline">
+<div class="avatar">👤</div>
+<div><h2 style="margin:0">Личный кабинет</h2><small id="telegramUser">SellerKit Studio</small></div>
+</div>
+<div class="balance" style="margin-top:20px">
+<span class="muted">💰 Мой баланс</span>
+<strong>— <span style="font-size:15px;font-weight:400">генераций</span></strong>
+<small>Реальный баланс появится после подключения сервера.</small>
+<button class="wide" style="margin-top:12px" onclick="openPage('shop')">＋ Пополнить баланс</button>
+</div>
+<div class="grid" style="margin-top:14px">
+<button class="tile" onclick="openPage('bonuses')"><span>🎁</span>Бонусы<small>Реферальная программа</small></button>
+<button class="tile" onclick="openPage('history')"><span>🕘</span>История<small>Начисления и покупки</small></button>
+<button class="tile" onclick="openPage('support')"><span>🎧</span>Поддержка<small>Помощь и ошибки</small></button>
+<button class="tile" onclick="contact('design')"><span>🎨</span>Заказать дизайн<small>Работы Card Lab</small></button>
+</div>
 </div>
 </section>
 
+<section class="page" id="shop">
+<button class="back" onclick="openPage('profile')">← В профиль</button>
+<div class="card">
+<h2>🛍 Магазин генераций</h2>
+<p>Покупка пакетов появится после подключения платежей и AI.</p>
+<div class="notice">Сейчас магазин работает в режиме просмотра. Денег не списывает.</div>
+<h3>Начинающий</h3>
+<div class="pack">1 генерация <span class="pill">Цена уточняется</span></div>
+<div class="pack">3 генерации <span class="pill">Цена уточняется</span></div>
+<div class="pack">5 генераций <span class="pill">Цена уточняется</span></div>
+<h3>Стандарт</h3>
+<div class="pack">10 генераций <span class="pill">Цена уточняется</span></div>
+<div class="pack">25 генераций <span class="pill">Цена уточняется</span></div>
+<h3>Бизнес</h3>
+<div class="pack">50 генераций <span class="pill">Цена уточняется</span></div>
+<p class="muted">Цены и кнопки оплаты добавим после проверки себестоимости и подключения платёжного сервера.</p>
+</div>
+</section>
+
+<section class="page" id="bonuses">
+<button class="back" onclick="openPage('profile')">← В профиль</button>
+<div class="card">
+<h2>🎁 Бонусы</h2>
+<p>Реферальная программа в разработке.</p>
+<div class="notice">План: бонус за приглашённого друга после его первой покупки. Начисления пока не действуют.</div>
+<p>Приглашать друзей можно уже сейчас:</p>
+<button class="wide" onclick="shareApp()">Поделиться SellerKit Studio</button>
+<p class="muted"><small>Это обычная ссылка, не персональная реферальная ссылка. Бонусы по ней пока не начисляются.</small></p>
+</div>
+</section>
+
+<section class="page" id="history">
+<button class="back" onclick="openPage('profile')">← В профиль</button>
+<div class="card">
+<h2>🕘 История операций</h2>
+<p class="muted">История появится после подключения серверного баланса. Пока операций нет.</p>
+</div>
+</section>
+
+<section class="page" id="support">
+<button class="back" onclick="openPage('profile')">← В профиль</button>
+<div class="card">
+<h2>🎧 Поддержка</h2>
+<p>По вопросам работы сервиса, оплаты или обнаруженных ошибок.</p>
+<button class="wide" onclick="contact('support')">Написать в Telegram</button>
+<div class="notice">Откроется бот CardLab. Для отдельного чата поддержки позже укажем его адрес.</div>
+</div>
+</section>
 </main>
 
 <nav>
-<button class="active" data-page="home" onclick="openPage('home')">🏠<br>Главная</button>
+<button data-page="home" class="active" onclick="openPage('home')">🏠<br>Главная</button>
 <button data-page="calc" onclick="openPage('calc')">📊<br>Расчёт</button>
 <button data-page="seo" onclick="openPage('seo')">🔎<br>SEO</button>
-<button data-page="utp" onclick="openPage('utp')">💡<br>УТП</button>
+<button data-page="ai" onclick="openPage('ai')">✨<br>AI Studio</button>
 <button data-page="profile" onclick="openPage('profile')">👤<br>Профиль</button>
 </nav>
 
 <script>
 "use strict";
-
 const $=id=>document.getElementById(id);
-const money=n=>Number.isFinite(n)
- ?new Intl.NumberFormat("ru-RU",{maximumFractionDigits:2}).format(n)+" ₽"
- :"—";
+const money=n=>Number.isFinite(n)?new Intl.NumberFormat("ru-RU",{maximumFractionDigits:2}).format(n)+" ₽":"—";
 const number=n=>new Intl.NumberFormat("ru-RU").format(n||0);
 const num=id=>Number($(id).value)||0;
 
 function openPage(id){
- document.querySelectorAll(".page").forEach(p=>{
-  p.classList.toggle("active",p.id===id);
- });
- document.querySelectorAll("nav button").forEach(b=>{
-  b.classList.toggle("active",b.dataset.page===id);
- });
+ document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===id));
+ document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===id));
  window.scrollTo(0,0);
+}
+function contact(kind){
+ const text=kind==="design"?"Здравствуйте! Хочу заказать дизайн карточек.":"Здравствуйте! Нужна помощь с SellerKit Studio.";
+ const url="https://t.me/CardLab1_Bot?start="+encodeURIComponent(kind);
+ const tg=window.Telegram?.WebApp;
+ if(tg?.openTelegramLink)tg.openTelegramLink(url);
+ else window.open(url,"_blank");
+ alert("Откроется бот CardLab. Напиши ему: "+text);
+}
+function shareApp(){
+ const url="https://t.me/CardLab1_Bot/sellerkit";
+ const share="https://t.me/share/url?url="+encodeURIComponent(url)+"&text="+encodeURIComponent("Попробуй SellerKit Studio — инструменты для маркетплейсов");
+ const tg=window.Telegram?.WebApp;
+ if(tg?.openTelegramLink)tg.openTelegramLink(share);
+ else window.open(share,"_blank");
 }
 
 /* КАЛЬКУЛЯТОР */
-
-const calcFields=[
- "market","scheme","price","cost","commission",
- "acquiring","logistics","handling","packaging",
- "storage","delivery","returns","ads","tax",
- "other","quantity"
-];
-
-const defaults=Object.fromEntries(
- calcFields.map(id=>[id,$(id).value])
-);
-
+const calcFields=["market","scheme","price","cost","commission","acquiring","logistics","handling","packaging","storage","delivery","returns","ads","tax","other","quantity"];
+const defaults=Object.fromEntries(calcFields.map(id=>[id,$(id).value]));
 function calculate(){
- const price=num("price");
- const cost=num("cost");
-
- const fixed=cost+
-  num("logistics")+num("handling")+
-  num("packaging")+num("storage")+
-  num("delivery")+num("returns")+num("other");
-
- const rate=(
-  num("commission")+num("acquiring")+
-  num("ads")+num("tax")
- )/100;
-
+ const price=num("price"),cost=num("cost");
+ const fixed=cost+num("logistics")+num("handling")+num("packaging")+num("storage")+num("delivery")+num("returns")+num("other");
+ const rate=(num("commission")+num("acquiring")+num("ads")+num("tax"))/100;
  const expenses=fixed+price*rate;
  const profit=price-expenses;
  const margin=price>0?profit/price*100:NaN;
  const roi=cost>0?profit/cost*100:NaN;
  const breakEven=rate<1?fixed/(1-rate):NaN;
  const quantity=Math.max(0,Math.floor(num("quantity")));
-
  $("profit").textContent=money(profit);
  $("profit").className=profit>=0?"good":"bad";
- $("margin").textContent=Number.isFinite(margin)
-  ?margin.toFixed(1)+"%":"—";
- $("roi").textContent=Number.isFinite(roi)
-  ?roi.toFixed(1)+"%":"—";
+ $("margin").textContent=Number.isFinite(margin)?margin.toFixed(1)+"%":"—";
+ $("roi").textContent=Number.isFinite(roi)?roi.toFixed(1)+"%":"—";
  $("breakEven").textContent=money(breakEven);
  $("expenses").textContent=money(expenses);
  $("totalProfit").textContent=money(profit*quantity);
-
- $("calcWarning").textContent=rate>=1
-  ?"Процентные расходы достигли 100% или больше."
-  :"";
+ $("calcWarning").textContent=rate>=1?"Процентные расходы достигли 100% или больше.":"";
 }
-
 calcFields.forEach(id=>{
  $(id).addEventListener("input",calculate);
  $(id).addEventListener("change",calculate);
 });
-
 function saveCalc(){
  try{
-  const data=Object.fromEntries(
-   calcFields.map(id=>[id,$(id).value])
-  );
-  localStorage.setItem("sellerkit_calc_v3",JSON.stringify(data));
+  localStorage.setItem("sellerkit_calc_v3",JSON.stringify(Object.fromEntries(calcFields.map(id=>[id,$(id).value]))));
   alert("Расчёт сохранён!");
- }catch(e){
-  alert("Не удалось сохранить.");
- }
+ }catch(e){alert("Не удалось сохранить")}
 }
-
 function resetCalc(){
  calcFields.forEach(id=>$(id).value=defaults[id]);
  calculate();
 }
-
 try{
  const saved=JSON.parse(localStorage.getItem("sellerkit_calc_v3"));
- if(saved){
-  calcFields.forEach(id=>{
-   if(saved[id]!==undefined)$(id).value=saved[id];
-  });
- }
+ if(saved)calcFields.forEach(id=>{if(saved[id]!==undefined)$(id).value=saved[id]});
 }catch(e){}
 calculate();
 
-/* БАЗА SEO */
-
-let database=[];
-let found=[];
-let period="";
+/* SEO */
+let database=[],found=[],period="";
 const selected=new Map();
-
 function normalize(value){
- return String(value||"").toLowerCase()
-  .replace(/ё/g,"е")
-  .replace(/[^a-zа-я0-9]+/gi," ")
-  .trim();
+ return String(value||"").toLowerCase().replace(/ё/g,"е").replace(/[^a-zа-я0-9]+/gi," ").trim();
 }
-
 async function loadDatabase(){
  const status=$("dbStatus");
-
  try{
-  const response=await fetch(
-   "./keywords.json?v=20261111",
-   {cache:"no-store"}
-  );
-
-  if(!response.ok){
-   throw new Error("HTTP "+response.status);
-  }
-
+  const response=await fetch("./keywords.json?v=20261111",{cache:"no-store"});
+  if(!response.ok)throw Error("HTTP "+response.status);
   const data=await response.json();
-
-  if(!Array.isArray(data.rows)){
-   throw new Error("Неверный формат базы");
-  }
-
+  if(!Array.isArray(data.rows))throw Error("Неверный формат базы");
   database=data.rows.map(row=>({
    query:String(row[0]||""),
    volume:Number(row[1])||0,
@@ -400,314 +368,139 @@ async function loadDatabase(){
    daily:Number(row[3])||0,
    category:String(row[4]||"")
   }));
-
   period=data.period||"Период неизвестен";
-
-  status.textContent=
-   "✅ База готова: "+number(database.length)+
-   " запросов WB. Период: "+period;
-
+  status.textContent="✅ База готова: "+number(database.length)+" запросов WB. Период: "+period;
  }catch(error){
-  status.textContent=
-   "❌ База не подключена. Проверь файл keywords.json в GitHub. "+
-   error.message;
+  status.textContent="❌ База не подключена. Проверь файл keywords.json в GitHub. "+error.message;
  }
 }
-
 function findKeywords(){
- if(!database.length){
-  $("seoCount").textContent="База ещё не подключена.";
-  return;
- }
-
- const search=normalize($("seoSearch").value);
- const words=search.split(" ").filter(Boolean);
+ if(!database.length){$("seoCount").textContent="База ещё не подключена.";return}
+ const words=normalize($("seoSearch").value).split(" ").filter(Boolean);
  const min=Math.max(0,num("seoMin"));
-
- if(!words.length){
-  $("seoCount").textContent="Введи название товара.";
-  return;
- }
-
- found=database.filter(row=>{
-  if(row.volume<min)return false;
-  const text=normalize(row.query);
-  const queryWords=text.split(" ");
-  return words.every(word=>queryWords.includes(word));
- });
-
+ if(!words.length){$("seoCount").textContent="Введи название товара.";return}
+ found=database.filter(row=>row.volume>=min&&words.every(word=>normalize(row.query).split(" ").includes(word)));
  const sort=$("seoSort").value;
-
- if(sort==="volume"){
-  found.sort((a,b)=>b.volume-a.volume);
- }else if(sort==="growth"){
-  found.sort((a,b)=>
-   (b.volume-b.previous)-(a.volume-a.previous)
-  );
- }else{
-  found.sort((a,b)=>a.query.localeCompare(b.query,"ru"));
- }
-
- $("seoCount").textContent=
-  "Найдено "+number(found.length)+
-  " запросов. Показаны первые 100.";
-
+ if(sort==="volume")found.sort((a,b)=>b.volume-a.volume);
+ else if(sort==="growth")found.sort((a,b)=>(b.volume-b.previous)-(a.volume-a.previous));
+ else found.sort((a,b)=>a.query.localeCompare(b.query,"ru"));
+ $("seoCount").textContent="Найдено "+number(found.length)+" запросов. Показаны первые 100.";
  renderResults();
 }
-
 function renderResults(){
  const box=$("seoResults");
  box.replaceChildren();
-
- if(!found.length){
-  box.textContent="Совпадений нет.";
-  return;
- }
-
+ if(!found.length){box.textContent="Совпадений нет.";return}
  for(const row of found.slice(0,100)){
-  const item=document.createElement("div");
-  item.className="result";
-
+  const item=document.createElement("div");item.className="result";
   const content=document.createElement("div");
-
-  const title=document.createElement("strong");
-  title.textContent=row.query;
-
-  const stats=document.createElement("div");
-  stats.className="muted";
-  stats.style.fontSize="12px";
-  stats.textContent=
-   "За период: "+number(row.volume)+
-   " · ранее: "+number(row.previous)+
-   " · в день: "+number(row.daily);
-
-  const category=document.createElement("small");
-  category.textContent=row.category;
-
+  const title=document.createElement("strong");title.textContent=row.query;
+  const stats=document.createElement("div");stats.className="muted";stats.style.fontSize="12px";
+  stats.textContent="За период: "+number(row.volume)+" · ранее: "+number(row.previous)+" · в день: "+number(row.daily);
+  const category=document.createElement("small");category.textContent=row.category;
   content.append(title,document.createElement("br"),stats,category);
-
   const button=document.createElement("button");
   button.textContent=selected.has(row.query)?"✓":"＋";
   button.className=selected.has(row.query)?"secondary":"";
-
   button.onclick=()=>{
-   if(selected.has(row.query)){
-    selected.delete(row.query);
-   }else{
-    selected.set(row.query,row);
-   }
-   renderResults();
-   renderSelected();
+   if(selected.has(row.query))selected.delete(row.query);
+   else selected.set(row.query,row);
+   renderResults();renderSelected();
   };
-
-  item.append(content,button);
-  box.append(item);
+  item.append(content,button);box.append(item);
  }
 }
-
 function renderSelected(){
- const box=$("selectedKeys");
- box.replaceChildren();
-
- if(!selected.size){
-  box.textContent="Ключи пока не выбраны.";
-  return;
- }
-
+ const box=$("selectedKeys");box.replaceChildren();
+ if(!selected.size){box.textContent="Ключи пока не выбраны.";return}
  for(const row of selected.values()){
-  const item=document.createElement("div");
-  item.className="result";
-
-  const title=document.createElement("span");
-  title.textContent=row.query+" · "+number(row.volume);
-
-  const button=document.createElement("button");
-  button.className="secondary";
-  button.textContent="×";
-
-  button.onclick=()=>{
-   selected.delete(row.query);
-   renderSelected();
-   renderResults();
-  };
-
-  item.append(title,button);
-  box.append(item);
+  const item=document.createElement("div");item.className="result";
+  const title=document.createElement("span");title.textContent=row.query+" · "+number(row.volume);
+  const button=document.createElement("button");button.className="secondary";button.textContent="×";
+  button.onclick=()=>{selected.delete(row.query);renderSelected();renderResults()};
+  item.append(title,button);box.append(item);
  }
 }
-
-function clearKeys(){
- selected.clear();
- renderSelected();
- renderResults();
-}
-
+function clearKeys(){selected.clear();renderSelected();renderResults()}
 async function copyText(text){
- if(!text){
-  alert("Нечего копировать.");
-  return;
- }
- try{
-  await navigator.clipboard.writeText(text);
-  alert("Скопировано!");
- }catch(e){
-  prompt("Скопируй текст:",text);
- }
+ if(!text){alert("Нечего копировать.");return}
+ try{await navigator.clipboard.writeText(text);alert("Скопировано!")}
+ catch(e){prompt("Скопируй текст:",text)}
 }
-
-function copyKeys(){
- copyText([...selected.keys()].join("\n"));
-}
-
-function copyField(id){
- copyText($(id).value);
-}
-
-function csvCell(value){
- return '"'+String(value??"").replace(/"/g,'""')+'"';
-}
-
+function copyKeys(){copyText([...selected.keys()].join("\n"))}
+function copyField(id){copyText($(id).value)}
+function csvCell(value){return '"'+String(value??"").replace(/"/g,'""')+'"'}
 function exportSEO(){
- if(!found.length){
-  alert("Сначала найди запросы.");
-  return;
- }
-
- const lines=[
-  ["Запрос","За период","Предыдущий период",
-   "В день","Категория"].map(csvCell).join(";")
- ];
-
- for(const row of found){
-  lines.push([
-   row.query,row.volume,row.previous,row.daily,row.category
-  ].map(csvCell).join(";"));
- }
-
- const blob=new Blob(["\ufeff"+lines.join("\r\n")],{
-  type:"text/csv;charset=utf-8"
- });
-
+ if(!found.length){alert("Сначала найди запросы.");return}
+ const lines=[["Запрос","За период","Предыдущий период","В день","Категория"].map(csvCell).join(";")];
+ for(const row of found)lines.push([row.query,row.volume,row.previous,row.daily,row.category].map(csvCell).join(";"));
+ const blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
  const url=URL.createObjectURL(blob);
- const link=document.createElement("a");
- link.href=url;
- link.download="sellerkit_seo.csv";
- link.click();
-
+ const link=document.createElement("a");link.href=url;link.download="sellerkit_seo.csv";link.click();
  setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
-
-$("seoSearch").addEventListener("keydown",event=>{
- if(event.key==="Enter")findKeywords();
-});
+$("seoSearch").addEventListener("keydown",event=>{if(event.key==="Enter")findKeywords()});
 
 /* SEO STUDIO */
-
 function createSEO(){
  const product=$("seoProduct").value.trim();
  const brand=$("seoBrand").value.trim();
  const facts=$("seoFacts").value.trim();
-
- if(!product){
-  alert("Введи название товара.");
-  return;
- }
-
- const factList=facts.split(/[;\n]+/)
-  .map(x=>x.trim()).filter(Boolean);
-
+ if(!product){alert("Введи название товара.");return}
+ const factList=facts.split(/[;\n]+/).map(x=>x.trim()).filter(Boolean);
  const verified=normalize(product+" "+facts).split(" ");
- const matching=[];
- const toCheck=[];
-
+ const matching=[],toCheck=[];
  for(const key of selected.keys()){
   const words=normalize(key).split(" ");
-  if(words.every(w=>verified.includes(w))){
-   matching.push(key);
-  }else{
-   toCheck.push(key);
-  }
+  if(words.every(w=>verified.includes(w)))matching.push(key);
+  else toCheck.push(key);
  }
-
  $("seoOutput").value=
-  "ЗАГОЛОВОК\n"+
-  [brand,product].filter(Boolean).join(" ")+
-  "\n\nОПИСАНИЕ — ЧЕРНОВИК\n"+
-  product+
-  (factList.length?" — "+factList.join(". ")+".":".")+
-  "\n\nКЛЮЧИ С СОВПАДЕНИЕМ СЛОВ\n"+
-  (matching.join("\n")||"Нет")+
-  "\n\nТРЕБУЮТ ПРОВЕРКИ\n"+
-  (toCheck.join("\n")||"Нет")+
-  "\n\nПроверь смысл ключей и факты о товаре.";
+ "ЗАГОЛОВОК\n"+[brand,product].filter(Boolean).join(" ")+
+ "\n\nОПИСАНИЕ — ЧЕРНОВИК\n"+product+
+ (factList.length?" — "+factList.join(". ")+".":".")+
+ "\n\nКЛЮЧИ С СОВПАДЕНИЕМ СЛОВ\n"+(matching.join("\n")||"Нет")+
+ "\n\nТРЕБУЮТ ПРОВЕРКИ\n"+(toCheck.join("\n")||"Нет")+
+ "\n\nПроверь смысл ключей и факты о товаре.";
 }
 
-/* УТП STUDIO */
-
+/* УТП */
 const rules=[
  [/отделени/i,"Помогает разделить вещи по отделениям"],
- [/регулируем.*рем|рем.*регулируем/i,
-  "Длину ремня можно подстроить под себя"],
+ [/регулируем.*рем|рем.*регулируем/i,"Длину ремня можно подстроить под себя"],
  [/молни/i,"Удобно закрывать на молнию"],
  [/карман/i,"Отдельное место для мелочей"],
  [/складн|складыва/i,"Можно сложить для хранения"],
  [/хлопок/i,"В составе материала есть хлопок"],
  [/экокож/i,"Изделие выполнено из экокожи"]
 ];
-
 function generateUTP(){
  const product=$("utpProduct").value.trim()||"Товар";
  const audience=$("utpAudience").value.trim();
- const facts=$("utpFacts").value.split("\n")
-  .map(x=>x.trim()).filter(Boolean);
-
- if(!facts.length){
-  alert("Добавь характеристики.");
-  return;
- }
-
+ const facts=$("utpFacts").value.split("\n").map(x=>x.trim()).filter(Boolean);
+ if(!facts.length){alert("Добавь характеристики.");return}
  let result="УТП ДЛЯ «"+product+"»\n";
-
- if(audience){
-  result+="Аудитория: "+audience+"\n";
- }
-
+ if(audience)result+="Аудитория: "+audience+"\n";
  result+="\nХАРАКТЕРИСТИКИ И ПРЕИМУЩЕСТВА\n\n";
-
  facts.forEach((fact,i)=>{
   const rule=rules.find(r=>r[0].test(fact));
-  result+=(i+1)+". "+fact+"\n";
-  result+="Польза: "+
-   (rule?rule[1]:"Нужно уточнить пользу вручную")+
-   "\n\n";
+  result+=(i+1)+". "+fact+"\nПольза: "+(rule?rule[1]:"Нужно уточнить пользу вручную")+"\n\n";
  });
-
  result+="ПОДПИСИ ДЛЯ ИНФОГРАФИКИ\n";
-
- facts.forEach(fact=>{
-  result+="• "+fact+"\n";
- });
-
+ facts.forEach(fact=>result+="• "+fact+"\n");
  result+="\nПроверь все утверждения перед публикацией.";
-
  $("utpOutput").value=result;
 }
 
 /* TELEGRAM */
-
 try{
  const tg=window.Telegram?.WebApp;
  if(tg){
-  tg.ready();
-  tg.expand();
+  tg.ready();tg.expand();
   const user=tg.initDataUnsafe?.user;
-  if(user){
-   $("telegramUser").textContent=
-    "Telegram: "+(user.first_name||"Пользователь");
-  }
+  if(user)$("telegramUser").textContent="Telegram: "+(user.first_name||"Пользователь");
  }
 }catch(e){}
-
 loadDatabase();
 </script>
 </body>
