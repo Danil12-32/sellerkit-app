@@ -1299,10 +1299,11 @@ async function loadTelegramBalance(force=false){
     cache:"no-store"
    });
    let data;
-   try{ data=await response.json(); }catch{throw new Error("RESPONSE_UNREADABLE");}
+   try{ data=await response.json(); }
+   catch{ throw new Error("HTTP_"+response.status+"_INVALID_JSON"); }
    if(!response.ok || data?.success!==true){
-    if(response.status===401)throw new Error("INVALID_TELEGRAM_AUTH");
-    throw new Error(data?.error||"REQUEST_FAILED");
+    const serverCode=typeof data?.error==="string" ? data.error : "SERVER_ERROR";
+    throw new Error("HTTP_"+response.status+"_"+serverCode);
    }
    if(!Number.isSafeInteger(data.balance) || data.balance<0){
     throw new Error("INVALID_BALANCE");
@@ -1313,10 +1314,25 @@ async function loadTelegramBalance(force=false){
   }catch(error){
    display.textContent="—";
    balanceCheckedAt=0;
-   status.textContent=error?.message==="INVALID_TELEGRAM_AUTH"
-    ?"Не удалось подтвердить вход. Закрой и снова открой Mini App через Telegram."
-    :"Не удалось загрузить баланс. Проверь подключение и нажми «Обновить».";
-   console.warn("SellerKit balance request:",error?.message||"unknown");
+   const code=String(error?.message||"UNKNOWN_ERROR");
+   let explanation;
+   if(code==="HTTP_401_INVALID_TELEGRAM_AUTH"){
+    explanation="Ошибка 401: данные Telegram не прошли проверку. Закрой и заново открой Mini App.";
+   }else if(code==="HTTP_503_DATABASE_UNAVAILABLE"){
+    explanation="Ошибка 503: сервер принял запрос, но не смог обратиться к базе YDB. Проверь логи sellerkit-api.";
+   }else if(code.startsWith("HTTP_403") || code.startsWith("HTTP_401")){
+    explanation="Сервер не разрешает вызов (код "+code+"). Проверь публичный доступ Cloud Function.";
+   }else if(code==="AbortError"||error?.name==="AbortError"){
+    explanation="Превышено время ожидания сервера (12 секунд). Проверь функцию и YDB.";
+   }else if(error instanceof TypeError){
+    explanation="Ошибка сети или CORS. Проверь «Публичная функция» и доступ к functions.yandexcloud.net.";
+   }else if(code==="INVALID_BALANCE"){
+    explanation="Ошибка ответа: сервер вернул некорректное значение баланса.";
+   }else{
+    explanation="Ошибка получения баланса: "+code.slice(0,90);
+   }
+   status.textContent=explanation;
+   console.warn("SellerKit balance request:",code);
   }finally{
    clearTimeout(timeout);
    button.disabled=false;
