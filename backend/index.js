@@ -65,7 +65,7 @@ async function ydbQuery() {
       const endpoint = process.env.YDB_ENDPOINT;
       const database = process.env.YDB_DATABASE;
       if (!endpoint || !database) throw new Error("YDB environment is incomplete");
-      const uri = endpoint.replace(/\/$/, "") + "/?database=" + database;
+      const uri = endpoint.replace(/\/$/, "") + "/" + database.replace(/^\/+/, "");
       const driver = new Driver(uri, {
         credentialsProvider: new MetadataCredentialsProvider()
       });
@@ -81,7 +81,8 @@ async function ydbQuery() {
 
 async function profile(telegramId) {
   const sql = await ydbQuery();
-  const id = new Int64(BigInt(telegramId));
+  // Column users.telegram_id is Utf8, so Telegram ID must be stored as a string.
+  const id = String(telegramId);
 
   // Atomic create-on-first-login. No trial credits until actual AI launch.
   const row = await sql.begin(async tx => {
@@ -103,7 +104,7 @@ async function profile(telegramId) {
 
   return {
     telegramId,
-    balance: Number(row.balance),
+    balance: Number(row.balance ?? 0),
     trialUsed: Boolean(row.trial_used),
     referralRewarded: Boolean(row.referral_rewarded)
   };
