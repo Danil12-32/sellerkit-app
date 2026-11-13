@@ -40,8 +40,10 @@ function verifiedTelegramUser(raw) {
       date < now - MAX_AUTH_AGE_SECONDS) return null;
 
   const dataCheck = [...params.entries()]
-    .filter(([key]) => key !== "hash" && key !== "signature")
-    .sort(([a], [b]) => a.localeCompare(b, "en"))
+    // Telegram's bot-token HMAC includes the "signature" parameter if present.
+    // Only "hash" is excluded. Removing "signature" rejects genuine Mini App sessions.
+    .filter(([key]) => key !== "hash")
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
     .map(([key, value]) => key + "=" + value)
     .join("\n");
 
