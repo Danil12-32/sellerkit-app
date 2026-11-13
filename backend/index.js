@@ -2,14 +2,14 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { Driver } from "@ydbjs/core";
 import { query } from "@ydbjs/query";
 import { MetadataCredentialsProvider } from "@ydbjs/auth/metadata";
-import { Int64 } from "@ydbjs/value/primitive";
+import { Int64, Text } from "@ydbjs/value/primitive";
 
 // SellerKit Studio API: first production stage.
 // Read-only public functionality: authenticated Telegram profile/balance.
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-ydb-diagnostic-2";
+const SERVER_BUILD = "sellerkit-ydb-typed-id-3";
 let queryPromise;
 let ydbPingSuccessful = false;
 
@@ -124,10 +124,11 @@ async function profile(telegramId) {
   async function readUser() {
     try {
       const resultSets = await sql`
+        DECLARE $tgId AS Utf8;
         SELECT telegram_id, balance, trial_used, referral_rewarded
         FROM users
-        WHERE telegram_id = ${id}
-      `;
+        WHERE telegram_id = $tgId;
+      `.parameter("tgId", new Text(id));
       if (!Array.isArray(resultSets) || !Array.isArray(resultSets[0])) {
         throw new Error("BAD_YDB_RESULT");
       }
@@ -148,11 +149,15 @@ async function profile(telegramId) {
     // request may see a primary-key conflict; a re-read recovers safely.
     try {
       await sql`
+        DECLARE $tgId AS Utf8;
+        DECLARE $initialBalance AS Int64;
         INSERT INTO users
           (telegram_id, balance, trial_used, referral_rewarded, created_at)
         VALUES
-          (${id}, ${new Int64(0n)}, ${false}, ${false}, CurrentUtcTimestamp())
-      `;
+          ($tgId, $initialBalance, false, false, CurrentUtcTimestamp());
+      `
+        .parameter("tgId", new Text(id))
+        .parameter("initialBalance", new Int64(0n));
     } catch (error) {
       console.error("YDB INSERT:", error?.message || "unknown");
       rows = await readUser();
