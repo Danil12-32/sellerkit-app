@@ -241,6 +241,17 @@ nav button.active{
  color:var(--green);
  margin:12px 0;
 }
+/* Мягкий фон только для широких экранов, без загрузки картинок */
+@media(min-width:900px){
+ body{
+  background:
+    radial-gradient(ellipse 38% 48% at 4% 20%,rgba(17,108,66,.22),transparent 92%),
+    radial-gradient(ellipse 42% 50% at 96% 73%,rgba(40,122,82,.17),transparent 94%),
+    radial-gradient(ellipse 28% 35% at 76% 5%,rgba(19,86,60,.10),transparent 92%),
+    var(--bg);
+  background-attachment:fixed;
+ }
+}
 @media(max-width:390px){
  .card{padding:12px}
  .grid{gap:8px}
@@ -365,9 +376,16 @@ SEO Analytics
 <div class="stat"><small>ROI себестоимости</small><b id="roi">—</b></div>
 <div class="stat"><small>Цена безубыточности</small><b id="breakEven">—</b></div>
 <div class="stat"><small>Расходы за штуку</small><b id="expenses">—</b></div>
-<div class="stat"><small>Прибыль за план</small><b id="totalProfit">—</b></div>
 </div>
-<p id="calcWarning" class="bad"></p>
+<h3>📦 Результаты по плану продаж</h3>
+<p class="muted"><small>Количество продаж меняет выручку, расходы и общую прибыль, но не прибыль за одну штуку.</small></p>
+<div class="grid">
+<div class="stat"><small>Количество продаж</small><b id="planQuantity">—</b></div>
+<div class="stat"><small>Выручка за план</small><b id="totalRevenue">—</b></div>
+<div class="stat"><small>Расходы за план</small><b id="totalExpenses">—</b></div>
+<div class="stat"><small>Прибыль / убыток за план</small><b id="totalProfit">—</b></div>
+</div>
+<p id="calcWarning" class="bad" role="status"></p>
 </div>
 </section>
 
@@ -377,6 +395,7 @@ SEO Analytics
 <h2>🔎 SEO Analytics</h2>
 <p>Поиск ключевых слов Wildberries без загрузки Excel.</p>
 <div id="dbStatus" class="notice">Подключение базы запросов…</div>
+<p class="muted"><small>Период и частотность берутся из загруженной базы WB. Это статистика за указанный период, а не данные в реальном времени.</small></p>
 
 <label>Поисковая фраза</label>
 <input id="seoSearch" placeholder="Например: джинсы женские">
@@ -565,7 +584,7 @@ SEO Analytics
 <p>Приглашай друзей и получай дополнительные генерации.</p>
 
 <div class="notice">
-Планируем начислять 1 бонусную генерацию за приглашённого пользователя после его первой подтверждённой покупки.
+🎁 Правило реферальной программы: +1 бонусная генерация за приглашённого друга после его первой подтверждённой покупки пакета от 5 генераций. За каждого друга бонус начисляется один раз.
 </div>
 
 <p>Бонусный баланс: <b>0</b> <small>(пока не подключён)</small></p>
@@ -575,7 +594,7 @@ SEO Analytics
 </button>
 
 <p class="muted">
-<small>Сейчас это обычная ссылка на приложение, а не персональная реферальная ссылка. Бонусы пока не начисляются.</small>
+<small>Это пока обычная ссылка без персонального учёта. Автоматическое начисление заработает после подключения оплаты и серверной проверки приглашений.</small>
 </p>
 </div>
 </section>
@@ -771,50 +790,62 @@ const defaults=Object.fromEntries(
 );
 
 function calculate(){
+ const inputs=calcFields.filter(id=>id!=="market"&&id!=="scheme");
+ const invalid=inputs.some(id=>{
+  const raw=$(id).value.trim();
+  return raw!==""&&(!Number.isFinite(Number(raw))||Number(raw)<0);
+ });
+ const percentInvalid=["commission","acquiring","ads","tax"]
+  .some(id=>num(id)>100);
+ const outputIds=[
+  "profit","margin","roi","breakEven","expenses",
+  "planQuantity","totalRevenue","totalExpenses","totalProfit"
+ ];
+ if(invalid||percentInvalid){
+  outputIds.forEach(id=>$(id).textContent="—");
+  $("calcWarning").textContent=invalid
+   ?"Заполни поля корректно: значения не могут быть отрицательными."
+   :"Каждый процент должен быть от 0 до 100.";
+  return;
+ }
  const price=num("price");
  const cost=num("cost");
-
- const fixed=cost+
-  num("logistics")+
-  num("handling")+
-  num("packaging")+
-  num("storage")+
-  num("delivery")+
-  num("returns")+
-  num("other");
-
- const rate=(
-  num("commission")+
-  num("acquiring")+
-  num("ads")+
-  num("tax")
- )/100;
-
+ const fixed=cost+num("logistics")+num("handling")+
+  num("packaging")+num("storage")+num("delivery")+
+  num("returns")+num("other");
+ const rate=(num("commission")+num("acquiring")+
+  num("ads")+num("tax"))/100;
  const expenses=fixed+price*rate;
  const profit=price-expenses;
  const margin=price>0?profit/price*100:NaN;
  const roi=cost>0?profit/cost*100:NaN;
  const breakEven=rate<1?fixed/(1-rate):NaN;
- const quantity=Math.max(0,Math.floor(num("quantity")));
-
+ const amount=num("quantity");
+ const quantity=Math.max(0,Math.floor(amount));
+ const revenue=price*quantity;
+ const totalExpenses=expenses*quantity;
+ const totalProfit=profit*quantity;
  $("profit").textContent=money(profit);
  $("profit").className=profit>=0?"good":"bad";
-
- $("margin").textContent=Number.isFinite(margin)
-  ?margin.toFixed(1)+"%":"—";
-
- $("roi").textContent=Number.isFinite(roi)
-  ?roi.toFixed(1)+"%":"—";
-
+ $("margin").textContent=Number.isFinite(margin)?margin.toFixed(1)+"%":"—";
+ $("roi").textContent=Number.isFinite(roi)?roi.toFixed(1)+"%":"—";
  $("breakEven").textContent=money(breakEven);
  $("expenses").textContent=money(expenses);
- $("totalProfit").textContent=money(profit*quantity);
-
+ $("planQuantity").textContent=number(quantity);
+ $("totalRevenue").textContent=money(revenue);
+ $("totalExpenses").textContent=money(totalExpenses);
+ $("totalProfit").textContent=money(totalProfit);
+ $("totalProfit").className=totalProfit>=0?"good":"bad";
  $("calcWarning").textContent=rate>=1
-  ?"Процентные расходы достигли 100% или больше."
+  ?"Сумма процентных расходов составляет 100% выручки или больше."
+  :amount!==quantity
+  ?"Количество продаж округлено вниз до целого числа."
+  :totalProfit<0
+  ?"При текущих расходах увеличение продаж увеличивает общий убыток."
+  :price>1000000000
+  ?"Проверь цену: значение необычно высокое."
   :"";
 }
-
 calcFields.forEach(id=>{
  $(id).addEventListener("input",calculate);
  $(id).addEventListener("change",calculate);
@@ -1245,6 +1276,21 @@ try{
 */
 
 loadDatabase();
+
+/* Прямая ссылка на AI Studio: ?section=ai и Telegram startapp=ai */
+function openRequestedPage(){
+ const params=new URLSearchParams(window.location.search);
+ const tgStart=window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+ const selected=String(
+  params.get("section")||
+  tgStart||
+  params.get("tgWebAppStartParam")||
+  window.location.hash.slice(1)||
+  ""
+ ).toLowerCase();
+ if(["ai","studio","ai-studio"].includes(selected))openPage("ai");
+}
+openRequestedPage();
 
 </script>
 </body>
