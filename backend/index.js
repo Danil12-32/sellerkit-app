@@ -2,14 +2,14 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { Driver } from "@ydbjs/core";
 import { query } from "@ydbjs/query";
 import { MetadataCredentialsProvider } from "@ydbjs/auth/metadata";
-import { Int64, Text } from "@ydbjs/value/primitive";
+import { Int64 } from "@ydbjs/value/primitive";
 
 // SellerKit Studio API: first production stage.
 // Read-only public functionality: authenticated Telegram profile/balance.
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-ydb-typed-id-3";
+const SERVER_BUILD = "sellerkit-ydb-int64-id-4";
 let queryPromise;
 let ydbPingSuccessful = false;
 
@@ -116,19 +116,20 @@ async function profile(telegramId) {
     }
   }
 
-  // telegram_id is Utf8 in the existing SellerKit table.
-  const id = String(telegramId);
+  // The actual YDB users.telegram_id primary key is NOT NULL Int64.
+  // Telegram IDs were already validated as positive safe integers.
+  const id = new Int64(BigInt(telegramId));
 
   // Separate single-statement queries do not need an explicit sql.begin()
   // transaction. Do not UPSERT a default row: that could reset paid credits.
   async function readUser() {
     try {
       const resultSets = await sql`
-        DECLARE $tgId AS Utf8;
+        DECLARE $tgId AS Int64;
         SELECT telegram_id, balance, trial_used, referral_rewarded
         FROM users
         WHERE telegram_id = $tgId;
-      `.parameter("tgId", new Text(id));
+      `.parameter("tgId", id);
       if (!Array.isArray(resultSets) || !Array.isArray(resultSets[0])) {
         throw new Error("BAD_YDB_RESULT");
       }
@@ -149,14 +150,14 @@ async function profile(telegramId) {
     // request may see a primary-key conflict; a re-read recovers safely.
     try {
       await sql`
-        DECLARE $tgId AS Utf8;
+        DECLARE $tgId AS Int64;
         DECLARE $initialBalance AS Int64;
         INSERT INTO users
           (telegram_id, balance, trial_used, referral_rewarded, created_at)
         VALUES
           ($tgId, $initialBalance, false, false, CurrentUtcTimestamp());
       `
-        .parameter("tgId", new Text(id))
+        .parameter("tgId", id)
         .parameter("initialBalance", new Int64(0n));
     } catch (error) {
       console.error("YDB INSERT:", error?.message || "unknown");
