@@ -510,13 +510,14 @@ SEO Analytics
 <div class="balance" style="margin-top:20px">
 <span class="muted">💰 Мой баланс</span>
 <strong>
-<span id="generationBalance">0</span>
+<span id="generationBalance">—</span>
 <span style="font-size:15px;font-weight:400">генераций</span>
 </strong>
 <small id="balanceStatus">
-Сервер пока не подключён. Показан стартовый ноль, а не подтверждённый баланс.
+Проверяем баланс через Telegram…
 </small>
-<button class="wide" style="margin-top:12px" onclick="openPage('shop')">
+<button class="secondary" style="margin-top:12px" id="refreshBalanceBtn" onclick="loadTelegramBalance(true)">🔄 Обновить баланс</button>
+<button class="wide" style="margin-top:10px" onclick="openPage('shop')">
 ＋ Пополнить баланс
 </button>
 </div>
@@ -665,6 +666,7 @@ const AUTHOR_URL="https://t.me/danyaaarrrrr52";
 function openPage(id){
  const page=$(id);
  if(!page)return;
+ if(id==="profile" && typeof loadTelegramBalance==="function")loadTelegramBalance();
  document.querySelectorAll(".page").forEach(p=>{
   p.classList.toggle("active",p.id===id);
  });
@@ -1263,19 +1265,68 @@ try{
  }
 }catch(e){}
 
-/*
- ВАЖНО:
- Реальный баланс нельзя хранить в этом HTML.
- Позже подключим сервер, который:
- 1. Проверяет Telegram initData.
- 2. Хранит баланс по Telegram ID.
- 3. Проверяет подтверждение платежа.
- 4. Начисляет купленные генерации.
- 5. Списывает генерации при создании изображения.
- 6. Начисляет реферальные бонусы.
-*/
+/* Баланс подтверждается исключительно сервером по подписанному Telegram initData.
+ * HTML не может сам себе начислять генерации.
+ * Платежи и AI списания подключим отдельно только через сервер.
+ */
+const SELLERKIT_API_URL="https://functions.yandexcloud.net/d4ec2glf456p8vr34fvu";
+let balanceRequest=null;
+let balanceCheckedAt=0;
+
+async function loadTelegramBalance(force=false){
+ const tg=window.Telegram?.WebApp;
+ const status=$("balanceStatus");
+ const display=$("generationBalance");
+ const button=$("refreshBalanceBtn");
+ if(!tg?.initData){
+  display.textContent="—";
+  status.textContent="Для просмотра баланса открой SellerKit внутри Telegram.";
+  return;
+ }
+ if(balanceRequest)return balanceRequest;
+ if(!force && balanceCheckedAt && Date.now()-balanceCheckedAt<30000)return;
+ status.textContent="Проверяем баланс…";
+ button.disabled=true;
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),12000);
+ balanceRequest=(async()=>{
+  try{
+   const response=await fetch(SELLERKIT_API_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({action:"me",initData:tg.initData}),
+    signal:controller.signal,
+    cache:"no-store"
+   });
+   let data;
+   try{ data=await response.json(); }catch{throw new Error("RESPONSE_UNREADABLE");}
+   if(!response.ok || data?.success!==true){
+    if(response.status===401)throw new Error("INVALID_TELEGRAM_AUTH");
+    throw new Error(data?.error||"REQUEST_FAILED");
+   }
+   if(!Number.isSafeInteger(data.balance) || data.balance<0){
+    throw new Error("INVALID_BALANCE");
+   }
+   display.textContent=number(data.balance);
+   status.textContent="Баланс подтверждён сервером SellerKit.";
+   balanceCheckedAt=Date.now();
+  }catch(error){
+   display.textContent="—";
+   balanceCheckedAt=0;
+   status.textContent=error?.message==="INVALID_TELEGRAM_AUTH"
+    ?"Не удалось подтвердить вход. Закрой и снова открой Mini App через Telegram."
+    :"Не удалось загрузить баланс. Проверь подключение и нажми «Обновить».";
+   console.warn("SellerKit balance request:",error?.message||"unknown");
+  }finally{
+   clearTimeout(timeout);
+   button.disabled=false;
+  }
+ })().finally(()=>{balanceRequest=null;});
+ return balanceRequest;
+}
 
 loadDatabase();
+loadTelegramBalance();
 
 /* Прямая ссылка на AI Studio: ?section=ai и Telegram startapp=ai */
 function openRequestedPage(){
