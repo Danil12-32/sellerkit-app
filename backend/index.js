@@ -82,25 +82,42 @@ async function ydbQuery() {
 }
 
 async function profile(telegramId) {
-  const sql = await ydbQuery();
+  let sql;
+  try {
+    sql = await ydbQuery();
+  } catch (error) {
+    console.error("SellerKit YDB connection failed:", error?.message || "unknown");
+    throw new Error("YDB_CONNECTION_FAILED");
+  }
   // Column users.telegram_id is Utf8, so Telegram ID must be stored as a string.
   const id = String(telegramId);
 
   // Atomic create-on-first-login. No trial credits until actual AI launch.
   const row = await sql.begin(async tx => {
-    const [rows] = await tx`
-      SELECT telegram_id, balance, trial_used, referral_rewarded
-      FROM users
-      WHERE telegram_id = ${id}
-    `;
+    let rows;
+    try {
+      [rows] = await tx`
+        SELECT telegram_id, balance, trial_used, referral_rewarded
+        FROM users
+        WHERE telegram_id = ${id}
+      `;
+    } catch (error) {
+      console.error("SellerKit YDB SELECT failed:", error?.message || "unknown");
+      throw new Error("YDB_SELECT_FAILED");
+    }
     if (rows.length) return rows[0];
 
-    await tx`
-      INSERT INTO users
-        (telegram_id, balance, trial_used, referral_rewarded, created_at)
-      VALUES
-        (${id}, ${new Int64(0n)}, ${false}, ${false}, CurrentUtcTimestamp())
-    `;
+    try {
+      await tx`
+        INSERT INTO users
+          (telegram_id, balance, trial_used, referral_rewarded, created_at)
+        VALUES
+          (${id}, ${new Int64(0n)}, ${false}, ${false}, CurrentUtcTimestamp())
+      `;
+    } catch (error) {
+      console.error("SellerKit YDB INSERT failed:", error?.message || "unknown");
+      throw new Error("YDB_INSERT_FAILED");
+    }
     return { balance: 0, trial_used: false, referral_rewarded: false };
   });
 
@@ -144,6 +161,11 @@ export async function handler(event) {
     return response(200, { success: true, ...user }, origin);
   } catch (error) {
     console.error("SellerKit API /me failed:", error?.message || "internal error");
-    return response(503, { error: "DATABASE_UNAVAILABLE" }, origin);
+    // Codes are safe diagnostics only; never return raw database errors or credentials.
+    const safeCodes = new Set([
+      "YDB_CONNECTION_FAILED", "YDB_SELECT_FAILED", "YDB_INSERT_FAILED"
+    ]);
+    const stage = safeCodes.has(error?.message) ? error.message : "YDB_TRANSACTION_FAILED";
+    return response(503, { error: "DATABASE_UNAVAILABLE", stage }, origin);
   }
 }
