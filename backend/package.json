@@ -1,0 +1,12 @@
+{
+  "name": "sellerkit-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ydbjs/core": "latest",
+    "@ydbjs/query": "latest",
+    "@ydbjs/auth": "latest",
+    "@ydbjs/value": "latest"
+  }
+}
