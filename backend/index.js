@@ -9,6 +9,7 @@ import { Int64 } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
+const SERVER_BUILD = "sellerkit-ydb-diagnostic-2";
 let queryPromise;
 let ydbPingSuccessful = false;
 
@@ -181,7 +182,7 @@ export async function handler(event) {
 
   if (method === "OPTIONS") return response(204, {}, origin);
   if (method === "GET") return response(200, {
-    success: true, service: "SellerKit Studio API", status: "online"
+    success: true, service: "SellerKit Studio API", status: "online", build: SERVER_BUILD
   }, origin);
   if (method !== "POST") return response(405, { error: "METHOD_NOT_ALLOWED" }, origin);
 
@@ -222,6 +223,6 @@ export async function handler(event) {
       "YDB_NETWORK_FAILED"
     ]);
     const stage = safeCodes.has(error?.message) ? error.message : "YDB_TRANSACTION_FAILED";
-    return response(503, { error: "DATABASE_UNAVAILABLE", stage }, origin);
+    return response(503, { error: "DATABASE_UNAVAILABLE", stage, build: SERVER_BUILD }, origin);
   }
 }
