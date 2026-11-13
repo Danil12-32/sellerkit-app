@@ -1,7 +1,7 @@
 # SellerKit API — первый этап (баланс из YDB)
 
 Этот код **ещё не установлен в Cloud Functions автоматически**.
-Нужно перенести `index.mjs` и `package.json` в редактор функции `sellerkit-api`.
+Нужно перенести `index.js` и `package.json` в редактор функции `sellerkit-api`.
 
 ## Что уже делает
 - Проверяет подпись `Telegram.WebApp.initData` на сервере (HMAC-SHA256).
@@ -12,8 +12,7 @@
 - Возвращает безопасный `GET` health check.
 
 ## Настройка Yandex Cloud Functions
-- Рантайм: Node.js 22, точка входа: `index.handler` (для `index.mjs` может потребоваться `index.handler`; проверить в тестировании).
-- При необходимости сменить имя файла на `index.js` в модуле с `"type":"module"`.
+- Рантайм: Node.js 22, точка входа: `index.handler`.
 - Таймаут минимум 15 секунд, память 256 МБ или выше.
 - Сервисный аккаунт `sellerkit-backend`, которому дан `ydb.editor` на **конкретную БД**, а не роли администратора на всё облако.
 - Переменные окружения:
