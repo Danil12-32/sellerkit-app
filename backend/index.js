@@ -86,44 +86,65 @@ async function profile(telegramId) {
   try {
     sql = await ydbQuery();
   } catch (error) {
-    console.error("SellerKit YDB connection failed:", error?.message || "unknown");
+    console.error("YDB init:", error?.message || "unknown");
     throw new Error("YDB_CONNECTION_FAILED");
   }
-  // Column users.telegram_id is Utf8, so Telegram ID must be stored as a string.
+
+  // telegram_id is Utf8 in the existing SellerKit table.
   const id = String(telegramId);
 
-  // Atomic create-on-first-login. No trial credits until actual AI launch.
-  const row = await sql.begin(async tx => {
-    let rows;
+  // Separate single-statement queries do not need an explicit sql.begin()
+  // transaction. Do not UPSERT a default row: that could reset paid credits.
+  async function readUser() {
     try {
-      [rows] = await tx`
+      const resultSets = await sql`
         SELECT telegram_id, balance, trial_used, referral_rewarded
         FROM users
         WHERE telegram_id = ${id}
       `;
+      if (!Array.isArray(resultSets) || !Array.isArray(resultSets[0])) {
+        throw new Error("BAD_YDB_RESULT");
+      }
+      return resultSets[0];
     } catch (error) {
-      console.error("SellerKit YDB SELECT failed:", error?.message || "unknown");
+      if (error?.message === "BAD_YDB_RESULT") {
+        console.error("YDB SELECT returned unexpected result shape");
+        throw new Error("YDB_RESULT_FORMAT_FAILED");
+      }
+      console.error("YDB SELECT:", error?.message || "unknown");
       throw new Error("YDB_SELECT_FAILED");
     }
-    if (rows.length) return rows[0];
+  }
 
+  let rows = await readUser();
+  if (rows.length === 0) {
+    // New user: insert just once. On simultaneous first opens the second
+    // request may see a primary-key conflict; a re-read recovers safely.
     try {
-      await tx`
+      await sql`
         INSERT INTO users
           (telegram_id, balance, trial_used, referral_rewarded, created_at)
         VALUES
           (${id}, ${new Int64(0n)}, ${false}, ${false}, CurrentUtcTimestamp())
       `;
     } catch (error) {
-      console.error("SellerKit YDB INSERT failed:", error?.message || "unknown");
-      throw new Error("YDB_INSERT_FAILED");
+      console.error("YDB INSERT:", error?.message || "unknown");
+      rows = await readUser();
+      if (rows.length === 0) throw new Error("YDB_INSERT_FAILED");
     }
-    return { balance: 0, trial_used: false, referral_rewarded: false };
-  });
+    if (rows.length === 0) rows = await readUser();
+    if (rows.length === 0) throw new Error("YDB_INSERT_FAILED");
+  }
+
+  const row = rows[0];
+  const balance = Number(row.balance);
+  if (!Number.isSafeInteger(balance) || balance < 0) {
+    throw new Error("YDB_BALANCE_FORMAT_FAILED");
+  }
 
   return {
     telegramId,
-    balance: Number(row.balance ?? 0),
+    balance,
     trialUsed: Boolean(row.trial_used),
     referralRewarded: Boolean(row.referral_rewarded)
   };
@@ -163,7 +184,11 @@ export async function handler(event) {
     console.error("SellerKit API /me failed:", error?.message || "internal error");
     // Codes are safe diagnostics only; never return raw database errors or credentials.
     const safeCodes = new Set([
-      "YDB_CONNECTION_FAILED", "YDB_SELECT_FAILED", "YDB_INSERT_FAILED"
+      "YDB_CONNECTION_FAILED",
+      "YDB_SELECT_FAILED",
+      "YDB_INSERT_FAILED",
+      "YDB_RESULT_FORMAT_FAILED",
+      "YDB_BALANCE_FORMAT_FAILED"
     ]);
     const stage = safeCodes.has(error?.message) ? error.message : "YDB_TRANSACTION_FAILED";
     return response(503, { error: "DATABASE_UNAVAILABLE", stage }, origin);
