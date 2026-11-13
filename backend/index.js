@@ -10,6 +10,18 @@ import { Int64 } from "@ydbjs/value/primitive";
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
 let queryPromise;
+let ydbPingSuccessful = false;
+
+function classifyYdbError(error, fallback) {
+  // Return only fixed diagnostic labels, never raw DB errors or credentials.
+  const details = String(error?.message || "") + " " + String(error?.code || "");
+  if (/UNAUTHENTICATED|UNAUTHORIZED|INVALID.TOKEN|AUTHENTICATION|TOKEN.EXPIRED/i.test(details)) return "YDB_AUTH_FAILED";
+  if (/PERMISSION_DENIED|ACCESS_DENIED|ACCESS DENIED|PERMISSION DENIED|NOT ENOUGH RIGHTS|FORBIDDEN/i.test(details)) return "YDB_ACCESS_DENIED";
+  if (/TYPE.MISMATCH|TYPE ANNOTATION|INCOMPATIBLE TYPES|CANNOT CONVERT|TYPE ERROR/i.test(details)) return "YDB_TYPE_MISMATCH";
+  if (/PATH DOES NOT EXIST|PATH NOT FOUND|UNKNOWN TABLE|UNKNOWN COLUMN|COLUMN NOT FOUND|TABLE DOES NOT EXIST/i.test(details)) return "YDB_SCHEMA_NOT_FOUND";
+  if (/DEADLINE_EXCEEDED|ETIMEDOUT|ECONNREFUSED|ECONNRESET|UNAVAILABLE|NETWORK ERROR/i.test(details)) return "YDB_NETWORK_FAILED";
+  return fallback;
+}
 
 function response(statusCode, payload, origin = "") {
   const headers = {
@@ -90,6 +102,19 @@ async function profile(telegramId) {
     throw new Error("YDB_CONNECTION_FAILED");
   }
 
+  // Verify that the YDB driver can execute *any* query before testing users.
+  // A failed SELECT 1 points to connection / service credentials, not the users table.
+  if (!ydbPingSuccessful) {
+    try {
+      const check = await sql`SELECT 1 AS ok;`;
+      if (!Array.isArray(check)) throw new Error("UNEXPECTED_PING_RESULT");
+      ydbPingSuccessful = true;
+    } catch (error) {
+      console.error("YDB ping failed:", error?.message || "unknown");
+      throw new Error(classifyYdbError(error, "YDB_PING_FAILED"));
+    }
+  }
+
   // telegram_id is Utf8 in the existing SellerKit table.
   const id = String(telegramId);
 
@@ -112,7 +137,7 @@ async function profile(telegramId) {
         throw new Error("YDB_RESULT_FORMAT_FAILED");
       }
       console.error("YDB SELECT:", error?.message || "unknown");
-      throw new Error("YDB_SELECT_FAILED");
+      throw new Error(classifyYdbError(error, "YDB_SELECT_FAILED"));
     }
   }
 
@@ -188,7 +213,13 @@ export async function handler(event) {
       "YDB_SELECT_FAILED",
       "YDB_INSERT_FAILED",
       "YDB_RESULT_FORMAT_FAILED",
-      "YDB_BALANCE_FORMAT_FAILED"
+      "YDB_BALANCE_FORMAT_FAILED",
+      "YDB_PING_FAILED",
+      "YDB_AUTH_FAILED",
+      "YDB_ACCESS_DENIED",
+      "YDB_TYPE_MISMATCH",
+      "YDB_SCHEMA_NOT_FOUND",
+      "YDB_NETWORK_FAILED"
     ]);
     const stage = safeCodes.has(error?.message) ? error.message : "YDB_TRANSACTION_FAILED";
     return response(503, { error: "DATABASE_UNAVAILABLE", stage }, origin);
