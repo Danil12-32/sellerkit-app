@@ -1325,7 +1325,9 @@ async function loadTelegramBalance(force=false){
      YDB_CONNECTION_FAILED:"Не удалось подключиться к YDB: проверь адрес базы, сервисный аккаунт и его доступ.",
      YDB_SELECT_FAILED:"Не выполнено чтение таблицы users: проверь структуру таблицы и права чтения.",
      YDB_INSERT_FAILED:"Не удалось создать пользователя в users: проверь поля таблицы и права записи.",
-     YDB_TRANSACTION_FAILED:"Сбой транзакции YDB: нужна проверка SQL и настроек базы."
+     YDB_TRANSACTION_FAILED:"Сбой транзакции YDB: нужна проверка SQL и настроек базы.",
+     YDB_RESULT_FORMAT_FAILED:"YDB вернула ответ в неожиданном формате. Проверим версию библиотеки и запрос.",
+     YDB_BALANCE_FORMAT_FAILED:"YDB вернула некорректное значение баланса. Проверь тип поля balance."
     };
     explanation="Ошибка 503 ("+(hints[stage] ? stage : "YDB")+"): "+
      (hints[stage]||"Сервер не смог прочитать баланс из YDB.");
