@@ -1303,7 +1303,8 @@ async function loadTelegramBalance(force=false){
    catch{ throw new Error("HTTP_"+response.status+"_INVALID_JSON"); }
    if(!response.ok || data?.success!==true){
     const serverCode=typeof data?.error==="string" ? data.error : "SERVER_ERROR";
-    throw new Error("HTTP_"+response.status+"_"+serverCode);
+    const safeStage=typeof data?.stage==="string" ? data.stage : "";
+    throw new Error("HTTP_"+response.status+"_"+serverCode+(safeStage?"_"+safeStage:""));
    }
    if(!Number.isSafeInteger(data.balance) || data.balance<0){
     throw new Error("INVALID_BALANCE");
@@ -1318,8 +1319,16 @@ async function loadTelegramBalance(force=false){
    let explanation;
    if(code==="HTTP_401_INVALID_TELEGRAM_AUTH"){
     explanation="Ошибка 401: данные Telegram не прошли проверку. Закрой и заново открой Mini App.";
-   }else if(code==="HTTP_503_DATABASE_UNAVAILABLE"){
-    explanation="Ошибка 503: сервер принял запрос, но не смог обратиться к базе YDB. Проверь логи sellerkit-api.";
+   }else if(code.startsWith("HTTP_503_DATABASE_UNAVAILABLE")){
+    const stage=code.replace("HTTP_503_DATABASE_UNAVAILABLE_","");
+    const hints={
+     YDB_CONNECTION_FAILED:"Не удалось подключиться к YDB: проверь адрес базы, сервисный аккаунт и его доступ.",
+     YDB_SELECT_FAILED:"Не выполнено чтение таблицы users: проверь структуру таблицы и права чтения.",
+     YDB_INSERT_FAILED:"Не удалось создать пользователя в users: проверь поля таблицы и права записи.",
+     YDB_TRANSACTION_FAILED:"Сбой транзакции YDB: нужна проверка SQL и настроек базы."
+    };
+    explanation="Ошибка 503 ("+(hints[stage] ? stage : "YDB")+"): "+
+     (hints[stage]||"Сервер не смог прочитать баланс из YDB.");
    }else if(code.startsWith("HTTP_403") || code.startsWith("HTTP_401")){
     explanation="Сервер не разрешает вызов (код "+code+"). Проверь публичный доступ Cloud Function.";
    }else if(code==="AbortError"||error?.name==="AbortError"){
