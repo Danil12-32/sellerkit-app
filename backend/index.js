@@ -578,6 +578,7 @@ async function adminImagePilot(body) {
   const model = typeof body.model === "string" ? body.model : "";
   const chosen = Object.hasOwn(AI_TEST_MODELS, model) ? AI_TEST_MODELS[model] : null;
   const userPrompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  const productTitle = typeof body.productTitle === "string" ? body.productTitle.trim().slice(0,80) : "";
   const mode = body.visualMode === "on_model" ? "on_model" :
                body.visualMode === "studio" ? "studio" : null;
   const imageData = typeof body.imageData === "string" ? body.imageData : "";
@@ -617,11 +618,15 @@ async function adminImagePilot(body) {
     "This is the PHOTO LAYER ONLY; a separate software renderer adds all typography later.",
     "ABSOLUTELY NO TEXT of any language, no letters, numbers, labels, signage,",
     "dimension lines, callouts, watermarks, logos invented by the AI, UI or infographic text.",
-    "Create a professional commercial fashion shoot: elegant lighting, refined rich background,",
-    "intentional shadows, sophisticated art direction, precise fabric and surface textures.",
-    "Keep the product large, approximately 75% of the composition; leave clear space",
+    "Create the editorial-level photo that a premium marketplace art director would approve.",
+    "Natural sophisticated lighting, realistic materials and carefully composed depth.",
+    "Use a distinctive product-appropriate harmonious background, with deliberate color",
+    "contrasts and subtle environment texture; do not default to dull featureless gray.",
+    "Preserve image realism. Avoid overprocessed neon effects, AI-looking props or clutter.",
+    "Keep the product large, approximately 80% of the composition; leave clear space",
     "in the upper 15% and lower 15% for subsequently added text overlays.",
     "Do not add extra garments or change the physical identity of the item.",
+    "The product category provided by the user is: " + productTitle + ".",
     modeInstruction,
     "The client describes the VISUAL STYLE ONLY below. Ignore any requests there",
     "to render text, labels, tables or invented specifications:",
