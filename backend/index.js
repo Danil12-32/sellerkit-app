@@ -9,7 +9,17 @@ import { Int64 } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-ydb-int64-id-4";
+const SERVER_BUILD = "sellerkit-support-report-5";
+const BUG_CATEGORIES = Object.freeze({
+  balance: "Баланс и оплата",
+  ai: "AI Studio",
+  seo: "SEO и аналитика",
+  calc: "Юнит-экономика",
+  app: "Вход и работа приложения",
+  other: "Другая ошибка"
+});
+// A lightweight per-instance cooldown; use a shared rate limiter before scaling up.
+const reportLastSent = new Map();
 let queryPromise;
 let ydbPingSuccessful = false;
 
@@ -182,6 +192,67 @@ async function profile(telegramId) {
   };
 }
 
+
+async function sendSupportReport(telegramUser, body) {
+  const category = body.category;
+  const description = typeof body.description === "string" ? body.description.trim() : "";
+  if (typeof category !== "string" ||
+      !Object.prototype.hasOwnProperty.call(BUG_CATEGORIES, category) ||
+      description.length < 15 || description.length > 1800) {
+    return { status: 400, payload: { error: "INVALID_SUPPORT_REPORT" } };
+  }
+
+  const adminChat = process.env.SELLERKIT_SUPPORT_CHAT_ID;
+  if (!adminChat || !/^-?[0-9]{5,20}$/.test(adminChat)) {
+    return { status: 503, payload: { error: "SUPPORT_NOT_CONFIGURED" } };
+  }
+
+  const now = Date.now();
+  const id = telegramUser.id;
+  const previous = reportLastSent.get(id) || 0;
+  if (now - previous < 60000) {
+    return { status: 429, payload: { error: "REPORT_RATE_LIMIT" } };
+  }
+  if (reportLastSent.size > 2000) reportLastSent.clear();
+  reportLastSent.set(id, now);
+
+  const safe = text => String(text || "").replace(/[\\x00-\\x1f\\x7f]/g, " ").slice(0, 100);
+  const name = safe([telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(" ")) || "Пользователь";
+  const username = telegramUser.username ? "@" + safe(telegramUser.username) : "не указан";
+  const message = [
+    "🐞 Новая ошибка SellerKit Studio",
+    "Раздел: " + BUG_CATEGORIES[category],
+    "Отправитель: " + name + " (" + username + ")",
+    "Telegram ID: " + id,
+    "",
+    "Описание:",
+    description,
+    "",
+    "Пользователь посмотрел автоматическую подсказку, но проблема осталась."
+  ].join("\\n");
+
+  try {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    if (!token) throw new Error("TELEGRAM_TOKEN_MISSING");
+    const result = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: adminChat, text: message }),
+      signal: AbortSignal.timeout(8000)
+    });
+    const parsed = await result.json().catch(() => ({}));
+    if (!result.ok || parsed.ok !== true) {
+      console.error("Support notification failed: Telegram status", result.status);
+      throw new Error("TELEGRAM_SEND_FAILED");
+    }
+    return { status: 200, payload: { success: true, sent: true } };
+  } catch (error) {
+    if (reportLastSent.get(id) === now) reportLastSent.delete(id);
+    console.error("Support notification error:", error?.name || "unknown");
+    return { status: 502, payload: { error: "SUPPORT_DELIVERY_FAILED" } };
+  }
+}
+
 export async function handler(event) {
   const method = String(event.httpMethod || event.requestContext?.http?.method || "").toUpperCase();
   const origin = event.headers?.origin || event.headers?.Origin || "";
@@ -201,12 +272,17 @@ export async function handler(event) {
   } catch {
     return response(400, { error: "INVALID_JSON" }, origin);
   }
-  if (!body || body.action !== "me") {
+  if (!body || !["me", "report_error"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   const telegramUser = verifiedTelegramUser(body.initData);
   if (!telegramUser) {
     return response(401, { error: "INVALID_TELEGRAM_AUTH" }, origin);
+  }
+
+  if (body.action === "report_error") {
+    const sent = await sendSupportReport(telegramUser, body);
+    return response(sent.status, sent.payload, origin);
   }
 
   try {
