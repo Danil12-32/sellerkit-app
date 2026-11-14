@@ -1424,7 +1424,8 @@ async function adminRunAiPilot(){
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
      action:"admin_image_test",initData:tg.initData,model,prompt,
-     visualMode:$("aiVisualMode").value,imageData
+     visualMode:$("aiVisualMode").value,imageData,
+      productTitle:$("aiTitle").value.trim()
     }),signal:controller.signal,cache:"no-store"
    });
    const result=await response.json().catch(()=>({}));
