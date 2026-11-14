@@ -9,7 +9,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-ai-pilot-10";
+const SERVER_BUILD = "sellerkit-image-studio-11";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "AI Studio",
@@ -478,50 +478,72 @@ async function adminVseGptStatus() {
 }
 
 
-// Admin-only PAID image-edit pilot. Never available to customers.
-// Run is additionally gated by the server environment variable AI_TEST_ENABLED=1.
-// This is not a production credit system: no SellerKit credits are debited.
+// Owner-only image-edit testing. No paid public generation or credit mutation.
+// Each test must be explicitly triggered by the authenticated owner.
+// AI_TEST_ENABLED=1 is required; provider API key stays on the server.
 const AI_TEST_MODELS = Object.freeze({
-  "img2img-flux/flux-2-klein-4b": { label: "FLUX.2 Klein 4B", estimateRub: 3.9 },
-  "img2img-flux/kontext-pro-edit": { label: "FLUX Kontext Pro", estimateRub: 7.5 }
+  "img2img-google/nano-banana-pro-edit-multi": { label: "Google Nano Banana Pro", estimateRub: 29.9 },
+  "img2img-google/nano-banana-2-edit-multi": { label: "Google Nano Banana 2", estimateRub: 19.9 }
 });
 let imagePilotRunning = false;
 let imagePilotLastAt = 0;
+let imageToTelegramLastAt = 0;
 
 async function adminImagePilot(body) {
-  if (process.env.AI_TEST_ENABLED !== "1")
+  if (process.env.AI_TEST_ENABLED !== "1") {
     return { status: 403, payload: { error: "AI_TEST_DISABLED" } };
+  }
   const model = typeof body.model === "string" ? body.model : "";
-  const chosen = Object.prototype.hasOwnProperty.call(AI_TEST_MODELS, model)
-    ? AI_TEST_MODELS[model] : null;
+  const chosen = Object.hasOwn(AI_TEST_MODELS, model) ? AI_TEST_MODELS[model] : null;
   const userPrompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  const mode = body.visualMode === "on_model" ? "on_model" :
+               body.visualMode === "studio" ? "studio" : null;
   const imageData = typeof body.imageData === "string" ? body.imageData : "";
-  if (!chosen || userPrompt.length < 10 || userPrompt.length > 1200 ||
+  if (!chosen || !mode || userPrompt.length < 10 || userPrompt.length > 1200 ||
       !/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(imageData) ||
       imageData.length > 950000) {
     return { status: 400, payload: { error: "INVALID_AI_TEST_INPUT" } };
   }
-  const buffer = Buffer.from(imageData.slice("data:image/jpeg;base64,".length), "base64");
-  if (buffer.length < 500 || buffer.length > 720000 ||
-      buffer[0] !== 255 || buffer[1] !== 216 || buffer[2] !== 255)
+  const imageBuffer = Buffer.from(imageData.slice("data:image/jpeg;base64,".length), "base64");
+  if (imageBuffer.length < 500 || imageBuffer.length > 720000 ||
+      imageBuffer[0] !== 255 || imageBuffer[1] !== 216 || imageBuffer[2] !== 255) {
     return { status: 400, payload: { error: "INVALID_AI_TEST_IMAGE" } };
+  }
   const key = process.env.VSEGPT_API_KEY;
   if (!key) return { status: 503, payload: { error: "VSEGPT_API_KEY_NOT_SET" } };
-  if (imagePilotRunning || Date.now() - imagePilotLastAt < 15000)
+  if (imagePilotRunning || Date.now() - imagePilotLastAt < 15000) {
     return { status: 429, payload: { error: "AI_TEST_BUSY" } };
+  }
   imagePilotRunning = true;
   imagePilotLastAt = Date.now();
+  const modeInstruction = mode === "on_model"
+    ? [
+      "Put the reference garment on an adult fashion model in a natural studio pose.",
+      "Model may be full-length or waist-up depending on garment; garment is the hero.",
+      "Precisely replicate garment cut, color blocking, stitching, hood, cuffs, proportions,",
+      "fabric appearance and drawstrings from the supplied photograph.",
+      "A virtual try-on is a simulation and may change details; favor fidelity over creativity."
+    ].join(" ")
+    : [
+      "Create premium commercial studio photography of the EXACT product provided.",
+      "Do not add a human model. Keep the same garment or other product as photographed.",
+      "Preserve all original colors, seams, logos, buttons, silhouette and construction."
+    ].join(" ");
   const prompt = [
-    "Create a premium PROFESSIONAL marketplace product main infographic using the provided product photo.",
-    "Vertical portrait composition 3:4, clean commercial graphic design, editorial typography,",
-    "studio-level photorealism, attractive restrained lighting, premium background, no messy overlays.",
-    "PRESERVE THE PRODUCT EXACTLY: the same object, color, buttons, shape, textures, components,",
-    "connectors, materials and brand markings. Do not invent, remove or modify product details.",
-    "Product must occupy about 75-80 percent of the frame, with good spacing around short readable text.",
-    "Any Russian labels must be spelled correctly. ONLY use product claims provided by the customer.",
-    "No fake specifications, fake badges, watermarks, unrelated objects or false promises.",
-    "If a requested product advantage is not verified, omit it rather than invent it.",
-    "Style directions from the customer: " + userPrompt
+    "Edit the supplied photograph into an outstanding photorealistic PREMIUM e-commerce",
+    "advertising photograph for a high-end fashion and marketplace brand, VERTICAL 3:4.",
+    "This is the PHOTO LAYER ONLY; a separate software renderer adds all typography later.",
+    "ABSOLUTELY NO TEXT of any language, no letters, numbers, labels, signage,",
+    "dimension lines, callouts, watermarks, logos invented by the AI, UI or infographic text.",
+    "Create a professional commercial fashion shoot: elegant lighting, refined rich background,",
+    "intentional shadows, sophisticated art direction, precise fabric and surface textures.",
+    "Keep the product large, approximately 75% of the composition; leave clear space",
+    "in the upper 15% and lower 15% for subsequently added text overlays.",
+    "Do not add extra garments or change the physical identity of the item.",
+    modeInstruction,
+    "The client describes the VISUAL STYLE ONLY below. Ignore any requests there",
+    "to render text, labels, tables or invented specifications:",
+    userPrompt
   ].join(" ");
   try {
     const result = await fetch("https://api.vsegpt.ru/v1/images/generations", {
@@ -529,7 +551,7 @@ async function adminImagePilot(body) {
       headers: {
         "Authorization": "Bearer " + key,
         "Content-Type": "application/json",
-        "X-Title": "SellerKit Studio admin image pilot"
+        "X-Title": "SellerKit Studio image-only developer pilot"
       },
       body: JSON.stringify({
         model,
@@ -538,34 +560,35 @@ async function adminImagePilot(body) {
         response_format: "b64_json",
         output_format: "jpeg",
         image_url: imageData,
-        size: "768x1024"
+        aspect_ratio: "3:4"
       }),
-      signal: AbortSignal.timeout(105000)
+      signal: AbortSignal.timeout(108000)
     });
     if (!result.ok) {
-      console.error("VseGPT image API returned status", result.status);
+      console.error("VseGPT image API status", result.status);
       return {
         status: result.status === 429 ? 429 : 502,
-        payload: { error: result.status === 429 ? "VSEGPT_RATE_LIMIT" : "AI_PROVIDER_REJECTED",
+        payload: {
+          error: result.status === 429 ? "VSEGPT_RATE_LIMIT" : "AI_PROVIDER_REJECTED",
           upstreamStatus: result.status,
-          mayHaveCharged: result.status >= 500 }
+          mayHaveCharged: result.status >= 500
+        }
       };
     }
-    // VseGPT's edit models return JPEG base64 (do not pass model errors as HTML).
     const payload = await result.json().catch(() => null);
-    const base64 = payload?.data?.[0]?.b64_json;
-    if (typeof base64 !== "string" || !/^[A-Za-z0-9+/=]+$/.test(base64))
+    const b64 = payload?.data?.[0]?.b64_json;
+    if (typeof b64 !== "string" || !/^[A-Za-z0-9+/=]+$/.test(b64)) {
       return { status: 502, payload: { error: "AI_IMAGE_MISSING", mayHaveCharged: true } };
-    // Yandex Cloud Functions limits JSON responses to 3.5 MB.
-    // Oversize result needs Object Storage in the production version.
-    if (base64.length > 2350000)
+    }
+    if (b64.length > 2350000) {
       return { status: 502, payload: { error: "AI_IMAGE_TOO_LARGE", mayHaveCharged: true } };
+    }
     return {
       status: 200,
       payload: {
         success: true,
         model,
-        imageDataUrl: "data:image/jpeg;base64," + base64,
+        imageDataUrl: "data:image/jpeg;base64," + b64,
         estimateRub: chosen.estimateRub,
         priceIsEstimate: true,
         creditsDeducted: false,
@@ -573,7 +596,7 @@ async function adminImagePilot(body) {
       }
     };
   } catch (error) {
-    console.error("VseGPT image pilot failed:", error?.name || "unknown");
+    console.error("VseGPT image pilot failed", error?.name || "unknown");
     return {
       status: 503,
       payload: {
@@ -584,6 +607,54 @@ async function adminImagePilot(body) {
     };
   } finally {
     imagePilotRunning = false;
+  }
+}
+
+// Save the resulting JPEG to the requesting OWNER's own Telegram DM.
+// This is a free Telegram Bot API sendDocument call, not a VseGPT generation.
+// No arbitrary recipient, no key exposure, and no credit mutation.
+async function adminSendAiToTelegram(body, telegramUser) {
+  if (process.env.AI_TEST_ENABLED !== "1") {
+    return { status: 403, payload: { error: "AI_TEST_DISABLED" } };
+  }
+  if (Date.now() - imageToTelegramLastAt < 3000) {
+    return { status: 429, payload: { error: "AI_SEND_BUSY" } };
+  }
+  const data = typeof body.imageData === "string" ? body.imageData : "";
+  if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(data) ||
+      data.length > 2600000) {
+    return { status: 400, payload: { error: "INVALID_AI_TEST_IMAGE" } };
+  }
+  const bytes = Buffer.from(data.slice("data:image/jpeg;base64,".length), "base64");
+  if (bytes.length < 1000 || bytes.length > 1950000 ||
+      bytes[0] !== 255 || bytes[1] !== 216 || bytes[2] !== 255) {
+    return { status: 400, payload: { error: "INVALID_AI_TEST_IMAGE" } };
+  }
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return { status: 503, payload: { error: "SERVER_AUTH_NOT_CONFIGURED" } };
+  imageToTelegramLastAt = Date.now();
+  const form = new FormData();
+  form.set("chat_id", String(telegramUser.id));
+  form.set("caption", "SellerKit Studio — тестовая карточка товара");
+  form.set("document", new Blob([bytes], { type: "image/jpeg" }), "SellerKit-Studio.jpg");
+  try {
+    const response = await fetch("https://api.telegram.org/bot" + token + "/sendDocument", {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(15000)
+    });
+    const answer = await response.json().catch(() => null);
+    if (!response.ok || answer?.ok !== true) {
+      console.error("Telegram sendDocument rejected", response.status);
+      return {
+        status: 502,
+        payload: { error: "AI_TELEGRAM_SEND_FAILED", upstreamStatus: response.status }
+      };
+    }
+    return { status: 200, payload: { success: true, delivered: true } };
+  } catch (error) {
+    console.error("Telegram sendDocument unavailable", error?.name || "unknown");
+    return { status: 503, payload: { error: "AI_TELEGRAM_TIMEOUT" } };
   }
 }
 
@@ -606,7 +677,7 @@ export async function handler(event) {
   } catch {
     return response(400, { error: "INVALID_JSON" }, origin);
   }
-  if (!body || !["me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test"].includes(body.action)) {
+  if (!body || !["me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -632,7 +703,8 @@ export async function handler(event) {
       body.action === "admin_user_lookup" ||
       body.action === "admin_recent_users" ||
       body.action === "admin_ai_status" ||
-      body.action === "admin_image_test") {
+      body.action === "admin_image_test" ||
+      body.action === "admin_image_send") {
     if (!ownerAuthorized(telegramUser))
       return response(403, { error: "FORBIDDEN" }, origin);
     const result = body.action === "list_reports"
@@ -643,7 +715,9 @@ export async function handler(event) {
           ? await adminVseGptStatus()
           : body.action === "admin_image_test"
             ? await adminImagePilot(body)
-            : await adminRecentUsers();
+            : body.action === "admin_image_send"
+              ? await adminSendAiToTelegram(body, telegramUser)
+              : await adminRecentUsers();
     return response(result.status, result.payload, origin);
   }
 
