@@ -1303,41 +1303,56 @@ async function adminRenderAiCard(sourceImage,isSample=false){
  const scale=Math.max(W/photo.naturalWidth,H/photo.naturalHeight);
  const scaledW=photo.naturalWidth*scale,scaledH=photo.naturalHeight*scale;
  ctx.drawImage(photo,(W-scaledW)/2,(H-scaledH)/2,scaledW,scaledH);
- // Transparent overlay: no extra AI calls and correct Russian typography.
- const top=ctx.createLinearGradient(0,0,0,400);
- top.addColorStop(0,"rgba(7,13,12,.80)");
- top.addColorStop(0.58,"rgba(7,13,12,.25)");
- top.addColorStop(1,"rgba(7,13,12,0)");
- ctx.fillStyle=top;ctx.fillRect(0,0,W,400);
- const bottom=ctx.createLinearGradient(0,770,0,H);
- bottom.addColorStop(0,"rgba(7,13,12,0)");
- bottom.addColorStop(0.52,"rgba(7,13,12,.46)");
- bottom.addColorStop(1,"rgba(7,13,12,.84)");
- ctx.fillStyle=bottom;ctx.fillRect(0,770,W,430);
- ctx.fillStyle="#8df0b0";ctx.fillRect(55,79,8,120);
+ // Cleaner and more flexible card design: 1-6 facts without hiding rows.
+ const productName=title.toLowerCase();
+ const accent=/кроссов|кед|обув|ботин|спорт/.test(productName)
+  ?"#A5D9FF":/худи|одежд|плать|куртк|рубаш|джемпер/.test(productName)
+   ?"#FFE5CF":"#E5E5D8";
+ const top=ctx.createLinearGradient(0,0,0,350);
+ top.addColorStop(0,"rgba(6,11,14,.67)");
+ top.addColorStop(0.62,"rgba(6,11,14,.18)");
+ top.addColorStop(1,"rgba(6,11,14,0)");
+ ctx.fillStyle=top;ctx.fillRect(0,0,W,350);
+ const rows=claims.length>3?Math.ceil(claims.length/2):claims.length;
+ const bottomStart=claims.length>3?870:claims.length?920:1040;
+ const bottom=ctx.createLinearGradient(0,bottomStart,0,H);
+ bottom.addColorStop(0,"rgba(5,12,16,0)");
+ bottom.addColorStop(.5,"rgba(5,12,16,.30)");
+ bottom.addColorStop(1,"rgba(5,12,16,.78)");
+ ctx.fillStyle=bottom;ctx.fillRect(0,bottomStart,W,H-bottomStart);
+ ctx.fillStyle=accent;
+ ctx.fillRect(56,80,7,113);
  const fontSize=title.length>27?57:66;
- ctx.font="800 "+fontSize+"px system-ui, -apple-system, Arial, sans-serif";
- ctx.textAlign="left";
- ctx.textBaseline="alphabetic";
+ ctx.font="800 "+fontSize+"px system-ui,-apple-system,Arial,sans-serif";
+ ctx.textAlign="left";ctx.textBaseline="alphabetic";
  ctx.fillStyle="#ffffff";
- ctx.shadowColor="rgba(0,0,0,.48)";ctx.shadowBlur=16;
+ ctx.shadowColor="rgba(0,0,0,.42)";ctx.shadowBlur=12;
  const titleLines=adminAiTitleLines(ctx,title,740,2);
- for(let i=0;i<titleLines.length;i++)ctx.fillText(titleLines[i],89,138+i*77,740);
+ for(let i=0;i<titleLines.length;i++)ctx.fillText(titleLines[i],86,140+i*74,740);
  ctx.shadowBlur=0;
  if(claims.length){
-  ctx.textBaseline="middle";
+  const twoCol=claims.length>3;
+  const itemH=56;
+  const itemW=twoCol?382:Math.min(760,W-112);
+  const gapY=67;
   for(let i=0;i<claims.length;i++){
-   const y=H-82-(claims.length-1-i)*76;
-   ctx.font="600 31px system-ui, -apple-system, Arial, sans-serif";
-   const string=claims[i];
-   const w=Math.min(W-110,Math.max(216,ctx.measureText(string).width+88));
-   ctx.fillStyle="rgba(18,36,27,.88)";
-   adminAiRoundRect(ctx,55,y-30,w,59,15);ctx.fill();
-   ctx.strokeStyle="rgba(183,251,207,.4)";ctx.lineWidth=2;ctx.stroke();
-   ctx.fillStyle="#a7f5c3";
-   ctx.beginPath();ctx.arc(79,y,5,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#ffffff";
-   ctx.fillText(string,101,y+1,w-120);
+   const col=twoCol?i%2:0;
+   const row=twoCol?Math.floor(i/2):i;
+   const x=56+col*405;
+   const y=H-69-(rows-1-row)*gapY;
+   const value=claims[i];
+   ctx.fillStyle="rgba(12,20,24,.72)";
+   adminAiRoundRect(ctx,x,y-itemH/2,itemW,itemH,15);ctx.fill();
+   ctx.strokeStyle="rgba(255,255,255,.36)";
+   ctx.lineWidth=1.5;ctx.stroke();
+   ctx.fillStyle=accent;
+   ctx.beginPath();ctx.arc(x+19,y,4.5,0,Math.PI*2);ctx.fill();
+   let size=twoCol?27:31;
+   do{ctx.font="600 "+size+"px system-ui,-apple-system,Arial,sans-serif";
+      if(ctx.measureText(value).width<=itemW-52||size<=19)break;
+      size--;}while(true);
+   ctx.fillStyle="#ffffff";ctx.textBaseline="middle";
+   ctx.fillText(value,x+35,y+1,itemW-49);
   }
  }
  let blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.91));
@@ -1388,6 +1403,7 @@ async function adminRunAiPilot(){
  try{
   adminAiCopy();
   if(!file)throw new Error("Сначала выбери фото товара.");
+  if(!aiManualClaimsWarning())return;
   if(prompt.length<10||prompt.length>1200)
    throw new Error("Напиши пожелания к стилю (10–1200 символов).");
   const tg=window.Telegram?.WebApp;
