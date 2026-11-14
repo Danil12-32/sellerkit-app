@@ -1280,7 +1280,7 @@ async function adminCheckVseGpt(){
   status.textContent="✅ API отвечает. Баланс VseGPT: "+balance+
    " ₽. Подписка: "+(subscription==="ok"?"активна":subscription)+
    ". Действует до: "+end+"."+serverStatus+
-   " Генерация изображений пока не подключена и никаких списаний не выполнялось.";
+   " Для разработчика доступен отдельный платный AI-тест. Проверка баланса ничего не списывает.";
  }catch(error){
   status.textContent=String(error?.message||"Ошибка при проверке VseGPT.");
  }finally{button.disabled=false;}
