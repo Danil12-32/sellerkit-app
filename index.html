@@ -694,7 +694,7 @@ SEO Analytics
 
 <div class="card">
 <h2>🛍 Магазин токенов</h2>
-<p>1 токен = 20 ₽. Разблокировка готовой карточки — 5 токенов (100 ₽).</p>
+<p>Базовая цена — 20 ₽ за токен. Чем больше пакет, тем выгоднее. Разблокировка одной карточки — 5 токенов.</p>
 
 <div class="notice">
 Оплата пока не подключена. Можно посмотреть тарифы, но деньги не списываются и токены не начисляются. Выдача оригиналов заработает после серверной проверки покупки.
@@ -710,7 +710,7 @@ SEO Analytics
 <div id="businessPacks"></div>
 
 <p class="muted">
-<small>Тарифы предварительные: 1 токен = 20 ₽, разблокировка одной готовой карточки = 5 токенов. Бесплатная пробная генерация — одна на Telegram ID после запуска. Повторные генерации будут платными, их тариф определим после тестов.</small>
+<small>Скидки рассчитаны относительно базовой цены 20 ₽ за токен. Все цены предварительные, покупка отключена. Количество бесплатных проб и стоимость повторных генераций утвердим после проверки себестоимости и платёжных комиссий.</small>
 </p>
 </div>
 </section>
@@ -1916,11 +1916,12 @@ const TOKEN_PRICE_RUB=20;
 const UNLOCK_COST_TOKENS=5;
 const PACKAGES=[
  {count:5,price:100,group:"starter"},
- {count:10,price:200,group:"starter"},
- {count:25,price:500,group:"standard"},
- {count:50,price:1000,group:"standard"},
- {count:100,price:2000,group:"business"},
- {count:200,price:4000,group:"business"}
+ {count:10,price:190,group:"starter",label:"Первое знакомство"},
+ {count:25,price:450,group:"standard"},
+ {count:50,price:850,group:"standard",label:"Популярный"},
+ {count:100,price:1500,group:"business",label:"Выгодно"},
+ {count:200,price:2600,group:"business"},
+ {count:500,price:3600,group:"business",label:"Лучшее предложение"}
 ];
 function tokenWord(n){
  const mod10=n%10;
@@ -1950,6 +1951,20 @@ function renderPackages(){
   const subtitle=document.createElement("small");
   subtitle.textContent=money(pack.price/pack.count)+" за токен";
   left.append(title,subtitle);
+  const discount=Math.round((1-pack.price/(pack.count*TOKEN_PRICE_RUB))*100);
+  if(discount>0){
+   const details=document.createElement("small");
+   details.style.color="#78f3a5";
+   details.textContent="Экономия "+discount+"% от базовой цены";
+   left.append(details);
+  }
+  if(pack.label){
+   const label=document.createElement("span");
+   label.className="tag";
+   label.style.cssText="display:inline-block;margin-top:8px;font-size:11px";
+   label.textContent=pack.label;
+   left.append(label);
+  }
 
   const right=document.createElement("b");
   right.textContent=money(pack.price);
@@ -1968,7 +1983,10 @@ function showPack(index){
   pack.count+" "+tokenWord(pack.count);
  $("modalPrice").textContent=money(pack.price);
  $("modalUnitPrice").textContent=
-  "Стоимость одного токена: "+money(pack.price/pack.count)+". Разблокировка карточки: "+UNLOCK_COST_TOKENS+" токенов ("+money(UNLOCK_COST_TOKENS*TOKEN_PRICE_RUB)+").";
+  "Стоимость одного токена в пакете: "+money(pack.price/pack.count)+
+  ". Экономия относительно базового тарифа: "+
+  Math.round((1-pack.price/(pack.count*TOKEN_PRICE_RUB))*100)+"%. "+
+  "Разблокировка одной готовой карточки: "+UNLOCK_COST_TOKENS+" токенов.";
  $("packModal").classList.add("visible");
 }
 
