@@ -279,6 +279,7 @@ nav button.active{
 <h3>✨ AI Studio</h3>
 <p>Создание инфографики по фотографии товара прямо в приложении.</p>
 <button onclick="openPage('ai')">Открыть AI Studio</button>
+<button class="secondary" style="margin-top:9px" onclick="openPage('ai-series')">🧠 AI Дизайнер · Комплекты 1–8</button>
 </div>
 
 <div class="grid">
@@ -478,6 +479,7 @@ SEO Analytics
 <section class="page" id="ai">
 <div class="card">
 <h2>✨ AI Studio</h2>
+<button class="secondary wide" onclick="openPage('ai-series')">🧠 Создать комплект из 1, 5 или 8 карточек — AI Дизайнер</button>
 <p>Профессиональные карточки товаров: нейросеть создаёт фотографию, а SellerKit накладывает <strong>настоящие русские надписи</strong>.</p>
 
 <label for="aiPhoto">1. Фотография товара</label>
@@ -575,6 +577,43 @@ SEO Analytics
 <button class="secondary" onclick="adminCloseAiFullscreen()">✕ Закрыть</button>
 <p style="color:white">Удерживай изображение, чтобы сохранить на телефон.</p>
 <img id="aiTestLightboxImage" alt="Карточка товара" style="display:block;max-width:100%;height:auto;margin:0 auto">
+</div>
+</div>
+</div>
+</section>
+
+<!-- AI ДИЗАЙНЕР: ТЕСТ СОСТАВЛЕНИЯ ПЛАНА КОМПЛЕКТА -->
+<section class="page" id="ai-series">
+<button class="back" onclick="openPage('ai')">← В AI Studio</button>
+<div class="card">
+<h2>🧠 AI Дизайнер · Комплекты</h2>
+<p>Напиши своими словами, какие карточки товара нужны. AI составит сценарий для 1, 5 или 8 разных слайдов: главная, преимущества, детали, использование и другие задачи.</p>
+<div class="notice"><strong>Тестовый режим.</strong> Пока создаём и редактируем только план комплекта. Автоматическая генерация всех слайдов, оплата токенами и сохранение набора на сервере ещё не подключены.</div>
+<label for="aiSeriesCount">Количество карточек</label>
+<select id="aiSeriesCount">
+<option value="1">1 — главная карточка</option>
+<option value="5" selected>5 — главная + 4 инфографики</option>
+<option value="8">8 — полный комплект</option>
+</select>
+<label for="aiSeriesFile">Фотография товара (необязательно)</label>
+<input id="aiSeriesFile" type="file" accept="image/jpeg,image/png,image/webp">
+<label for="aiSeriesBrief">Что нужно сделать?</label>
+<textarea id="aiSeriesBrief" maxlength="1600" style="min-height:150px" placeholder="Например: 5 карточек для голубых кроссовок. Главная — яркая, товар крупно. Остальные: детали, подошва, разные ракурсы, повседневные образы. Стиль премиум, без перегруза текстом."></textarea>
+<p class="muted"><small>Готовое ТЗ необязательно. Неизвестные свойства товара AI должен вынести на проверку, а не придумывать как факты.</small></p>
+<div id="aiSeriesOwnerTools" style="display:none">
+<button class="wide" id="aiSeriesGenerateBtn" onclick="adminGenerateSeriesPlan(false)">🧠 Составить план комплекта (AI-запрос)</button>
+<p class="muted"><small>Отдельный платный текстовый запрос к Qwen через VseGPT. Изображения не генерируются и деньги за изображения не списываются.</small></p>
+</div>
+<p id="aiSeriesStatus" class="muted" role="status" aria-live="polite">AI-планировщик пока доступен только разработчику.</p>
+<div id="aiSeriesOutput" style="display:none">
+<h3>Предложенная структура комплекта</h3>
+<p id="aiSeriesConcept" class="muted"></p>
+<p id="aiSeriesWarnings" class="muted"></p>
+<div id="aiSeriesSlides"></div>
+<div id="aiSeriesOwnerFeedback" style="display:none">
+<label for="aiSeriesFeedback">Что изменить в плане?</label>
+<textarea id="aiSeriesFeedback" maxlength="700" style="min-height:105px" placeholder="Например: 3-й слайд про подошву, 5-й — крупный план деталей; убери лишний текст, поменяй композицию"></textarea>
+<button class="secondary wide" id="aiSeriesReviseBtn" onclick="adminGenerateSeriesPlan(true)">💬 Переделать план по моим пожеланиям (AI-запрос)</button>
 </div>
 </div>
 </div>
@@ -1306,6 +1345,135 @@ function adminApplyAiCopy(){
   $("aiCopyAssistStatus").textContent=String(e.message||e);
  }
 }
+
+// Experimental art-direction workflow: Qwen plans a SERIES, image generation stays separate.
+let aiSeriesPlan=[];
+let aiSeriesBusy=false;
+const seriesRoles={
+ hero:"Главная",benefit:"Преимущества",detail:"Детали",lifestyle:"В использовании",
+ size:"Размеры",care:"Уход",comparison:"Сравнение",faq:"Вопросы",package:"Комплектация"
+};
+function aiSeriesEdits(){
+ const nodes=$("aiSeriesSlides").querySelectorAll("[data-series-index]");
+ if(!nodes.length)return aiSeriesPlan;
+ return [...nodes].map((node,i)=>({
+  index:i+1,role:node.dataset.role||"detail",
+  title:node.querySelector("[data-field=title]").value.trim(),
+  claims:node.querySelector("[data-field=claims]").value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean).slice(0,4),
+  visual:node.querySelector("[data-field=visual]").value.trim(),
+  verify:aiSeriesPlan[i]?.verify||[]
+ }));
+}
+function showAiSeriesPlan(result){
+ aiSeriesPlan=result.slides;
+ $("aiSeriesOutput").style.display="block";
+ $("aiSeriesConcept").textContent=result.concept||"План карточек";
+ const allChecks=result.slides.flatMap((slide,i)=>slide.verify.map(v=>"Слайд "+(i+1)+": "+v));
+ $("aiSeriesWarnings").textContent=allChecks.length
+  ?"⚠️ Требуют подтверждения: "+[...new Set(allChecks)].join("; ")
+  :"⚠️ Перед публикацией проверь товарные характеристики и содержание.";
+ const root=$("aiSeriesSlides");root.replaceChildren();
+ result.slides.forEach((slide,i)=>{
+  const card=document.createElement("div");card.className="card";
+  card.style.cssText="margin:12px 0;background:#102017";
+  card.dataset.seriesIndex=String(i);card.dataset.role=slide.role;
+  const h=document.createElement("h3");
+  h.textContent="Слайд "+(i+1)+" · "+(seriesRoles[slide.role]||"Инфографика");
+  const titleLabel=document.createElement("label");
+  titleLabel.textContent="Заголовок";
+  const title=document.createElement("input");
+  title.dataset.field="title";title.maxLength=55;title.value=slide.title;
+  const claimsLabel=document.createElement("label");
+  claimsLabel.textContent="Надписи (каждая с новой строки, проверь факты)";
+  const claims=document.createElement("textarea");
+  claims.dataset.field="claims";claims.style.minHeight="95px";
+  claims.value=slide.claims.join("\n");
+  const visualLabel=document.createElement("label");
+  visualLabel.textContent="Задача для фотографии и композиции";
+  const visual=document.createElement("textarea");
+  visual.dataset.field="visual";visual.maxLength=350;
+  visual.style.minHeight="120px";visual.value=slide.visual;
+  const verify=document.createElement("p");verify.className="muted";
+  verify.textContent=slide.verify.length?"Проверить: "+slide.verify.join("; "):"Добавлены только нейтральные или указанные пользователем формулировки.";
+  const apply=document.createElement("button");
+  apply.className="secondary wide";
+  apply.textContent="Перенести этот слайд в AI Studio";
+  apply.onclick=()=>aiSeriesTransfer(i);
+  card.append(h,titleLabel,title,claimsLabel,claims,visualLabel,visual,verify,apply);
+  root.append(card);
+ });
+ $("aiSeriesOwnerFeedback").style.display="block";
+}
+function aiSeriesTransfer(index){
+ const slides=aiSeriesEdits();
+ const slide=slides[index];if(!slide)return;
+ $("aiTitle").value=slide.title;
+ $("aiFacts").value=slide.claims.join("\n");
+ $("aiPrompt").value=slide.visual;
+ aiFactCounter();
+ const file=$("aiSeriesFile").files?.[0];
+ if(file){
+  try{const transfer=new DataTransfer();transfer.items.add(file);$("aiPhoto").files=transfer.files;}
+  catch(e){$("aiTestStatus").textContent="Выбери фотографию товара ещё раз в AI Studio.";}
+ }
+ openPage("ai");
+ $("aiTestStatus").textContent="Слайд "+(index+1)+" перенесён в поля. Проверь текст и фото. Генерация изображения отдельно платная.";
+ $("aiTitle").scrollIntoView({behavior:"smooth",block:"center"});
+}
+async function adminGenerateSeriesPlan(revise){
+ if(aiSeriesBusy)return;
+ const status=$("aiSeriesStatus");
+ const button=$(revise?"aiSeriesReviseBtn":"aiSeriesGenerateBtn");
+ const brief=$("aiSeriesBrief").value.trim();
+ const count=Number($("aiSeriesCount").value);
+ const feedback=revise?$("aiSeriesFeedback").value.trim():"";
+ if(brief.length<8){status.textContent="Опиши товар и желаемые карточки хотя бы одним предложением.";return;}
+ if(revise&&(!aiSeriesPlan.length||!feedback)){
+  status.textContent="Сначала составь план и напиши, что именно изменить.";return;
+ }
+ if(!window.confirm("Это отдельный платный текстовый запрос Qwen через VseGPT. Создание изображений не запускается. Продолжить?"))return;
+ const tg=window.Telegram?.WebApp;
+ if(!tg?.initData){status.textContent="Открой SellerKit в Telegram.";return;}
+ aiSeriesBusy=true;button.disabled=true;
+ status.textContent=revise?"Перерабатываем сценарий с учётом правок…":"Создаём сценарий разных слайдов…";
+ try{
+  const file=$("aiSeriesFile").files?.[0];
+  const imageData=file?await adminPrepareJpeg(file):"";
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),65000);
+  let response;
+  try{
+   response=await fetch(SELLERKIT_API_URL,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+     action:"admin_series_plan",initData:tg.initData,
+     brief,count,feedback,previousPlan:revise?aiSeriesEdits():[],imageData
+    }),signal:ctl.signal,cache:"no-store"
+   });
+  }finally{clearTimeout(timer);}
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||data.success!==true){
+   const errors={
+    UNSUPPORTED_ACTION:"Обнови backend/index.js в Yandex Cloud — новая функция планировщика ещё не развёрнута.",
+    AI_TEST_DISABLED:"На сервере выключен AI_TEST_ENABLED.",
+    AI_TEST_BUSY:"Слишком частые запросы, повтори позже.",
+    AI_SERIES_RESPONSE_INVALID:"Qwen вернул неполный план. Попробуй переформулировать запрос.",
+    AI_SERIES_PROVIDER_REJECTED:"VseGPT отклонил запрос Qwen. Проверь лимиты и баланс.",
+    AI_SERIES_TIMEOUT:"Сервер не дождался ответа Qwen.",
+    INVALID_SERIES_INPUT:"Проверь количество слайдов и длину ТЗ."
+   };
+   throw new Error(errors[data.error]||"Не удалось составить план: "+String(data.error||response.status));
+  }
+  if(!Array.isArray(data.slides)||data.slides.length!==count)
+   throw new Error("Сервер вернул неполный набор карточек.");
+  showAiSeriesPlan(data);
+  status.textContent="✅ План на "+count+" слайдов готов. Это только структура, без генерации картинок. Можно изменить любой слайд вручную или отправить пожелания Qwen.";
+ }catch(e){
+  status.textContent=e?.name==="AbortError"?
+   "Истекло время ожидания. Проверь историю расходов VseGPT, прежде чем повторять.":
+   String(e?.message||"Ошибка создания плана.");
+ }finally{aiSeriesBusy=false;button.disabled=false;}
+}
+
 function adminAiRoundRect(ctx,x,y,w,h,r){
  r=Math.min(r,w/2,h/2);
  ctx.beginPath();
@@ -2298,6 +2466,7 @@ try{
       $("adminReportsTile").style.display="flex";
       $("adminUsersTile").style.display="flex";
       $("adminAiPilot").style.display="block";
+      $("aiSeriesOwnerTools").style.display="block";
       $("ownerAiHistoryTile").style.display="flex";
      }
    const name=[
@@ -2419,6 +2588,7 @@ function openRequestedPage(){
   ""
  ).toLowerCase();
  if(["ai","studio","ai-studio"].includes(selected))openPage("ai");
+ else if(["series","designer","ai-series","pack"].includes(selected))openPage("ai-series");
 }
 openRequestedPage();
 
