@@ -670,6 +670,11 @@ SEO Analytics
 </div>
 <p class="muted" id="adminUsersStatus" role="status" aria-live="polite"></p>
 <div id="adminUsersResults"></div>
+<hr>
+<h3>🤖 Нейросеть VseGPT</h3>
+<p class="muted">Проверка API-подписки и отдельного денежного баланса без генераций и расходов.</p>
+<button class="secondary" id="vsegptCheckButton" onclick="adminCheckVseGpt()">🔌 Проверить подключение VseGPT</button>
+<p id="vsegptStatus" role="status" aria-live="polite" class="muted">Подключение пока не проверялось.</p>
 </div>
 </section>
 
@@ -908,12 +913,38 @@ async function adminRequest(action,telegramId){
     USER_NOT_FOUND:"Такого пользователя пока нет в базе SellerKit.",
     FORBIDDEN:"Доступ разрешён только владельцу.",
     ADMIN_DB_UNAVAILABLE:"Не удалось получить данные из YDB.",
-    UNSUPPORTED_ACTION:"Нужно обновить серверный index.js."
+    UNSUPPORTED_ACTION:"Нужно обновить серверный index.js.",
+    VSEGPT_API_KEY_NOT_SET:"Не задан VSEGPT_API_KEY в переменных Cloud Functions.",
+    VSEGPT_AUTH_REJECTED:"VseGPT отклонил API-ключ. Проверь ключ в кабинете VseGPT.",
+    VSEGPT_TIMEOUT:"VseGPT не ответил за 7,5 секунды. Возможно, недоступен с сервера.",
+    VSEGPT_NETWORK_FAILED:"Не удалось соединиться с VseGPT из Cloud Functions.",
+    VSEGPT_RATE_LIMIT:"VseGPT временно ограничил частоту запросов.",
+    VSEGPT_UPSTREAM_FAILED:"Ошибка на стороне VseGPT. Проверь статус и настройки API.",
+    VSEGPT_BAD_BALANCE_RESPONSE:"Не удалось прочитать баланс. В настройках VseGPT разреши API-доступ к балансу."
    };
    throw new Error(labels[data.error]||"Ошибка сервера: "+response.status);
   }
   return data;
  }finally{clearTimeout(timer);}
+}
+async function adminCheckVseGpt(){
+ const status=$("vsegptStatus");
+ const button=$("vsegptCheckButton");
+ button.disabled=true;
+ status.textContent="Проверяем соединение с VseGPT…";
+ try{
+  const result=await adminRequest("admin_ai_status");
+  const balance=String(result.creditsRub||"0");
+  const subscription=String(result.subscriptionStatus||"unknown");
+  const end=String(result.subscriptionEnd||"не указано");
+  const serverStatus=result.userStatus===2?" · Аккаунт ограничен":"";
+  status.textContent="✅ API отвечает. Баланс VseGPT: "+balance+
+   " ₽. Подписка: "+(subscription==="ok"?"активна":subscription)+
+   ". Действует до: "+end+"."+serverStatus+
+   " Генерация изображений пока не подключена и никаких списаний не выполнялось.";
+ }catch(error){
+  status.textContent=String(error?.message||"Ошибка при проверке VseGPT.");
+ }finally{button.disabled=false;}
 }
 async function adminFindUser(id){
  const status=$("adminUsersStatus"),output=$("adminUsersResults");
