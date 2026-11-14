@@ -513,6 +513,8 @@ SEO Analytics
 <h3 style="margin-top:0">✍️ Помощник по ТЗ и тексту</h3>
 <p class="muted">Если нет готового ТЗ, достаточно фото и названия. AI предложит заголовок, до 6 строк, стиль фона и исправит опечатки. Перед применением нужно проверить характеристики.</p>
 <button class="secondary wide" id="aiCopyAssistBtn" onclick="adminAssistAiCopy()">✨ Предложить ТЗ и исправить ошибки (AI-запрос)</button>
+<button class="secondary wide" id="aiServerCheckBtn" style="margin-top:9px" onclick="adminTestServerConnection()">🔌 Проверить связь с сервером бесплатно</button>
+<p class="muted" id="aiServerCheckStatus" role="status" aria-live="polite"></p>
 <p class="muted"><small>Это отдельный запрос к текстовой модели VseGPT. Возможна небольшая плата по её тарифу. Генерацию картинки он не запускает.</small></p>
 <p class="muted" id="aiCopyAssistStatus" role="status" aria-live="polite"></p>
 <div id="aiCopyAssistPreview" style="display:none">
@@ -1199,6 +1201,39 @@ function aiManualClaimsWarning(){
   window.confirm("Внимание: это утверждения, требующие подтверждения продавца: "+uncertain.join("; ")+". Продолжить с ними?"):
   true;
 }
+async function adminTestServerConnection(){
+ const btn=$("aiServerCheckBtn"),status=$("aiServerCheckStatus");
+ btn.disabled=true;status.textContent="Проверяем сервер без платных AI-запросов…";
+ const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),12000);
+ try{
+  let getResponse;
+  try{
+   getResponse=await fetch(SELLERKIT_API_URL,{method:"GET",cache:"no-store",signal:ctl.signal});
+  }catch(e){
+   throw new Error("GET не проходит. Проверь новую версию Cloud Function, публичный доступ, логи и адрес функции. "+String(e?.message||""));
+  }
+  const health=await getResponse.json().catch(()=>null);
+  if(!getResponse.ok||health?.success!==true){
+   throw new Error("GET вернул HTTP "+getResponse.status+". Проверь развертывание и точку входа index.handler.");
+  }
+  status.textContent="GET работает (версия "+String(health.build||"неизвестна")+"). Проверяем POST…";
+  let postResponse;
+  try{
+   postResponse=await fetch(SELLERKIT_API_URL,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({action:"__connection_probe__"}),cache:"no-store",signal:ctl.signal
+   });
+  }catch(e){
+   throw new Error("GET работает, POST недоступен. Проверь CORS, OPTIONS и логи Cloud Function. "+String(e?.message||""));
+  }
+  const probe=await postResponse.json().catch(()=>null);
+  status.textContent=(postResponse.status===400&&probe?.error==="UNSUPPORTED_ACTION")
+   ?"✅ GET и POST работают. Версия: "+String(health.build||"неизвестна")+". Если AI-помощник всё равно не отвечает, проверь логи именно его POST: возможен сбой обработки или ограничение размера фото."
+   :"GET работает, POST ответил HTTP "+postResponse.status+" / "+String(probe?.error||"без JSON")+". Проверь актуальную версию backend/index.js.";
+ }catch(e){
+  status.textContent="❌ "+(e?.name==="AbortError"?"Превышены 12 секунд. Проверь работу функции в Yandex Cloud.":String(e?.message||e));
+ }finally{clearTimeout(timer);btn.disabled=false;}
+}
 async function adminAssistAiCopy(){
  const btn=$("aiCopyAssistBtn"),status=$("aiCopyAssistStatus");
  if(!window.confirm("AI-помощник использует отдельный платный запрос VseGPT. Продолжить?"))return;
@@ -1238,7 +1273,12 @@ async function adminAssistAiCopy(){
    ?"⚠️ Требуют проверки: "+result.needsReview.join("; "):"Проверь утверждения до публикации.";
   $("aiCopyAssistPreview").style.display="block";
   status.textContent="Предложения готовы. Они ещё не применены к ТЗ — проверь и нажми кнопку ниже.";
- }catch(e){status.textContent=String(e?.message||e);}
+ }catch(e){
+  const message=String(e?.message||e);
+  status.textContent=(e instanceof TypeError&&/Failed to fetch|NetworkError|Load failed/i.test(message))
+   ?"Сервер Yandex Cloud не ответил (Failed to fetch). Нажми «Проверить связь с сервером бесплатно» — она покажет, доступна ли функция и проходят ли POST-запросы."
+   :message;
+ }
  finally{btn.disabled=false;}
 }
 function adminApplyAiCopy(){
