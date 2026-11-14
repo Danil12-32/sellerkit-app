@@ -562,8 +562,9 @@ async function adminImagePilot(body) {
         response_format: "b64_json",
         output_format: "jpeg",
         image_url: imageData,
-        aspect_ratio: "3:4",
-        ...(model === "img2img-openai/gpt-image-2-edit-multi" ? { quality: "medium" } : {})
+        ...(model === "img2img-openai/gpt-image-2-edit-multi"
+          ? { size: "768x1024", quality: "medium" }
+          : { aspect_ratio: "3:4" })
       }),
       signal: AbortSignal.timeout(108000)
     });
