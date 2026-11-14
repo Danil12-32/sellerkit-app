@@ -216,7 +216,7 @@ async function sendSupportReport(telegramUser, body) {
   if (reportLastSent.size > 2000) reportLastSent.clear();
   reportLastSent.set(id, now);
 
-  const safe = text => String(text || "").replace(/[\\x00-\\x1f\\x7f]/g, " ").slice(0, 100);
+  const safe = text => String(text || "").replace(/[\x00-\x1f\x7f]/g, " ").slice(0, 100);
   const name = safe([telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(" ")) || "Пользователь";
   const username = telegramUser.username ? "@" + safe(telegramUser.username) : "не указан";
   const message = [
@@ -229,7 +229,7 @@ async function sendSupportReport(telegramUser, body) {
     description,
     "",
     "Пользователь посмотрел автоматическую подсказку, но проблема осталась."
-  ].join("\\n");
+  ].join("\n");
 
   try {
     const token = process.env.TELEGRAM_BOT_TOKEN;
