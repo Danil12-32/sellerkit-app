@@ -9,7 +9,7 @@ import { Int64 } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-support-report-5";
+const SERVER_BUILD = "sellerkit-support-diagnostic-6";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "AI Studio",
@@ -242,14 +242,37 @@ async function sendSupportReport(telegramUser, body) {
     });
     const parsed = await result.json().catch(() => ({}));
     if (!result.ok || parsed.ok !== true) {
-      console.error("Support notification failed: Telegram status", result.status);
-      throw new Error("TELEGRAM_SEND_FAILED");
+      const telegramStatus = Number(parsed?.error_code) || result.status;
+      const description = String(parsed?.description || "").slice(0, 250);
+      let stage = "TELEGRAM_REJECTED";
+      if (telegramStatus === 401) stage = "BOT_TOKEN_REJECTED";
+      else if (telegramStatus === 429) stage = "TELEGRAM_RATE_LIMIT";
+      else if (/chat not found|peer_id_invalid|user not found/i.test(description)) stage = "ADMIN_CHAT_NOT_FOUND";
+      else if (/blocked by the user/i.test(description)) stage = "BOT_BLOCKED_BY_ADMIN";
+      else if (/can't initiate conversation/i.test(description)) stage = "ADMIN_MUST_START_BOT";
+      else if (telegramStatus === 403) stage = "TELEGRAM_PERMISSION_DENIED";
+      else if (telegramStatus >= 500) stage = "TELEGRAM_UNAVAILABLE";
+      console.error("Support Telegram API rejected sendMessage:", stage, "HTTP", telegramStatus);
+      if (reportLastSent.get(id) === now) reportLastSent.delete(id);
+      return {
+        status: 502,
+        payload: { error: "SUPPORT_DELIVERY_FAILED", stage, telegramStatus, build: SERVER_BUILD }
+      };
     }
-    return { status: 200, payload: { success: true, sent: true } };
+    return { status: 200, payload: { success: true, sent: true, build: SERVER_BUILD } };
   } catch (error) {
     if (reportLastSent.get(id) === now) reportLastSent.delete(id);
-    console.error("Support notification error:", error?.name || "unknown");
-    return { status: 502, payload: { error: "SUPPORT_DELIVERY_FAILED" } };
+    const stage = error?.name === "TimeoutError" || error?.name === "AbortError"
+      ? "TELEGRAM_TIMEOUT"
+      : String(error?.message || "").includes("TELEGRAM_TOKEN_MISSING")
+        ? "BOT_TOKEN_MISSING"
+        : "TELEGRAM_NETWORK_ERROR";
+    // Never log a fetch error's full message: it might contain the tokenized URL.
+    console.error("Support notification transport failed:", stage);
+    return {
+      status: 502,
+      payload: { error: "SUPPORT_DELIVERY_FAILED", stage, build: SERVER_BUILD }
+    };
   }
 }
 
