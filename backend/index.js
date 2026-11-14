@@ -1,15 +1,15 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 import { Driver } from "@ydbjs/core";
 import { query } from "@ydbjs/query";
 import { MetadataCredentialsProvider } from "@ydbjs/auth/metadata";
-import { Int64 } from "@ydbjs/value/primitive";
+import { Int64, Text } from "@ydbjs/value/primitive";
 
 // SellerKit Studio API: first production stage.
 // Read-only public functionality: authenticated Telegram profile/balance.
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-support-diagnostic-6";
+const SERVER_BUILD = "sellerkit-support-inbox-7";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "AI Studio",
@@ -193,6 +193,100 @@ async function profile(telegramId) {
 }
 
 
+
+async function supportSql() {
+  try { return await ydbQuery(); }
+  catch (error) {
+    console.error("Support YDB connection:", classifyYdbError(error, "YDB_CONNECTION_FAILED"));
+    throw new Error("SUPPORT_STORAGE_UNAVAILABLE");
+  }
+}
+
+async function findSavedReport(sql, reportId) {
+  const [rows] = await sql`
+    DECLARE $reportId AS Utf8;
+    SELECT telegram_id FROM support_reports WHERE report_id = $reportId;
+  `.parameter("reportId", new Text(reportId));
+  return Array.isArray(rows) && rows.length ? String(rows[0].telegram_id) : null;
+}
+
+async function saveReport(telegramUser, category, description, reportId) {
+  const sql = await supportSql();
+  const name = [telegramUser.first_name, telegramUser.last_name]
+    .filter(x => typeof x === "string").join(" ").slice(0, 100) || "Пользователь";
+  const username = typeof telegramUser.username === "string"
+    ? telegramUser.username.slice(0, 40) : "";
+  const id = new Int64(BigInt(telegramUser.id));
+
+  try {
+    await sql`
+      DECLARE $reportId AS Utf8;
+      DECLARE $userId AS Int64;
+      DECLARE $name AS Utf8;
+      DECLARE $username AS Utf8;
+      DECLARE $category AS Utf8;
+      DECLARE $description AS Utf8;
+      INSERT INTO support_reports
+        (report_id, telegram_id, sender_name, username, category, description, created_at)
+      VALUES
+        ($reportId, $userId, $name, $username, $category, $description, CurrentUtcTimestamp());
+    `
+      .parameter("reportId", new Text(reportId))
+      .parameter("userId", id)
+      .parameter("name", new Text(name))
+      .parameter("username", new Text(username))
+      .parameter("category", new Text(category))
+      .parameter("description", new Text(description));
+    return { created: true, name, username };
+  } catch (error) {
+    // Retried request after a lost HTTP response: don't create duplicate tickets.
+    try {
+      const originalOwner = await findSavedReport(sql, reportId);
+      if (originalOwner === String(telegramUser.id)) return { created: false, name, username };
+    } catch {}
+    console.error("Support YDB INSERT failed:", classifyYdbError(error, "SUPPORT_INSERT_FAILED"));
+    throw new Error("SUPPORT_STORAGE_UNAVAILABLE");
+  }
+}
+
+// Telegram push is best-effort. Storing the ticket in YDB is the source of truth.
+let skipTelegramPushUntil = 0;
+async function pushReportToTelegram(telegramUser, category, description, reportId, name, username) {
+  if (Date.now() < skipTelegramPushUntil) return false;
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.SELLERKIT_SUPPORT_CHAT_ID;
+  if (!token || !chatId) return false;
+  const message = [
+    "🐞 Новое обращение SellerKit #" + reportId.slice(0, 8),
+    "Раздел: " + (BUG_CATEGORIES[category] || category),
+    "Пользователь: " + name + (username ? " (@" + username + ")" : ""),
+    "Telegram ID: " + telegramUser.id,
+    "",
+    "Описание:",
+    description,
+    "",
+    "Полная копия обращения сохранена в YDB и доступна в SellerKit → Обращения."
+  ].join("\n");
+
+  try {
+    const result = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: message }),
+      signal: AbortSignal.timeout(2200)
+    });
+    const parsed = await result.json().catch(() => ({}));
+    if (result.ok && parsed?.ok === true) return true;
+    console.error("Support Telegram push rejected:", result.status);
+    if (result.status >= 500 || result.status === 429) skipTelegramPushUntil = Date.now() + 60000;
+    return false;
+  } catch (error) {
+    console.error("Support Telegram push timed out / unavailable:", error?.name || "unknown");
+    skipTelegramPushUntil = Date.now() + 5 * 60000;
+    return false;
+  }
+}
+
 async function sendSupportReport(telegramUser, body) {
   const category = body.category;
   const description = typeof body.description === "string" ? body.description.trim() : "";
@@ -202,77 +296,65 @@ async function sendSupportReport(telegramUser, body) {
     return { status: 400, payload: { error: "INVALID_SUPPORT_REPORT" } };
   }
 
-  const adminChat = process.env.SELLERKIT_SUPPORT_CHAT_ID;
-  if (!adminChat || !/^-?[0-9]{5,20}$/.test(adminChat)) {
-    return { status: 503, payload: { error: "SUPPORT_NOT_CONFIGURED" } };
-  }
-
+  // Browser reuses this ID when the same form is retried after a network issue.
+  const reportId = typeof body.reportId === "string"
+    && /^[0-9a-f]{8}-[0-9a-f-]{27,40}$/i.test(body.reportId)
+    ? body.reportId : randomUUID();
   const now = Date.now();
   const id = telegramUser.id;
-  const previous = reportLastSent.get(id) || 0;
-  if (now - previous < 60000) {
+  const previous = reportLastSent.get(id);
+  if (previous && now - previous.at < 60000 && previous.reportId !== reportId) {
     return { status: 429, payload: { error: "REPORT_RATE_LIMIT" } };
   }
   if (reportLastSent.size > 2000) reportLastSent.clear();
-  reportLastSent.set(id, now);
-
-  const safe = text => String(text || "").replace(/[\x00-\x1f\x7f]/g, " ").slice(0, 100);
-  const name = safe([telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(" ")) || "Пользователь";
-  const username = telegramUser.username ? "@" + safe(telegramUser.username) : "не указан";
-  const message = [
-    "🐞 Новая ошибка SellerKit Studio",
-    "Раздел: " + BUG_CATEGORIES[category],
-    "Отправитель: " + name + " (" + username + ")",
-    "Telegram ID: " + id,
-    "",
-    "Описание:",
-    description,
-    "",
-    "Пользователь посмотрел автоматическую подсказку, но проблема осталась."
-  ].join("\n");
+  reportLastSent.set(id, { at: now, reportId });
 
   try {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    if (!token) throw new Error("TELEGRAM_TOKEN_MISSING");
-    const result = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: adminChat, text: message }),
-      signal: AbortSignal.timeout(8000)
-    });
-    const parsed = await result.json().catch(() => ({}));
-    if (!result.ok || parsed.ok !== true) {
-      const telegramStatus = Number(parsed?.error_code) || result.status;
-      const description = String(parsed?.description || "").slice(0, 250);
-      let stage = "TELEGRAM_REJECTED";
-      if (telegramStatus === 401) stage = "BOT_TOKEN_REJECTED";
-      else if (telegramStatus === 429) stage = "TELEGRAM_RATE_LIMIT";
-      else if (/chat not found|peer_id_invalid|user not found/i.test(description)) stage = "ADMIN_CHAT_NOT_FOUND";
-      else if (/blocked by the user/i.test(description)) stage = "BOT_BLOCKED_BY_ADMIN";
-      else if (/can't initiate conversation/i.test(description)) stage = "ADMIN_MUST_START_BOT";
-      else if (telegramStatus === 403) stage = "TELEGRAM_PERMISSION_DENIED";
-      else if (telegramStatus >= 500) stage = "TELEGRAM_UNAVAILABLE";
-      console.error("Support Telegram API rejected sendMessage:", stage, "HTTP", telegramStatus);
-      if (reportLastSent.get(id) === now) reportLastSent.delete(id);
-      return {
-        status: 502,
-        payload: { error: "SUPPORT_DELIVERY_FAILED", stage, telegramStatus, build: SERVER_BUILD }
-      };
-    }
-    return { status: 200, payload: { success: true, sent: true, build: SERVER_BUILD } };
-  } catch (error) {
-    if (reportLastSent.get(id) === now) reportLastSent.delete(id);
-    const stage = error?.name === "TimeoutError" || error?.name === "AbortError"
-      ? "TELEGRAM_TIMEOUT"
-      : String(error?.message || "").includes("TELEGRAM_TOKEN_MISSING")
-        ? "BOT_TOKEN_MISSING"
-        : "TELEGRAM_NETWORK_ERROR";
-    // Never log a fetch error's full message: it might contain the tokenized URL.
-    console.error("Support notification transport failed:", stage);
+    const saved = await saveReport(telegramUser, category, description, reportId);
+    const notified = saved.created
+      ? await pushReportToTelegram(telegramUser, category, description, reportId, saved.name, saved.username)
+      : false;
     return {
-      status: 502,
-      payload: { error: "SUPPORT_DELIVERY_FAILED", stage, build: SERVER_BUILD }
+      status: 200,
+      payload: { success: true, saved: true, notified, reportId, build: SERVER_BUILD }
     };
+  } catch (error) {
+    if (reportLastSent.get(id)?.reportId === reportId) reportLastSent.delete(id);
+    const code = error?.message === "SUPPORT_STORAGE_UNAVAILABLE"
+      ? error.message : "SUPPORT_SAVE_FAILED";
+    return { status: 503, payload: { error: code, build: SERVER_BUILD } };
+  }
+}
+
+async function listSupportReports() {
+  try {
+    const sql = await supportSql();
+    const [rows] = await sql`
+      SELECT report_id, telegram_id, sender_name, username, category, description, created_at
+      FROM support_reports
+      ORDER BY created_at DESC
+      LIMIT 50;
+    `;
+    if (!Array.isArray(rows)) throw new Error("BAD_SUPPORT_RESULT");
+    return {
+      status: 200,
+      payload: {
+        success: true,
+        reports: rows.map(row => ({
+          reportId: String(row.report_id),
+          telegramId: String(row.telegram_id),
+          senderName: String(row.sender_name || ""),
+          username: String(row.username || ""),
+          category: String(row.category || ""),
+          description: String(row.description || ""),
+          createdAt: row.created_at instanceof Date
+            ? row.created_at.toISOString() : String(row.created_at || "")
+        }))
+      }
+    };
+  } catch (error) {
+    console.error("List support reports:", classifyYdbError(error, "SUPPORT_LIST_FAILED"));
+    return { status: 503, payload: { error: "SUPPORT_STORAGE_UNAVAILABLE" } };
   }
 }
 
@@ -295,7 +377,7 @@ export async function handler(event) {
   } catch {
     return response(400, { error: "INVALID_JSON" }, origin);
   }
-  if (!body || !["me", "report_error"].includes(body.action)) {
+  if (!body || !["me", "report_error", "list_reports"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -316,6 +398,14 @@ export async function handler(event) {
   if (body.action === "report_error") {
     const sent = await sendSupportReport(telegramUser, body);
     return response(sent.status, sent.payload, origin);
+  }
+  if (body.action === "list_reports") {
+    if (!process.env.SELLERKIT_SUPPORT_CHAT_ID ||
+        String(telegramUser.id) !== process.env.SELLERKIT_SUPPORT_CHAT_ID) {
+      return response(403, { error: "FORBIDDEN" }, origin);
+    }
+    const listed = await listSupportReports();
+    return response(listed.status, listed.payload, origin);
   }
 
   try {
