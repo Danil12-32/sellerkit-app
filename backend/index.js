@@ -9,7 +9,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-support-inbox-7";
+const SERVER_BUILD = "sellerkit-admin-users-8";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "AI Studio",
@@ -358,6 +358,71 @@ async function listSupportReports() {
   }
 }
 
+
+/* Read-only administration. Every request is verified against Telegram's signed
+ * initData AND the configured owner ID on the server; never trust a frontend flag.
+ * Credit changes and payment confirmation are intentionally not enabled here.
+ */
+function ownerAuthorized(telegramUser) {
+  return Boolean(
+    process.env.SELLERKIT_SUPPORT_CHAT_ID &&
+    String(telegramUser.id) === process.env.SELLERKIT_SUPPORT_CHAT_ID
+  );
+}
+
+function mapAdminUser(row) {
+  const balance = Number(row.balance);
+  if (!Number.isSafeInteger(balance) || balance < 0)
+    throw new Error("INVALID_USER_BALANCE");
+  return {
+    telegramId: String(row.telegram_id),
+    balance,
+    trialUsed: Boolean(row.trial_used),
+    referralRewarded: Boolean(row.referral_rewarded),
+    createdAt: row.created_at instanceof Date
+      ? row.created_at.toISOString() : String(row.created_at || "")
+  };
+}
+
+async function adminUserLookup(rawId) {
+  if (typeof rawId !== "string" || !/^[1-9][0-9]{4,15}$/.test(rawId) ||
+      BigInt(rawId) > BigInt(Number.MAX_SAFE_INTEGER)) {
+    return { status: 400, payload: { error: "INVALID_TARGET_TELEGRAM_ID" } };
+  }
+  try {
+    const sql = await ydbQuery();
+    const [rows] = await sql`
+      DECLARE $id AS Int64;
+      SELECT telegram_id, balance, trial_used, referral_rewarded, created_at
+      FROM users WHERE telegram_id = $id;
+    `.parameter("id", new Int64(BigInt(rawId)));
+    if (!Array.isArray(rows)) throw new Error("BAD_RESULT");
+    if (!rows.length) return { status: 404, payload: { error: "USER_NOT_FOUND" } };
+    return { status: 200, payload: { success: true, user: mapAdminUser(rows[0]) } };
+  } catch (error) {
+    console.error("Admin user lookup:", classifyYdbError(error, "ADMIN_LOOKUP_FAILED"));
+    return { status: 503, payload: { error: "ADMIN_DB_UNAVAILABLE" } };
+  }
+}
+
+async function adminRecentUsers() {
+  try {
+    const sql = await ydbQuery();
+    const [rows] = await sql`
+      SELECT telegram_id, balance, trial_used, referral_rewarded, created_at
+      FROM users
+      ORDER BY created_at DESC
+      LIMIT 25;
+    `;
+    if (!Array.isArray(rows)) throw new Error("BAD_RESULT");
+    return { status: 200,
+      payload: { success: true, users: rows.map(mapAdminUser) } };
+  } catch (error) {
+    console.error("Admin user list:", classifyYdbError(error, "ADMIN_LIST_FAILED"));
+    return { status: 503, payload: { error: "ADMIN_DB_UNAVAILABLE" } };
+  }
+}
+
 export async function handler(event) {
   const method = String(event.httpMethod || event.requestContext?.http?.method || "").toUpperCase();
   const origin = event.headers?.origin || event.headers?.Origin || "";
@@ -377,7 +442,7 @@ export async function handler(event) {
   } catch {
     return response(400, { error: "INVALID_JSON" }, origin);
   }
-  if (!body || !["me", "report_error", "list_reports"].includes(body.action)) {
+  if (!body || !["me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -399,13 +464,17 @@ export async function handler(event) {
     const sent = await sendSupportReport(telegramUser, body);
     return response(sent.status, sent.payload, origin);
   }
-  if (body.action === "list_reports") {
-    if (!process.env.SELLERKIT_SUPPORT_CHAT_ID ||
-        String(telegramUser.id) !== process.env.SELLERKIT_SUPPORT_CHAT_ID) {
+  if (body.action === "list_reports" ||
+      body.action === "admin_user_lookup" ||
+      body.action === "admin_recent_users") {
+    if (!ownerAuthorized(telegramUser))
       return response(403, { error: "FORBIDDEN" }, origin);
-    }
-    const listed = await listSupportReports();
-    return response(listed.status, listed.payload, origin);
+    const result = body.action === "list_reports"
+      ? await listSupportReports()
+      : body.action === "admin_user_lookup"
+        ? await adminUserLookup(body.telegramId)
+        : await adminRecentUsers();
+    return response(result.status, result.payload, origin);
   }
 
   try {
