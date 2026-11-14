@@ -1446,7 +1446,7 @@ async function adminGenerateSeriesPlan(revise){
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
      action:"admin_series_plan",initData:tg.initData,
-     brief,count,feedback,previousPlan:revise?aiSeriesEdits():[],imageData
+     brief,count,feedback,previousPlan:revise?aiSeriesEdits().map(slide=>({index:slide.index,role:slide.role,title:slide.title,claims:slide.claims,visual:slide.visual})):[],imageData
     }),signal:ctl.signal,cache:"no-store"
    });
   }finally{clearTimeout(timer);}
