@@ -542,7 +542,7 @@ async function adminAiCopyAssist(body) {
     const start=text.indexOf("{"),end=text.lastIndexOf("}");
     parsed=JSON.parse(text.slice(start,end+1));
    }catch{return {status:502,payload:{error:"AI_COPY_RESPONSE_INVALID"}};}
-   const safe=x=>typeof x==="string"?x.replace(/[\\r\\n]+/g," ").trim():"";
+   const safe=x=>typeof x==="string"?x.replace(/[\r\n]+/g," ").trim():"";
    const titleOut=safe(parsed.title).slice(0,55);
    const claimsOut=(Array.isArray(parsed.claims)?parsed.claims:[])
      .map(safe).filter(x=>x.length>=3&&x.length<=34).slice(0,6);
