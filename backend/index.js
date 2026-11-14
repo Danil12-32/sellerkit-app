@@ -9,7 +9,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-admin-users-8";
+const SERVER_BUILD = "sellerkit-vsegpt-check-9";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "AI Studio",
@@ -423,6 +423,60 @@ async function adminRecentUsers() {
   }
 }
 
+
+// Owner-only read-only VseGPT account diagnostic. Does NOT call any paid AI model.
+async function adminVseGptStatus() {
+  const key = process.env.VSEGPT_API_KEY;
+  if (!key || typeof key !== "string") {
+    return { status: 503, payload: { error: "VSEGPT_API_KEY_NOT_SET" } };
+  }
+  try {
+    const result = await fetch("https://api.vsegpt.ru/v1/balance", {
+      method: "GET",
+      headers: {
+        "Authorization": "Bearer " + key,
+        "Accept": "application/json"
+      },
+      signal: AbortSignal.timeout(7500)
+    });
+    // Never return upstream error bodies, they may contain account details.
+    if (result.status === 401 || result.status === 403)
+      return { status: 502, payload: { error: "VSEGPT_AUTH_REJECTED" } };
+    if (result.status === 429)
+      return { status: 503, payload: { error: "VSEGPT_RATE_LIMIT" } };
+    if (!result.ok)
+      return { status: 502, payload: { error: "VSEGPT_UPSTREAM_FAILED", upstreamStatus: result.status } };
+    const payload = await result.json();
+    if (payload?.status !== "ok" || !payload?.data || typeof payload.data !== "object")
+      return { status: 502, payload: { error: "VSEGPT_BAD_BALANCE_RESPONSE" } };
+    const balanceString = String(payload.data.credits ?? "");
+    if (!/^[0-9]+(?:\.[0-9]{1,8})?$/.test(balanceString))
+      return { status: 502, payload: { error: "VSEGPT_BAD_BALANCE_RESPONSE" } };
+    const subscriptionStatus = String(payload.data.subscription_status ?? "unknown").slice(0, 32);
+    const subscriptionEnd = String(payload.data.subscription_end ?? "").slice(0, 50);
+    const userStatus = Number(payload.data.user_status);
+    return {
+      status: 200,
+      payload: {
+        success: true,
+        provider: "VseGPT",
+        creditsRub: balanceString,
+        subscriptionStatus,
+        subscriptionEnd,
+        userStatus: Number.isSafeInteger(userStatus) ? userStatus : null,
+        imageGenerationEnabled: false
+      }
+    };
+  } catch (error) {
+    console.error("VseGPT balance check unavailable:", error?.name || "unknown");
+    return {
+      status: 503,
+      payload: { error: error?.name === "TimeoutError" || error?.name === "AbortError"
+        ? "VSEGPT_TIMEOUT" : "VSEGPT_NETWORK_FAILED" }
+    };
+  }
+}
+
 export async function handler(event) {
   const method = String(event.httpMethod || event.requestContext?.http?.method || "").toUpperCase();
   const origin = event.headers?.origin || event.headers?.Origin || "";
@@ -442,7 +496,7 @@ export async function handler(event) {
   } catch {
     return response(400, { error: "INVALID_JSON" }, origin);
   }
-  if (!body || !["me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users"].includes(body.action)) {
+  if (!body || !["me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -466,14 +520,17 @@ export async function handler(event) {
   }
   if (body.action === "list_reports" ||
       body.action === "admin_user_lookup" ||
-      body.action === "admin_recent_users") {
+      body.action === "admin_recent_users" ||
+      body.action === "admin_ai_status") {
     if (!ownerAuthorized(telegramUser))
       return response(403, { error: "FORBIDDEN" }, origin);
     const result = body.action === "list_reports"
       ? await listSupportReports()
       : body.action === "admin_user_lookup"
         ? await adminUserLookup(body.telegramId)
-        : await adminRecentUsers();
+        : body.action === "admin_ai_status"
+          ? await adminVseGptStatus()
+          : await adminRecentUsers();
     return response(result.status, result.payload, origin);
   }
 
