@@ -520,13 +520,21 @@ SEO Analytics
 </select>
 <p class="muted"><small>Проверь актуальные цены и лимит API в VseGPT. Для Nano Banana Pro ориентир — 29,90 ₽ (лимит 35 ₽). Для GPT Image 2 тестируем medium (21 ₽). Новые модели требуют обновления backend/index.js в Yandex Cloud.</small></p>
 <button class="secondary wide" onclick="adminPreviewAiWithoutCharge()">👁️ Проверить надписи на исходном фото бесплатно</button>
+<p class="muted"><small>Это отдельный тест надписей, он больше не заменяет готовую AI-карточку.</small></p>
 <button id="aiTestRunButton" class="wide" style="margin-top:10px" onclick="adminRunAiPilot()">✨ Сгенерировать новую фотографию (платно)</button>
 <p id="aiTestStatus" class="muted" role="status" aria-live="polite">Генерация ещё не запускалась.</p>
 
+<div id="aiSampleOutput" style="display:none">
+<h3>👁️ Исходная фотография с надписями (без AI)</h3>
+<img id="aiSampleImage" alt="Бесплатный макет исходной фотографии" style="width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b">
+<p class="muted"><small>Платная AI-карточка остаётся отдельно ниже.</small></p>
+</div>
 <div id="aiTestOutput" style="display:none">
+<h3>✨ Результат AI-генерации</h3>
 <img id="aiTestResult" alt="Карточка с проверенными русскими надписями" style="display:block;width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b;touch-action:manipulation" onclick="adminShowAiFullscreen()">
 <div class="actions">
 <button class="secondary" onclick="adminRepaintAiPilot()">🔤 Обновить текст бесплатно</button>
+<button class="secondary" onclick="openPage('ai-history');showAiHistory()">🕘 Мои генерации</button>
 <button class="secondary" onclick="adminShareAiPilot()">📤 Поделиться / сохранить</button>
 <button class="secondary" id="aiTestSendToBot" onclick="adminSendAiPilot()">📩 Получить в Telegram</button>
 </div>
@@ -579,8 +587,13 @@ SEO Analytics
 
 <button class="tile" onclick="openPage('history')">
 <span>🕘</span>
-История
+История операций
 <small>Начисления и покупки</small>
+</button>
+<button class="tile" id="ownerAiHistoryTile" style="display:none" onclick="openPage('ai-history');showAiHistory()">
+<span>🖼️</span>
+Мои генерации
+<small>Сохранённые JPG</small>
 </button>
 
 <button class="tile" onclick="openPage('support')">
@@ -655,6 +668,18 @@ SEO Analytics
 <p class="muted">
 <small>Это пока обычная ссылка без персонального учёта. Автоматическое начисление заработает после подключения оплаты и серверной проверки приглашений.</small>
 </p>
+</div>
+</section>
+
+<!-- ИСТОРИЯ AI-ТЕСТОВ ТОЛЬКО НА ЭТОМ УСТРОЙСТВЕ -->
+<section class="page" id="ai-history">
+<button class="back" onclick="openPage('profile')">← В профиль</button>
+<div class="card">
+<h2>🖼️ Мои генерации</h2>
+<p class="muted"><small>История тестов сохраняется только в браузере Telegram на этом устройстве, а не в облаке. При очистке данных или смене телефона она может исчезнуть. Важные изображения дополнительно отправляй в Telegram. Защищённую облачную историю для клиентов подключим отдельно.</small></p>
+<button class="secondary" onclick="showAiHistory()">🔄 Обновить</button>
+<p class="muted" id="aiHistoryMessage" role="status"></p>
+<div id="aiHistoryCards"></div>
 </div>
 </section>
 
@@ -982,6 +1007,114 @@ let aiPilotRawImage="";
 let aiPilotFile=null;
 let aiPilotDataUrl="";
 let aiPilotObjectUrl="";
+let aiSampleObjectUrl="";
+let aiHistoryCurrentId=null;
+const AI_HISTORY_DB="sellerkit-ai-owner-history-v1";
+function aiOwnerId(){
+ const id=window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+ return String(id||"")==="1046253780"?String(id):"";
+}
+function aiOpenHistory(){
+ return new Promise((resolve,reject)=>{
+  if(!aiOwnerId())return reject(new Error("История доступна только владельцу."));
+  if(!window.indexedDB)return reject(new Error("Браузер не поддерживает историю."));
+  const r=indexedDB.open(AI_HISTORY_DB,1);
+  r.onupgradeneeded=()=>{
+   if(!r.result.objectStoreNames.contains("images"))r.result.createObjectStore("images",{keyPath:"id"});
+  };
+  r.onsuccess=()=>resolve(r.result);
+  r.onerror=()=>reject(r.error||new Error("Не удалось открыть локальное хранилище."));
+ });
+}
+async function aiHistoryReadAll(){
+ const db=await aiOpenHistory();
+ try{return await new Promise((resolve,reject)=>{
+  const req=db.transaction("images","readonly").objectStore("images").getAll();
+  req.onsuccess=()=>resolve(req.result.filter(x=>x.owner===aiOwnerId()).sort((a,b)=>b.date-a.date));
+  req.onerror=()=>reject(req.error||new Error("Не удалось загрузить сохранения."));
+ });}finally{db.close();}
+}
+async function aiHistorySave(asNew,model){
+ if(!aiPilotFile||!aiPilotRawImage)throw new Error("Нет AI-карточки для сохранения.");
+ const db=await aiOpenHistory();
+ const id=asNew||!aiHistoryCurrentId?String(Date.now())+"-"+Math.random().toString(36).slice(2):aiHistoryCurrentId;
+ const rawBlob=await fetch(aiPilotRawImage).then(r=>r.blob());
+ const record={
+  id,owner:aiOwnerId(),date:Date.now(),model:model||$("aiTestModel").value,
+  title:$("aiTitle").value,claims:$("aiFacts").value,style:$("aiPrompt").value,
+  visualMode:$("aiVisualMode").value,rawBlob,cardBlob:new Blob([aiPilotFile],{type:"image/jpeg"})
+ };
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction("images","readwrite");
+  tx.objectStore("images").put(record);
+  tx.oncomplete=()=>resolve();
+  tx.onerror=()=>reject(tx.error||new Error("Не хватило памяти устройства."));
+  tx.onabort=()=>reject(tx.error||new Error("Браузер отменил сохранение."));
+ });aiHistoryCurrentId=id;}finally{db.close();}
+}
+function aiBlobDataUrl(blob){
+ return new Promise((resolve,reject)=>{
+  const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=()=>reject(r.error);r.readAsDataURL(blob);
+ });
+}
+function adminDisplayAiOutput(blob){
+ if(aiPilotObjectUrl)URL.revokeObjectURL(aiPilotObjectUrl);
+ aiPilotObjectUrl=URL.createObjectURL(blob);
+ $("aiTestResult").src=aiPilotObjectUrl;
+ $("aiTestDownload").href=aiPilotObjectUrl;
+ $("aiTestOutput").style.display="block";
+ $("aiTestDeliveryStatus").textContent="";
+}
+let aiHistoryThumbs=[];
+async function showAiHistory(){
+ const root=$("aiHistoryCards"),msg=$("aiHistoryMessage");
+ root.replaceChildren();
+ aiHistoryThumbs.forEach(url=>URL.revokeObjectURL(url));aiHistoryThumbs=[];
+ msg.textContent="Загружаем изображения…";
+ try{
+  const items=await aiHistoryReadAll();
+  msg.textContent=items.length?"Сохранено изображений: "+items.length:"Генераций пока нет.";
+  for(const item of items){
+   const box=document.createElement("div");
+   box.className="card";
+   const img=document.createElement("img");
+   img.style.cssText="display:block;width:160px;max-width:100%;border-radius:9px;margin-bottom:9px";
+   const url=URL.createObjectURL(item.cardBlob);aiHistoryThumbs.push(url);img.src=url;img.alt="Карточка";
+   const title=document.createElement("strong");title.textContent=item.title||"Карточка товара";
+   const desc=document.createElement("p");desc.className="muted";
+   desc.textContent=new Date(item.date).toLocaleString("ru-RU")+" · "+item.model;
+   const actions=document.createElement("div");actions.className="actions";
+   const open=document.createElement("button");open.textContent="👁️ Открыть";
+   open.onclick=()=>aiRestoreHistory(item).catch(e=>msg.textContent=String(e?.message||e));
+   const save=document.createElement("button");save.className="secondary";save.textContent="📤 Сохранить";
+   save.onclick=()=>aiExportHistory(item).catch(e=>msg.textContent=String(e?.message||e));
+   actions.append(open,save);box.append(img,title,desc,actions);root.append(box);
+  }
+ }catch(e){msg.textContent="История недоступна: "+String(e?.message||e);}
+}
+async function aiRestoreHistory(item){
+ $("aiTitle").value=item.title;$("aiFacts").value=item.claims;
+ $("aiPrompt").value=item.style;$("aiVisualMode").value=item.visualMode;
+ if([...$("aiTestModel").options].some(o=>o.value===item.model))$("aiTestModel").value=item.model;
+ aiPilotRawImage=await aiBlobDataUrl(item.rawBlob);
+ aiPilotDataUrl=await aiBlobDataUrl(item.cardBlob);
+ aiPilotFile=new File([item.cardBlob],"SellerKit-Studio.jpg",{type:"image/jpeg"});
+ aiHistoryCurrentId=item.id;
+ adminDisplayAiOutput(item.cardBlob);
+ openPage("ai");
+ $("aiTestStatus").textContent="✅ Восстановлено из истории без нового платного запроса.";
+ $("aiTestOutput").scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function aiExportHistory(item){
+ const file=new File([item.cardBlob],"SellerKit-"+item.date+".jpg",{type:"image/jpeg"});
+ if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+  try{await navigator.share({files:[file],title:"SellerKit Studio"});return;}
+  catch(e){if(e?.name==="AbortError")return;}
+ }
+ const url=URL.createObjectURL(file);
+ const a=document.createElement("a");a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
 
 async function adminPrepareJpeg(file){
  if(!file||!/^image\/(jpeg|png|webp)$/.test(file.type))
@@ -1058,7 +1191,7 @@ function adminAiTitleLines(ctx,txt,maxWidth,maxLines){
  truncated[maxLines-1]=tail+"…";
  return truncated;
 }
-async function adminRenderAiCard(sourceImage){
+async function adminRenderAiCard(sourceImage,isSample=false){
  const {title,claims}=adminAiCopy();
  const photo=new Image();
  await new Promise((resolve,reject)=>{
@@ -1121,14 +1254,16 @@ async function adminRenderAiCard(sourceImage){
   if(!blob)throw new Error("Не удалось сжать JPG.");
  }
  if(blob.size>1900000)throw new Error("Файл слишком большой для отправки через Telegram.");
+ if(isSample){
+  if(aiSampleObjectUrl)URL.revokeObjectURL(aiSampleObjectUrl);
+  aiSampleObjectUrl=URL.createObjectURL(blob);
+  $("aiSampleImage").src=aiSampleObjectUrl;
+  $("aiSampleOutput").style.display="block";
+  return;
+ }
  aiPilotFile=new File([blob],"SellerKit-Studio.jpg",{type:"image/jpeg"});
  aiPilotDataUrl=canvas.toDataURL("image/jpeg",blob.size>1200000?0.73:0.86);
- if(aiPilotObjectUrl)URL.revokeObjectURL(aiPilotObjectUrl);
- aiPilotObjectUrl=URL.createObjectURL(blob);
- $("aiTestResult").src=aiPilotObjectUrl;
- $("aiTestDownload").href=aiPilotObjectUrl;
- $("aiTestOutput").style.display="block";
- $("aiTestDeliveryStatus").textContent="";
+ adminDisplayAiOutput(blob);
 }
 async function adminPreviewAiWithoutCharge(){
  const status=$("aiTestStatus");
@@ -1138,9 +1273,8 @@ async function adminPreviewAiWithoutCharge(){
   if(!file)throw new Error("Сначала выбери фото товара.");
   status.textContent="Создаём бесплатный предварительный макет…";
   const jpeg=await adminPrepareJpeg(file);
-  aiPilotRawImage=jpeg;
-  await adminRenderAiCard(jpeg);
-  status.textContent="✅ Бесплатный предпросмотр готов! Это твоя исходная фотография без генерации. Надписи можно менять бесплатно.";
+  await adminRenderAiCard(jpeg,true);
+  status.textContent="✅ Бесплатный макет исходной фотографии готов отдельно. AI-результат не заменён.";
  }catch(error){status.textContent=String(error?.message||"Не удалось собрать макет.");}
 }
 async function adminRepaintAiPilot(){
@@ -1148,7 +1282,9 @@ async function adminRepaintAiPilot(){
  if(!aiPilotRawImage){status.textContent="Сначала сделай предпросмотр или запусти AI.";return;}
  try{
   await adminRenderAiCard(aiPilotRawImage);
-  status.textContent="✅ Надписи обновлены бесплатно. Новых запросов в VseGPT не было.";
+  let saved="Изменения сохранены в истории.";
+  try{await aiHistorySave(false);}catch(e){saved="⚠️ Не удалось сохранить в историю: "+String(e?.message||e)+". Сохрани JPG в Telegram.";}
+  status.textContent="✅ Надписи обновлены бесплатно. Новых запросов в VseGPT не было. "+saved;
  }catch(error){status.textContent=String(error?.message||"Не удалось обновить надписи.");}
 }
 async function adminRunAiPilot(){
@@ -1207,9 +1343,13 @@ async function adminRunAiPilot(){
       !result.imageDataUrl.startsWith("data:image/jpeg;base64,"))
     throw new Error("Получена некорректная картинка.");
    aiPilotRawImage=result.imageDataUrl;
+   aiHistoryCurrentId=null;
    await adminRenderAiCard(aiPilotRawImage);
+   let historyInfo="✅ Карточка сохранена в «Профиль → Мои генерации» на этом устройстве.";
+   try{await aiHistorySave(true,model);}
+   catch(e){historyInfo="⚠️ Не удалось сохранить историю: "+String(e?.message||e)+". Сразу отправь JPG себе в Telegram.";}
    status.textContent="✅ Фото и точные русские надписи готовы. Ориентир "+result.estimateRub+
-     " ₽. Фактическая сумма — VseGPT → Стоимость последних генераций. Баланс SellerKit не списывался. Если одежда на модели, проверь совпадение цвета и деталей!";
+     " ₽. Фактическая сумма — VseGPT → Стоимость последних генераций. Баланс SellerKit не списывался. "+historyInfo;
   }finally{clearTimeout(timer);}
  }catch(error){
   status.textContent=error?.name==="AbortError"
@@ -1955,6 +2095,7 @@ try{
       $("adminReportsTile").style.display="flex";
       $("adminUsersTile").style.display="flex";
       $("adminAiPilot").style.display="block";
+      $("ownerAiHistoryTile").style.display="flex";
      }
    const name=[
     user.first_name,
