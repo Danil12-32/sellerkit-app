@@ -487,8 +487,9 @@ SEO Analytics
 <input type="text" id="aiTitle" maxlength="55" placeholder="Например: Худи женское">
 
 <label for="aiFacts">3. Реальные преимущества и характеристики — каждое с новой строки</label>
-<textarea id="aiFacts" maxlength="240" style="min-height:95px" placeholder="Хлопок&#10;Размеры 36–50&#10;Свободный крой"></textarea>
-<p class="muted"><small>Добавим только факты, которые ты указал. Для настоящей таблицы размеров нужны замеры по каждому размеру — один диапазон 36–50 не является таблицей замеров.</small></p>
+<textarea id="aiFacts" maxlength="380" spellcheck="true" oninput="aiFactCounter()" style="min-height:135px" placeholder="Например: для прогулок&#10;Лёгкий дизайн&#10;Разные цвета"></textarea>
+<p class="muted" id="aiFactCount"><small>0 из 6 строк. Если нет ТЗ, ниже есть AI-помощник.</small></p>
+<p class="muted"><small>Можно указать до 6 характеристик. SellerKit покажет все шесть, не обрезая список до трёх. Факты вроде состава, подлинности и размеров нужно подтверждать — AI их не проверяет.</small></p>
 
 <label for="aiVisualMode">4. Как показывать товар?</label>
 <select id="aiVisualMode">
@@ -498,7 +499,7 @@ SEO Analytics
 
 <label for="aiPrompt">5. Пожелания только к визуальному стилю</label>
 <textarea id="aiPrompt" placeholder="Например: премиальная fashion-съёмка, мягкий студийный свет, розово-бежевый фон, крупный товар"></textarea>
-<p class="muted"><small>Надписи и характеристики нейросеть теперь не рисует. Их добавляет SellerKit поверх готового фото без искажения букв.</small></p>
+<p class="muted"><small>Фотографию создаёт нейросеть, а текст SellerKit наносит отдельно. Чтобы исправить опечатки и составить текст без ТЗ, используй AI-помощника в разделе тестирования ниже.</small></p>
 
 <div class="notice">
 Публичная генерация пока не запущена. Тест доступен только владельцу. После запуска одна бесплатная пробная AI-карточка будет доступна только для предпросмотра; оригинал можно будет разблокировать за 5 токенов (100 ₽). Оплата и серверная защита оригиналов ещё не подключены.
@@ -508,6 +509,23 @@ SEO Analytics
 <div id="adminAiPilot" style="display:none">
 <hr>
 <h3>🧪 Тест качества — только разработчику</h3>
+<div style="border:1px solid #42624b;border-radius:14px;padding:13px;margin:12px 0">
+<h3 style="margin-top:0">✍️ Помощник по ТЗ и тексту</h3>
+<p class="muted">Если нет готового ТЗ, достаточно фото и названия. AI предложит заголовок, до 6 строк, стиль фона и исправит опечатки. Перед применением нужно проверить характеристики.</p>
+<button class="secondary wide" id="aiCopyAssistBtn" onclick="adminAssistAiCopy()">✨ Предложить ТЗ и исправить ошибки (AI-запрос)</button>
+<p class="muted"><small>Это отдельный запрос к текстовой модели VseGPT. Возможна небольшая плата по её тарифу. Генерацию картинки он не запускает.</small></p>
+<p class="muted" id="aiCopyAssistStatus" role="status" aria-live="polite"></p>
+<div id="aiCopyAssistPreview" style="display:none">
+<label for="aiCopySuggestedTitle">Предложенное название</label>
+<input id="aiCopySuggestedTitle" type="text" maxlength="55">
+<label for="aiCopySuggestedFacts">Предложенные строки (проверь правдивость)</label>
+<textarea id="aiCopySuggestedFacts" spellcheck="true" style="min-height:120px"></textarea>
+<label for="aiCopySuggestedStyle">Рекомендации к визуалу</label>
+<textarea id="aiCopySuggestedStyle" style="min-height:100px"></textarea>
+<p class="muted" id="aiCopyNeedsReview"></p>
+<button class="secondary wide" onclick="adminApplyAiCopy()">✅ Применить предложенный текст</button>
+</div>
+</div>
 <div class="notice">
 <strong>Внимание: платный AI-запрос.</strong> До запуска можно бесплатно проверить оформление текста. За генерацию фото VseGPT спишет деньги по тарифу выбранной модели. Точный расход проверь в истории VseGPT.
 </div>
@@ -1160,13 +1178,83 @@ async function adminPrepareJpeg(file){
 // Strictly user-provided copy. Never fabricate material, size or measurements.
 function adminAiCopy(){
  const title=$("aiTitle").value.trim().replace(/\s+/g," ");
- const claims=$("aiFacts").value.split(/\r?\n/).map(x=>x.trim().replace(/\s+/g," "))
-   .filter(Boolean).slice(0,3);
+ const claims=$("aiFacts").value.split(/\r?\n/)
+  .map(x=>x.trim().replace(/\s+/g," ")).filter(Boolean);
  if(title.length<3||title.length>55)
-   throw new Error("Напиши короткое название товара (3–55 символов).");
+  throw new Error("Напиши короткое название товара (3–55 символов).");
+ if(claims.length>6)throw new Error("Максимум 6 строк. Удали лишние или объедини похожие.");
  if(claims.some(x=>x.length>34))
-   throw new Error("Характеристики должны быть короткими — до 34 символов в строке.");
+  throw new Error("Одна характеристика — до 34 символов. Укороти слишком длинные строки.");
  return {title,claims};
+}
+function aiFactCounter(){
+ const n=$("aiFacts").value.split(/\r?\n/).filter(x=>x.trim()).length;
+ $("aiFactCount").textContent=n+" из 6 строк"+
+  (n>6?" — слишком много, сократи список.":". Все строки попадут на карточку.");
+}
+function aiManualClaimsWarning(){
+ const {claims}=adminAiCopy();
+ const uncertain=claims.filter(x=>/оригинал|подлинн|натуральн|100\s?%|гаранти|лечебн|лечит|сертифик/i.test(x));
+ return uncertain.length?
+  window.confirm("Внимание: это утверждения, требующие подтверждения продавца: "+uncertain.join("; ")+". Продолжить с ними?"):
+  true;
+}
+async function adminAssistAiCopy(){
+ const btn=$("aiCopyAssistBtn"),status=$("aiCopyAssistStatus");
+ if(!window.confirm("AI-помощник использует отдельный платный запрос VseGPT. Продолжить?"))return;
+ const initData=window.Telegram?.WebApp?.initData;
+ if(!initData){status.textContent="Открой приложение в Telegram.";return;}
+ btn.disabled=true;status.textContent="Смотрим фото и готовим предложенный текст…";
+ try{
+  const file=$("aiPhoto").files?.[0];
+  const imageData=file?await adminPrepareJpeg(file):"";
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),44000);
+  let response;
+  try{
+   response=await fetch(SELLERKIT_API_URL,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+     action:"admin_copy_assist",initData,title:$("aiTitle").value,
+     facts:$("aiFacts").value,style:$("aiPrompt").value,imageData
+    }),signal:ctl.signal,cache:"no-store"
+   });
+  }finally{clearTimeout(timer);}
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||result.success!==true){
+   const labels={
+    AI_TEST_DISABLED:"AI-тест отключён на сервере.",
+    AI_TEST_BUSY:"Подожди немного перед следующим запросом.",
+    AI_COPY_PROVIDER_REJECTED:"Текстовая модель VseGPT отклонила запрос.",
+    AI_COPY_RESPONSE_INVALID:"Модель вернула неправильный формат. Исходные данные не изменены.",
+    AI_COPY_TIMEOUT:"Истекло время ожидания ответа модели.",
+    UNSUPPORTED_ACTION:"Обнови backend/index.js в Yandex Cloud."
+   };
+   throw new Error(labels[result.error]||("Ошибка AI-помощника: "+(result.error||response.status)));
+  }
+  $("aiCopySuggestedTitle").value=result.title||"";
+  $("aiCopySuggestedFacts").value=(result.claims||[]).join("\n");
+  $("aiCopySuggestedStyle").value=result.style||"";
+  $("aiCopyNeedsReview").textContent=(result.needsReview||[]).length
+   ?"⚠️ Требуют проверки: "+result.needsReview.join("; "):"Проверь утверждения до публикации.";
+  $("aiCopyAssistPreview").style.display="block";
+  status.textContent="Предложения готовы. Они ещё не применены к ТЗ — проверь и нажми кнопку ниже.";
+ }catch(e){status.textContent=String(e?.message||e);}
+ finally{btn.disabled=false;}
+}
+function adminApplyAiCopy(){
+ const title=$("aiCopySuggestedTitle").value.trim();
+ const facts=$("aiCopySuggestedFacts").value.trim();
+ const style=$("aiCopySuggestedStyle").value.trim();
+ if(!title||!style){$("aiCopyAssistStatus").textContent="Заполни предложенное название и стиль.";return;}
+ const prev=[$("aiTitle").value,$("aiFacts").value,$("aiPrompt").value];
+ $("aiTitle").value=title;$("aiFacts").value=facts;$("aiPrompt").value=style;
+ try{
+  adminAiCopy();aiFactCounter();
+  $("aiCopyAssistStatus").textContent="✅ Предложения перенесены в поля. Проверь факты. Для обновления уже созданной карточки нажми «Обновить текст бесплатно».";
+ }catch(e){
+  [$("aiTitle").value,$("aiFacts").value,$("aiPrompt").value]=prev;
+  $("aiCopyAssistStatus").textContent=String(e.message||e);
+ }
 }
 function adminAiRoundRect(ctx,x,y,w,h,r){
  r=Math.min(r,w/2,h/2);
