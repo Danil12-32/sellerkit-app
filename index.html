@@ -546,6 +546,11 @@ SEO Analytics
 Нашли ошибку?
 <small>Попробуем решить вместе</small>
 </button>
+<button class="tile" id="adminReportsTile" style="display:none" onclick="openPage('reports');loadSupportReports()">
+<span>📥</span>
+Обращения
+<small>Для разработчика</small>
+</button>
 </div>
 </div>
 </section>
@@ -635,15 +640,27 @@ SEO Analytics
 </div>
 <div id="bugReportForm" hidden>
 <label for="bugDescription">Опиши, что именно произошло</label>
-<textarea id="bugDescription" maxlength="1800" placeholder="Что нажал(а), какой результат ожидал(а) и что появилось вместо него? Сообщение ошибки можно скопировать сюда."></textarea>
+<textarea id="bugDescription" maxlength="1800" oninput="bugReportId=null" placeholder="Что нажал(а), какой результат ожидал(а) и что появилось вместо него? Сообщение ошибки можно скопировать сюда."></textarea>
 <small>Не отправляйте пароли, токены, коды подтверждения или платёжные данные.</small>
 <button class="wide" id="bugSendBtn" style="margin-top:13px" onclick="submitBugReport()">📨 Передать проблему разработчику</button>
 </div>
 <p id="bugStatus" class="muted" role="status" aria-live="polite"></p>
-<button type="button" class="wide secondary" id="bugFallbackBtn" hidden onclick="contact('error')">💬 Написать автору вручную</button>
+<p class="muted"><small>Если нужен скриншот, открой личный чат с автором и отправь его там.</small></p>
+<button type="button" class="wide secondary" id="bugFallbackBtn" onclick="contact('error')">📷 Отправить скриншот автору</button>
 </div>
 </section>
 
+<!-- ОБРАЩЕНИЯ РАЗРАБОТЧИКА -->
+<section class="page" id="reports">
+<button class="back" onclick="openPage('profile')">← В профиль</button>
+<div class="card">
+<h2>📥 Входящие обращения</h2>
+<p class="muted">Заявки сохраняются в YDB, даже когда Telegram-уведомления недоступны.</p>
+<button class="secondary" onclick="loadSupportReports()">🔄 Обновить обращения</button>
+<p id="reportsStatus" class="muted" role="status"></p>
+<div id="reportsList"></div>
+</div>
+</section>
 <!-- СОТРУДНИЧЕСТВО -->
 <section class="page" id="support">
 <button class="back" onclick="openPage('profile')">← В профиль</button>
@@ -725,6 +742,7 @@ function contact(kind){
 
 
 /* Техподдержка без AI: локальные подсказки, после них защищённая отправка. */
+let bugReportId=null;
 const BUG_ADVICE = {
  balance:"Если баланс не обновляется: открой «Профиль» → «Обновить баланс». Если ошибка осталась, закрой SellerKit целиком и открой заново через Telegram. Если списались деньги, не повторяй оплату — сообщи об этом разработчику.",
  ai:"Если не получается создать изображение: проверь подключение к интернету и обязательные поля. Если кнопка создания недоступна, отправь сообщение о проблеме с названием действия, которое хотел(а) выполнить.",
@@ -737,18 +755,17 @@ function updateBugAdvice(){
  const category=$("bugCategory").value;
  $("bugAdvice").textContent=BUG_ADVICE[category]||BUG_ADVICE.other;
  $("bugReportForm").hidden=true;
- $("bugFallbackBtn").hidden=true;
+ bugReportId=null;
  $("bugStatus").textContent="";
 }
 function showBugReport(){
  $("bugReportForm").hidden=false;
- $("bugFallbackBtn").hidden=true;
  $("bugStatus").textContent="Опиши проблему, и мы передадим информацию разработчику.";
  $("bugDescription").focus();
 }
 function bugSolved(){
  $("bugReportForm").hidden=true;
- $("bugFallbackBtn").hidden=true;
+ bugReportId=null;
  $("bugDescription").value="";
  $("bugStatus").textContent="Отлично! Если появится другая ошибка, вернись в этот раздел.";
 }
@@ -767,14 +784,15 @@ async function submitBugReport(){
   return;
  }
  button.disabled=true;
- status.textContent="Отправляем сообщение разработчику…";
+ if(!bugReportId && window.crypto?.randomUUID) bugReportId=window.crypto.randomUUID();
+ status.textContent="Сохраняем обращение в SellerKit…";
  const controller=new AbortController();
  const timeout=setTimeout(()=>controller.abort(),11000);
  try{
   const response=await fetch(SELLERKIT_API_URL,{
    method:"POST",
    headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({action:"report_error",initData:tg.initData,category,description}),
+   body:JSON.stringify({action:"report_error",initData:tg.initData,category,description,reportId:bugReportId}),
    cache:"no-store",
    signal:controller.signal
   });
@@ -802,25 +820,86 @@ async function submitBugReport(){
    if(code==="INVALID_TELEGRAM_AUTH") throw new Error("Сессия Telegram устарела. Закрой и снова открой Mini App.");
    if(code==="UNSUPPORTED_ACTION") throw new Error("Сервер ещё не обновлён до версии поддержки обращений.");
    if(code==="INVALID_SUPPORT_REPORT") throw new Error("Проверь описание ошибки, затем отправь его ещё раз.");
+   if(code==="SUPPORT_STORAGE_UNAVAILABLE"||code==="SUPPORT_SAVE_FAILED") throw new Error("Обращение не сохранено. Нужно проверить таблицу support_reports в YDB.");
    const issue=issues[stage]||"Сервер не подтвердил доставку сообщения.";
    const diagnostic=stage ? " Код диагностики: "+stage+"." : " Код: "+(code||"HTTP_"+response.status)+".";
    throw new Error(issue+" Обращение не отправлено."+diagnostic);
   }
-  status.textContent="✅ Обращение доставлено разработчику. Спасибо за подробное описание!";
-  $("bugFallbackBtn").hidden=true;
+  if(!data?.saved) throw new Error("Сервер не подтвердил сохранение заявки.");
+  const ticket=String(data.reportId||"").slice(0,8);
+  status.textContent=data.notified
+   ?"✅ Обращение № "+ticket+" сохранено и передано разработчику в Telegram."
+   :"✅ Обращение № "+ticket+" сохранено в YDB. Автор увидит его в разделе «Обращения». Telegram-уведомление пока недоступно.";
   $("bugReportForm").hidden=true;
   $("bugDescription").value="";
+  bugReportId=null;
  }catch(error){
   status.textContent=error?.name==="AbortError"
    ?"Не дождались ответа от сервера. Обращение не подтверждено."
    :(error instanceof TypeError
      ?"Нет соединения с сервером. Обращение не отправлено."
      :String(error?.message||"Обращение не отправлено."));
-  $("bugFallbackBtn").hidden=false;
  }finally{
   clearTimeout(timeout);
   button.disabled=false;
  }
+}
+
+
+async function loadSupportReports(){
+ const status=$("reportsStatus");
+ const container=$("reportsList");
+ container.replaceChildren();
+ status.textContent="Загружаем обращения…";
+ const tg=window.Telegram?.WebApp;
+ if(!tg?.initData){status.textContent="Открой через Telegram.";return;}
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),12000);
+ try{
+  const response=await fetch(SELLERKIT_API_URL,{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({action:"list_reports",initData:tg.initData}),
+   cache:"no-store",
+   signal:controller.signal
+  });
+  const data=await response.json();
+  if(!response.ok||!data?.success||!Array.isArray(data.reports)){
+   if(data?.error==="SUPPORT_STORAGE_UNAVAILABLE")throw new Error("Таблица support_reports недоступна в YDB.");
+   if(response.status===403)throw new Error("Доступ разрешён только владельцу.");
+   throw new Error("Не удалось получить обращения: "+String(data?.error||response.status));
+  }
+  status.textContent=data.reports.length?"Найдено обращений: "+data.reports.length:"Пока нет обращений.";
+  const names={balance:"Баланс и оплата",ai:"AI Studio",seo:"SEO и аналитика",calc:"Юнит-экономика",app:"Вход в приложение",other:"Другая ошибка"};
+  for(const report of data.reports){
+   const card=document.createElement("div");card.className="notice";
+   const title=document.createElement("strong");
+   title.textContent="🐞 "+(names[report.category]||"Обращение");
+   const user=document.createElement("p");
+   const date=new Date(report.createdAt);
+   user.textContent=String(report.senderName||"Пользователь")
+    +" · ID "+String(report.telegramId||"")
+    +(Number.isNaN(date.getTime())?"":" · "+date.toLocaleString("ru-RU"));
+   const description=document.createElement("p");
+   description.textContent=String(report.description||"");
+   description.style.whiteSpace="pre-wrap";
+   description.style.overflowWrap="anywhere";
+   card.append(title,user,description);
+   const username=String(report.username||"");
+   if(/^[A-Za-z0-9_]{5,32}$/.test(username)){
+    const btn=document.createElement("button");
+    btn.className="secondary";
+    btn.textContent="💬 Написать @"+username;
+    btn.onclick=()=>openTelegram("https://t.me/"+username);
+    card.append(btn);
+   }
+   container.append(card);
+  }
+ }catch(error){
+  status.textContent=error?.name==="AbortError"
+   ?"Сервер не ответил вовремя."
+   :String(error?.message||"Не удалось получить обращения.");
+ }finally{clearTimeout(timer);}
 }
 
 function shareApp(){
@@ -1388,6 +1467,7 @@ try{
   const user=tg.initDataUnsafe?.user;
 
   if(user){
+    if(String(user.id)==="1046253780") $("adminReportsTile").style.display="flex";
    const name=[
     user.first_name,
     user.last_name
