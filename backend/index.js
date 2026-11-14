@@ -9,7 +9,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-vsegpt-check-9";
+const SERVER_BUILD = "sellerkit-ai-pilot-10";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "AI Studio",
@@ -477,6 +477,116 @@ async function adminVseGptStatus() {
   }
 }
 
+
+// Admin-only PAID image-edit pilot. Never available to customers.
+// Run is additionally gated by the server environment variable AI_TEST_ENABLED=1.
+// This is not a production credit system: no SellerKit credits are debited.
+const AI_TEST_MODELS = Object.freeze({
+  "img2img-flux/flux-2-klein-4b": { label: "FLUX.2 Klein 4B", estimateRub: 3.9 },
+  "img2img-flux/kontext-pro-edit": { label: "FLUX Kontext Pro", estimateRub: 7.5 }
+});
+let imagePilotRunning = false;
+let imagePilotLastAt = 0;
+
+async function adminImagePilot(body) {
+  if (process.env.AI_TEST_ENABLED !== "1")
+    return { status: 403, payload: { error: "AI_TEST_DISABLED" } };
+  const model = typeof body.model === "string" ? body.model : "";
+  const chosen = Object.prototype.hasOwnProperty.call(AI_TEST_MODELS, model)
+    ? AI_TEST_MODELS[model] : null;
+  const userPrompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  const imageData = typeof body.imageData === "string" ? body.imageData : "";
+  if (!chosen || userPrompt.length < 10 || userPrompt.length > 1200 ||
+      !/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(imageData) ||
+      imageData.length > 950000) {
+    return { status: 400, payload: { error: "INVALID_AI_TEST_INPUT" } };
+  }
+  const buffer = Buffer.from(imageData.slice("data:image/jpeg;base64,".length), "base64");
+  if (buffer.length < 500 || buffer.length > 720000 ||
+      buffer[0] !== 255 || buffer[1] !== 216 || buffer[2] !== 255)
+    return { status: 400, payload: { error: "INVALID_AI_TEST_IMAGE" } };
+  const key = process.env.VSEGPT_API_KEY;
+  if (!key) return { status: 503, payload: { error: "VSEGPT_API_KEY_NOT_SET" } };
+  if (imagePilotRunning || Date.now() - imagePilotLastAt < 15000)
+    return { status: 429, payload: { error: "AI_TEST_BUSY" } };
+  imagePilotRunning = true;
+  imagePilotLastAt = Date.now();
+  const prompt = [
+    "Create a premium PROFESSIONAL marketplace product main infographic using the provided product photo.",
+    "Vertical portrait composition 3:4, clean commercial graphic design, editorial typography,",
+    "studio-level photorealism, attractive restrained lighting, premium background, no messy overlays.",
+    "PRESERVE THE PRODUCT EXACTLY: the same object, color, buttons, shape, textures, components,",
+    "connectors, materials and brand markings. Do not invent, remove or modify product details.",
+    "Product must occupy about 75-80 percent of the frame, with good spacing around short readable text.",
+    "Any Russian labels must be spelled correctly. ONLY use product claims provided by the customer.",
+    "No fake specifications, fake badges, watermarks, unrelated objects or false promises.",
+    "If a requested product advantage is not verified, omit it rather than invent it.",
+    "Style directions from the customer: " + userPrompt
+  ].join(" ");
+  try {
+    const result = await fetch("https://api.vsegpt.ru/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + key,
+        "Content-Type": "application/json",
+        "X-Title": "SellerKit Studio admin image pilot"
+      },
+      body: JSON.stringify({
+        model,
+        prompt,
+        n: 1,
+        response_format: "b64_json",
+        output_format: "jpeg",
+        image_url: imageData,
+        size: "768x1024"
+      }),
+      signal: AbortSignal.timeout(105000)
+    });
+    if (!result.ok) {
+      console.error("VseGPT image API returned status", result.status);
+      return {
+        status: result.status === 429 ? 429 : 502,
+        payload: { error: result.status === 429 ? "VSEGPT_RATE_LIMIT" : "AI_PROVIDER_REJECTED",
+          upstreamStatus: result.status,
+          mayHaveCharged: result.status >= 500 }
+      };
+    }
+    // VseGPT's edit models return JPEG base64 (do not pass model errors as HTML).
+    const payload = await result.json().catch(() => null);
+    const base64 = payload?.data?.[0]?.b64_json;
+    if (typeof base64 !== "string" || !/^[A-Za-z0-9+/=]+$/.test(base64))
+      return { status: 502, payload: { error: "AI_IMAGE_MISSING", mayHaveCharged: true } };
+    // Yandex Cloud Functions limits JSON responses to 3.5 MB.
+    // Oversize result needs Object Storage in the production version.
+    if (base64.length > 2350000)
+      return { status: 502, payload: { error: "AI_IMAGE_TOO_LARGE", mayHaveCharged: true } };
+    return {
+      status: 200,
+      payload: {
+        success: true,
+        model,
+        imageDataUrl: "data:image/jpeg;base64," + base64,
+        estimateRub: chosen.estimateRub,
+        priceIsEstimate: true,
+        creditsDeducted: false,
+        build: SERVER_BUILD
+      }
+    };
+  } catch (error) {
+    console.error("VseGPT image pilot failed:", error?.name || "unknown");
+    return {
+      status: 503,
+      payload: {
+        error: error?.name === "TimeoutError" || error?.name === "AbortError"
+          ? "AI_PROVIDER_TIMEOUT" : "AI_PROVIDER_NETWORK_FAILED",
+        mayHaveCharged: true
+      }
+    };
+  } finally {
+    imagePilotRunning = false;
+  }
+}
+
 export async function handler(event) {
   const method = String(event.httpMethod || event.requestContext?.http?.method || "").toUpperCase();
   const origin = event.headers?.origin || event.headers?.Origin || "";
@@ -496,7 +606,7 @@ export async function handler(event) {
   } catch {
     return response(400, { error: "INVALID_JSON" }, origin);
   }
-  if (!body || !["me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status"].includes(body.action)) {
+  if (!body || !["me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -521,7 +631,8 @@ export async function handler(event) {
   if (body.action === "list_reports" ||
       body.action === "admin_user_lookup" ||
       body.action === "admin_recent_users" ||
-      body.action === "admin_ai_status") {
+      body.action === "admin_ai_status" ||
+      body.action === "admin_image_test") {
     if (!ownerAuthorized(telegramUser))
       return response(403, { error: "FORBIDDEN" }, origin);
     const result = body.action === "list_reports"
@@ -530,7 +641,9 @@ export async function handler(event) {
         ? await adminUserLookup(body.telegramId)
         : body.action === "admin_ai_status"
           ? await adminVseGptStatus()
-          : await adminRecentUsers();
+          : body.action === "admin_image_test"
+            ? await adminImagePilot(body)
+            : await adminRecentUsers();
     return response(result.status, result.payload, origin);
   }
 
