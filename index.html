@@ -640,6 +640,8 @@ SEO Analytics
 Проверяем баланс через Telegram…
 </small>
 <button class="secondary" style="margin-top:12px" id="refreshBalanceBtn" onclick="loadTelegramBalance(true)">🔄 Обновить баланс</button>
+<button class="secondary" style="margin-top:10px" id="profileServerCheckBtn" onclick="checkProfileServer()">🔌 Проверить сервер и баланс</button>
+<p class="muted" id="profileServerCheckStatus" role="status" aria-live="polite"></p>
 <button class="wide" style="margin-top:10px" onclick="openPage('shop')">
 ＋ Пополнить баланс
 </button>
@@ -1468,9 +1470,12 @@ async function adminGenerateSeriesPlan(revise){
   showAiSeriesPlan(data);
   status.textContent="✅ План на "+count+" слайдов готов. Это только структура, без генерации картинок. Можно изменить любой слайд вручную или отправить пожелания Qwen.";
  }catch(e){
+  const message=String(e?.message||"Ошибка создания плана.");
   status.textContent=e?.name==="AbortError"?
    "Истекло время ожидания. Проверь историю расходов VseGPT, прежде чем повторять.":
-   String(e?.message||"Ошибка создания плана.");
+   /Failed to fetch|NetworkError|Load failed/i.test(message)?
+    "Нет связи с сервером SellerKit. Проверь «Профиль → Проверить сервер и баланс». Пока функция недоступна, Qwen и баланс не работают. Деньги за картинки этот запрос не списывал.":
+    message;
  }finally{aiSeriesBusy=false;button.disabled=false;}
 }
 
@@ -2506,6 +2511,58 @@ const SELLERKIT_API_URL="https://functions.yandexcloud.net/d4ec2glf456p8vr34fvu"
 let balanceRequest=null;
 let balanceCheckedAt=0;
 
+async function checkProfileServer(){
+ const btn=$("profileServerCheckBtn"),status=$("profileServerCheckStatus");
+ if(!btn||!status)return;
+ btn.disabled=true;
+ status.textContent="Проверяем работу функции Yandex Cloud…";
+ const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),15000);
+ try{
+  let healthResponse;
+  try{
+   healthResponse=await fetch(SELLERKIT_API_URL,{method:"GET",cache:"no-store",signal:ctl.signal});
+  }catch(err){
+   status.textContent="❌ Сервер не отвечает даже на GET. Это не ошибка токенов: проверь последнюю версию sellerkit-api в Yandex Cloud, её логи, публичный доступ и работоспособность функции. "+String(err?.message||err);
+   return;
+  }
+  const health=await healthResponse.json().catch(()=>null);
+  if(!healthResponse.ok||health?.success!==true){
+   status.textContent="❌ Функция ответила HTTP "+healthResponse.status+
+    (health?.errorMessage?" — "+String(health.errorMessage).slice(0,180):"")+
+    ". Это проблема загрузки/работы сервера, а не баланса. Проверь логи Cloud Function.";
+   return;
+  }
+  const build=String(health.build||"неизвестна");
+  status.textContent="✅ GET работает. Версия: "+build+". Проверяем баланс…";
+  const initData=window.Telegram?.WebApp?.initData;
+  if(!initData){status.textContent+=" Открой SellerKit из Telegram для проверки POST.";return;}
+  let balanceResponse;
+  try{
+   balanceResponse=await fetch(SELLERKIT_API_URL,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({action:"me",initData}),signal:ctl.signal,cache:"no-store"
+   });
+  }catch(err){
+   status.textContent="❌ GET работает (версия "+build+"), но POST-запрос баланса не проходит. Проверь логи функции, CORS и авторизацию HTTP-вызовов. "+String(err?.message||err);
+   return;
+  }
+  const data=await balanceResponse.json().catch(()=>null);
+  if(balanceResponse.ok&&data?.success===true&&Number.isSafeInteger(data.balance)){
+   $("generationBalance").textContent=number(data.balance);
+   $("balanceStatus").textContent="Баланс подтверждён сервером SellerKit.";
+   balanceCheckedAt=Date.now();
+   status.textContent="✅ Сервер работает (версия "+build+"). Баланс подтверждён: "+data.balance+" токенов в текущей схеме учёта.";
+  }else{
+   status.textContent="❌ GET работает (версия "+build+"), но запрос баланса вернул HTTP "+balanceResponse.status+
+    " · "+String(data?.error||"INVALID_RESPONSE")+
+    (data?.stage?" · "+String(data.stage):"")+
+    ". Проверь этот код и журнал функции. Баланс не обнулён.";
+  }
+ }catch(err){
+  status.textContent=err?.name==="AbortError"?"❌ Сервер не ответил за 15 секунд. Проверь логи и тайм-аут Cloud Function.":
+   "❌ Ошибка проверки: "+String(err?.message||err);
+ }finally{clearTimeout(timer);btn.disabled=false;}
+}
 async function loadTelegramBalance(force=false){
  const tg=window.Telegram?.WebApp;
  const status=$("balanceStatus");
