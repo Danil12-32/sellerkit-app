@@ -536,15 +536,15 @@ SEO Analytics
 </button>
 
 <button class="tile" onclick="openPage('support')">
-<span>🎧</span>
-Поддержка
-<small>Помощь и вопросы</small>
+<span>🤝</span>
+Сотрудничество
+<small>Партнёрство и предложения</small>
 </button>
 
-<button class="tile" onclick="contact('error')">
+<button class="tile" onclick="openPage('bug')">
 <span>🐞</span>
 Нашли ошибку?
-<small>Сообщите автору проекта</small>
+<small>Попробуем решить вместе</small>
 </button>
 </div>
 </div>
@@ -610,14 +610,47 @@ SEO Analytics
 </div>
 </section>
 
-<!-- ПОДДЕРЖКА -->
+<!-- ПРОБЛЕМА С ПРИЛОЖЕНИЕМ -->
+<section class="page" id="bug">
+<button class="back" onclick="openPage('profile')">← В профиль</button>
+<div class="card">
+<h2>🐞 Нашли ошибку?</h2>
+<p>Выбери, где появилась проблема. Сначала попробуем решить её без обращения к разработчику.</p>
+<label for="bugCategory">Где возникла ошибка?</label>
+<select id="bugCategory" onchange="updateBugAdvice()">
+<option value="balance">💰 Баланс и оплата</option>
+<option value="ai">✨ AI Studio</option>
+<option value="seo">🔎 SEO и аналитика</option>
+<option value="calc">📊 Юнит-экономика</option>
+<option value="app">📱 Вход и работа приложения</option>
+<option value="other">⚙️ Другое</option>
+</select>
+<div class="notice" id="bugAdvice" role="status">
+Нажми «Обновить баланс» в профиле. Если не помогло, полностью закрой Mini App и открой его через Telegram заново.
+</div>
+<p><b>Помогло решить проблему?</b></p>
+<div class="actions">
+<button type="button" onclick="bugSolved()">✅ Да, помогло</button>
+<button type="button" class="secondary" onclick="showBugReport()">❌ Нет, не помогло</button>
+</div>
+<div id="bugReportForm" hidden>
+<label for="bugDescription">Опиши, что именно произошло</label>
+<textarea id="bugDescription" maxlength="1800" placeholder="Что нажал(а), какой результат ожидал(а) и что появилось вместо него? Сообщение ошибки можно скопировать сюда."></textarea>
+<small>Не отправляйте пароли, токены, коды подтверждения или платёжные данные.</small>
+<button class="wide" id="bugSendBtn" style="margin-top:13px" onclick="submitBugReport()">📨 Передать проблему разработчику</button>
+</div>
+<p id="bugStatus" class="muted" role="status" aria-live="polite"></p>
+</div>
+</section>
+
+<!-- СОТРУДНИЧЕСТВО -->
 <section class="page" id="support">
 <button class="back" onclick="openPage('profile')">← В профиль</button>
 <div class="card">
-<h2>🎧 Поддержка</h2>
-<p>Возник вопрос по работе SellerKit Studio? Напиши автору проекта.</p>
+<h2>🤝 Сотрудничество</h2>
+<p>Предложения о партнёрстве, совместных проектах, продвижении или заказе дизайна? Напиши автору Card Lab напрямую.</p>
 <button class="wide" onclick="contact('support')">
-Написать в Telegram
+💬 Написать автору в Telegram
 </button>
 </div>
 </section>
@@ -687,6 +720,87 @@ function openTelegram(url){
 
 function contact(kind){
  openTelegram(AUTHOR_URL);
+}
+
+
+/* Техподдержка без AI: локальные подсказки, после них защищённая отправка. */
+const BUG_ADVICE = {
+ balance:"Если баланс не обновляется: открой «Профиль» → «Обновить баланс». Если ошибка осталась, закрой SellerKit целиком и открой заново через Telegram. Если списались деньги, не повторяй оплату — сообщи об этом разработчику.",
+ ai:"Если не получается создать изображение: проверь подключение к интернету и обязательные поля. Если кнопка создания недоступна, отправь сообщение о проблеме с названием действия, которое хотел(а) выполнить.",
+ seo:"Попробуй короткую поисковую фразу и поставь минимальную частотность 0. Учитывай период загруженной базы: запросов вне неё может не быть. Если поиск работает неверно, отправь пример фразы.",
+ calc:"Проверь цену, себестоимость, комиссию и расходы. Для прибыли за штуку количество продаж ничего не меняет — оно влияет на общий результат. Укажи, какие цифры ввёл(а), если расчёт кажется неверным.",
+ app:"Полностью закрой мини-приложение и открой SellerKit из Telegram ещё раз. Проверь интернет и обнови Telegram. Если ошибка остаётся, опиши, после какой кнопки она возникла.",
+ other:"Попробуй закрыть и заново открыть приложение. Если это не помогло, опиши действия, при которых появляется ошибка."
+};
+function updateBugAdvice(){
+ const category=$("bugCategory").value;
+ $("bugAdvice").textContent=BUG_ADVICE[category]||BUG_ADVICE.other;
+ $("bugReportForm").hidden=true;
+ $("bugStatus").textContent="";
+}
+function showBugReport(){
+ $("bugReportForm").hidden=false;
+ $("bugStatus").textContent="Опиши проблему, и мы передадим информацию разработчику.";
+ $("bugDescription").focus();
+}
+function bugSolved(){
+ $("bugReportForm").hidden=true;
+ $("bugDescription").value="";
+ $("bugStatus").textContent="Отлично! Если появится другая ошибка, вернись в этот раздел.";
+}
+async function submitBugReport(){
+ const category=$("bugCategory").value;
+ const description=$("bugDescription").value.trim();
+ const status=$("bugStatus");
+ const button=$("bugSendBtn");
+ const tg=window.Telegram?.WebApp;
+ if(description.length<15){
+  status.textContent="Опиши проблему чуть подробнее — минимум 15 символов.";
+  return;
+ }
+ if(!tg?.initData){
+  status.textContent="Чтобы отправить обращение, открой Mini App через Telegram.";
+  return;
+ }
+ button.disabled=true;
+ status.textContent="Отправляем сообщение разработчику…";
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),11000);
+ try{
+  const response=await fetch(SELLERKIT_API_URL,{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({action:"report_error",initData:tg.initData,category,description}),
+   cache:"no-store",
+   signal:controller.signal
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok || data?.success!==true){
+   const code=String(data?.error||"");
+   if(code==="SUPPORT_NOT_CONFIGURED"){
+    throw new Error("Уведомления ещё не настроены на сервере. Сообщение не отправлено.");
+   }
+   if(code==="REPORT_RATE_LIMIT"){
+    throw new Error("Слишком частые обращения. Повтори отправку через минуту.");
+   }
+   if(code==="UNSUPPORTED_ACTION"){
+    throw new Error("Сервер пока не обновлён. Нужно загрузить новую версию sellerkit-api.");
+   }
+   throw new Error("Сервер не подтвердил доставку. Попробуй немного позже.");
+  }
+  status.textContent="✅ Обращение доставлено разработчику. Спасибо за подробное описание!";
+  $("bugReportForm").hidden=true;
+  $("bugDescription").value="";
+ }catch(error){
+  status.textContent=error?.name==="AbortError"
+   ?"Не дождались ответа от сервера. Проверь соединение и попробуй снова."
+   :(error instanceof TypeError
+     ?"Не удалось связаться с сервером. Проверь интернет."
+     :String(error?.message||"Сообщение не отправлено."));
+ }finally{
+  clearTimeout(timeout);
+  button.disabled=false;
+ }
 }
 
 function shareApp(){
