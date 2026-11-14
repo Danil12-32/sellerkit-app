@@ -551,6 +551,11 @@ SEO Analytics
 Обращения
 <small>Для разработчика</small>
 </button>
+<button class="tile" id="adminUsersTile" style="display:none" onclick="openPage('admin-users');loadAdminRecentUsers()">
+<span>🛡️</span>
+Админ-центр
+<small>Пользователи и балансы</small>
+</button>
 </div>
 </div>
 </section>
@@ -647,6 +652,24 @@ SEO Analytics
 <p id="bugStatus" class="muted" role="status" aria-live="polite"></p>
 <p class="muted"><small>Если нужен скриншот, открой личный чат с автором и отправь его там.</small></p>
 <button type="button" class="wide secondary" id="bugFallbackBtn" onclick="contact('error')">📷 Отправить скриншот автору</button>
+</div>
+</section>
+
+<!-- АДМИН-ЦЕНТР -->
+<section class="page" id="admin-users">
+<button class="back" onclick="openPage('profile')">← В профиль</button>
+<div class="card">
+<h2>🛡️ Админ-центр</h2>
+<p>Найди пользователя по Telegram ID и проверь баланс, который хранится на сервере.</p>
+<div class="notice">Платежи и ручное начисление пока не подключены. Количество генераций на балансе само по себе не подтверждает покупку. Для выдачи кредитов добавим отдельный журнал операций.</div>
+<label for="adminTelegramId">Telegram ID пользователя</label>
+<input id="adminTelegramId" type="text" inputmode="numeric" maxlength="16" placeholder="Например: 1046253780">
+<div class="actions">
+<button id="adminLookupBtn" onclick="adminFindUser()">🔎 Найти</button>
+<button class="secondary" id="adminRecentBtn" onclick="loadAdminRecentUsers()">👥 Последние 25</button>
+</div>
+<p class="muted" id="adminUsersStatus" role="status" aria-live="polite"></p>
+<div id="adminUsersResults"></div>
 </div>
 </section>
 
@@ -846,6 +869,90 @@ async function submitBugReport(){
 }
 
 
+
+function renderAdminUser(user){
+ const card=document.createElement("div");
+ card.className="notice";
+ const title=document.createElement("strong");
+ title.textContent="👤 Telegram ID: "+String(user.telegramId);
+ const balance=document.createElement("p");
+ balance.textContent="💰 Баланс: "+number(user.balance)+" генераций";
+ const details=document.createElement("small");
+ details.textContent="Проба: "+(user.trialUsed?"использована":"не использована")
+  +" · Бонус за друга: "+(user.referralRewarded?"выдан":"не выдан");
+ const date=new Date(user.createdAt);
+ const joined=document.createElement("p");
+ joined.className="muted";
+ joined.textContent=Number.isNaN(date.getTime())?"Дата регистрации недоступна":
+  "Дата регистрации: "+date.toLocaleString("ru-RU");
+ card.append(title,balance,details,joined);
+ return card;
+}
+async function adminRequest(action,telegramId){
+ const tg=window.Telegram?.WebApp;
+ if(!tg?.initData)throw new Error("Открой SellerKit через Telegram.");
+ const ctl=new AbortController();
+ const timer=setTimeout(()=>ctl.abort(),12000);
+ try{
+  const response=await fetch(SELLERKIT_API_URL,{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({action,telegramId,initData:tg.initData}),
+   signal:ctl.signal,cache:"no-store"
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||data?.success!==true){
+   const labels={
+    INVALID_TELEGRAM_AUTH:"Сессия устарела. Закрой и открой приложение заново.",
+    INVALID_TARGET_TELEGRAM_ID:"Укажи числовой Telegram ID.",
+    USER_NOT_FOUND:"Такого пользователя пока нет в базе SellerKit.",
+    FORBIDDEN:"Доступ разрешён только владельцу.",
+    ADMIN_DB_UNAVAILABLE:"Не удалось получить данные из YDB.",
+    UNSUPPORTED_ACTION:"Нужно обновить серверный index.js."
+   };
+   throw new Error(labels[data.error]||"Ошибка сервера: "+response.status);
+  }
+  return data;
+ }finally{clearTimeout(timer);}
+}
+async function adminFindUser(id){
+ const status=$("adminUsersStatus"),output=$("adminUsersResults");
+ output.replaceChildren();
+ const userId=String(id||$("adminTelegramId").value).trim();
+ if(!/^[1-9][0-9]{4,15}$/.test(userId)){status.textContent="Введи числовой Telegram ID.";return;}
+ const btn=$("adminLookupBtn");btn.disabled=true;
+ status.textContent="Проверяем пользователя…";
+ try{
+  const data=await adminRequest("admin_user_lookup",userId);
+  output.append(renderAdminUser(data.user));
+  status.textContent="Данные подтверждены сервером.";
+ }catch(e){status.textContent=String(e?.message||"Ошибка поиска.");}
+ finally{btn.disabled=false;}
+}
+async function loadAdminRecentUsers(){
+ const status=$("adminUsersStatus"),output=$("adminUsersResults");
+ output.replaceChildren();
+ const btn=$("adminRecentBtn");btn.disabled=true;
+ status.textContent="Загружаем пользователей…";
+ try{
+  const data=await adminRequest("admin_recent_users");
+  for(const user of data.users||[]){
+   const card=renderAdminUser(user);
+   const link=document.createElement("button");
+   link.className="secondary";
+   link.textContent="🔎 Посмотреть профиль";
+   link.onclick=()=>{
+    $("adminTelegramId").value=String(user.telegramId);
+    adminFindUser(String(user.telegramId));
+   };
+   card.append(link);
+   output.append(card);
+  }
+  status.textContent=data.users?.length?"Показано пользователей: "+data.users.length:"Пользователей пока нет.";
+ }catch(e){status.textContent=String(e?.message||"Ошибка загрузки.");}
+ finally{btn.disabled=false;}
+}
+
 async function loadSupportReports(){
  const status=$("reportsStatus");
  const container=$("reportsList");
@@ -885,6 +992,14 @@ async function loadSupportReports(){
    description.style.whiteSpace="pre-wrap";
    description.style.overflowWrap="anywhere";
    card.append(title,user,description);
+   const tid=String(report.telegramId||"");
+   if(/^[1-9][0-9]{4,15}$/.test(tid)){
+    const account=document.createElement("button");
+    account.className="secondary";
+    account.textContent="👤 Проверить баланс";
+    account.onclick=()=>{openPage("admin-users");$("adminTelegramId").value=tid;adminFindUser(tid);};
+    card.append(account);
+   }
    const username=String(report.username||"");
    if(/^[A-Za-z0-9_]{5,32}$/.test(username)){
     const btn=document.createElement("button");
@@ -1467,7 +1582,10 @@ try{
   const user=tg.initDataUnsafe?.user;
 
   if(user){
-    if(String(user.id)==="1046253780") $("adminReportsTile").style.display="flex";
+    if(String(user.id)==="1046253780"){
+      $("adminReportsTile").style.display="flex";
+      $("adminUsersTile").style.display="flex";
+     }
    const name=[
     user.first_name,
     user.last_name
