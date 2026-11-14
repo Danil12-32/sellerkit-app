@@ -298,9 +298,19 @@ export async function handler(event) {
   if (!body || !["me", "report_error"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
-  const telegramUser = verifiedTelegramUser(body.initData);
+  let telegramUser;
+  try {
+    telegramUser = verifiedTelegramUser(body.initData);
+  } catch (error) {
+    if (String(error?.message || "").includes("TELEGRAM_BOT_TOKEN is not configured")) {
+      console.error("Telegram initData verification unavailable: bot token missing");
+      return response(503, { error: "SERVER_AUTH_NOT_CONFIGURED", build: SERVER_BUILD }, origin);
+    }
+    console.error("Telegram initData verification error:", error?.name || "unknown");
+    return response(503, { error: "SERVER_AUTH_FAILED", build: SERVER_BUILD }, origin);
+  }
   if (!telegramUser) {
-    return response(401, { error: "INVALID_TELEGRAM_AUTH" }, origin);
+    return response(401, { error: "INVALID_TELEGRAM_AUTH", build: SERVER_BUILD }, origin);
   }
 
   if (body.action === "report_error") {
