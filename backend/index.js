@@ -483,7 +483,9 @@ async function adminVseGptStatus() {
 // AI_TEST_ENABLED=1 is required; provider API key stays on the server.
 const AI_TEST_MODELS = Object.freeze({
   "img2img-google/nano-banana-pro-edit-multi": { label: "Google Nano Banana Pro", estimateRub: 29.9 },
-  "img2img-google/nano-banana-2-edit-multi": { label: "Google Nano Banana 2", estimateRub: 19.9 }
+  "img2img-google/nano-banana-2-edit-multi": { label: "Google Nano Banana 2", estimateRub: 19.9 },
+  "img2img-bytedance/seedream-v4.5-edit-multi": { label: "ByteDance Seedream 4.5 Edit", estimateRub: 13.9 },
+  "img2img-openai/gpt-image-2-edit-multi": { label: "OpenAI GPT Image 2 Edit (medium)", estimateRub: 21 }
 });
 let imagePilotRunning = false;
 let imagePilotLastAt = 0;
@@ -560,7 +562,8 @@ async function adminImagePilot(body) {
         response_format: "b64_json",
         output_format: "jpeg",
         image_url: imageData,
-        aspect_ratio: "3:4"
+        aspect_ratio: "3:4",
+        ...(model === "img2img-openai/gpt-image-2-edit-multi" ? { quality: "medium" } : {})
       }),
       signal: AbortSignal.timeout(108000)
     });
