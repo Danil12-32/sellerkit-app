@@ -640,6 +640,7 @@ SEO Analytics
 <button class="wide" id="bugSendBtn" style="margin-top:13px" onclick="submitBugReport()">📨 Передать проблему разработчику</button>
 </div>
 <p id="bugStatus" class="muted" role="status" aria-live="polite"></p>
+<button type="button" class="wide secondary" id="bugFallbackBtn" hidden onclick="contact('error')">💬 Написать автору вручную</button>
 </div>
 </section>
 
@@ -736,15 +737,18 @@ function updateBugAdvice(){
  const category=$("bugCategory").value;
  $("bugAdvice").textContent=BUG_ADVICE[category]||BUG_ADVICE.other;
  $("bugReportForm").hidden=true;
+ $("bugFallbackBtn").hidden=true;
  $("bugStatus").textContent="";
 }
 function showBugReport(){
  $("bugReportForm").hidden=false;
+ $("bugFallbackBtn").hidden=true;
  $("bugStatus").textContent="Опиши проблему, и мы передадим информацию разработчику.";
  $("bugDescription").focus();
 }
 function bugSolved(){
  $("bugReportForm").hidden=true;
+ $("bugFallbackBtn").hidden=true;
  $("bugDescription").value="";
  $("bugStatus").textContent="Отлично! Если появится другая ошибка, вернись в этот раздел.";
 }
@@ -777,26 +781,40 @@ async function submitBugReport(){
   const data=await response.json().catch(()=>({}));
   if(!response.ok || data?.success!==true){
    const code=String(data?.error||"");
-   if(code==="SUPPORT_NOT_CONFIGURED"){
-    throw new Error("Уведомления ещё не настроены на сервере. Сообщение не отправлено.");
-   }
-   if(code==="REPORT_RATE_LIMIT"){
-    throw new Error("Слишком частые обращения. Повтори отправку через минуту.");
-   }
-   if(code==="UNSUPPORTED_ACTION"){
-    throw new Error("Сервер пока не обновлён. Нужно загрузить новую версию sellerkit-api.");
-   }
-   throw new Error("Сервер не подтвердил доставку. Попробуй немного позже.");
+   const stage=String(data?.stage||"").replace(/[^A-Z0-9_]/g,"").slice(0,64);
+   const issues={
+    BOT_TOKEN_MISSING:"На сервере не настроен токен Telegram-бота.",
+    BOT_TOKEN_REJECTED:"Telegram отклонил токен бота — владельцу нужно проверить настройки BotFather.",
+    ADMIN_CHAT_NOT_FOUND:"Бот не нашёл чат разработчика. Владельцу нужно открыть бот и нажать /start.",
+    ADMIN_MUST_START_BOT:"Разработчик должен первым написать своему боту /start.",
+    BOT_BLOCKED_BY_ADMIN:"Бот заблокирован получателем уведомлений.",
+    TELEGRAM_PERMISSION_DENIED:"У бота нет разрешения отправить сообщение разработчику.",
+    TELEGRAM_TIMEOUT:"Telegram не ответил вовремя.",
+    TELEGRAM_NETWORK_ERROR:"Сервер не смог связаться с Telegram.",
+    TELEGRAM_RATE_LIMIT:"Telegram временно ограничил частоту отправок.",
+    TELEGRAM_UNAVAILABLE:"Telegram сейчас недоступен.",
+    TELEGRAM_REJECTED:"Telegram отклонил отправку сообщения."
+   };
+   if(code==="SUPPORT_NOT_CONFIGURED") throw new Error("Отправка обращений ещё не настроена.");
+   if(code==="REPORT_RATE_LIMIT") throw new Error("Слишком частые обращения. Повтори отправку через минуту.");
+   if(code==="INVALID_TELEGRAM_AUTH") throw new Error("Сессия Telegram устарела. Закрой и снова открой Mini App.");
+   if(code==="UNSUPPORTED_ACTION") throw new Error("Сервер ещё не обновлён до версии поддержки обращений.");
+   if(code==="INVALID_SUPPORT_REPORT") throw new Error("Проверь описание ошибки, затем отправь его ещё раз.");
+   const issue=issues[stage]||"Сервер не подтвердил доставку сообщения.";
+   const diagnostic=stage ? " Код диагностики: "+stage+"." : " Код: "+(code||"HTTP_"+response.status)+".";
+   throw new Error(issue+" Обращение не отправлено."+diagnostic);
   }
   status.textContent="✅ Обращение доставлено разработчику. Спасибо за подробное описание!";
+  $("bugFallbackBtn").hidden=true;
   $("bugReportForm").hidden=true;
   $("bugDescription").value="";
  }catch(error){
   status.textContent=error?.name==="AbortError"
-   ?"Не дождались ответа от сервера. Проверь соединение и попробуй снова."
+   ?"Не дождались ответа от сервера. Обращение не подтверждено."
    :(error instanceof TypeError
-     ?"Не удалось связаться с сервером. Проверь интернет."
-     :String(error?.message||"Сообщение не отправлено."));
+     ?"Нет соединения с сервером. Обращение не отправлено."
+     :String(error?.message||"Обращение не отправлено."));
+  $("bugFallbackBtn").hidden=false;
  }finally{
   clearTimeout(timeout);
   button.disabled=false;
