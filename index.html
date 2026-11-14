@@ -797,6 +797,8 @@ async function submitBugReport(){
    };
    if(code==="SUPPORT_NOT_CONFIGURED") throw new Error("Отправка обращений ещё не настроена.");
    if(code==="REPORT_RATE_LIMIT") throw new Error("Слишком частые обращения. Повтори отправку через минуту.");
+   if(code==="SERVER_AUTH_NOT_CONFIGURED") throw new Error("На сервере отсутствует TELEGRAM_BOT_TOKEN. Разработчику нужно восстановить переменную.");
+   if(code==="SERVER_AUTH_FAILED") throw new Error("Ошибка проверки Telegram на сервере. Сообщение не доставлено.");
    if(code==="INVALID_TELEGRAM_AUTH") throw new Error("Сессия Telegram устарела. Закрой и снова открой Mini App.");
    if(code==="UNSUPPORTED_ACTION") throw new Error("Сервер ещё не обновлён до версии поддержки обращений.");
    if(code==="INVALID_SUPPORT_REPORT") throw new Error("Проверь описание ошибки, затем отправь его ещё раз.");
