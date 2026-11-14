@@ -493,6 +493,21 @@ SEO Analytics
 <button disabled class="wide">
 Создать инфографику — скоро
 </button>
+<div id="adminAiPilot" style="display:none">
+<hr>
+<h3>🧪 Тест AI Studio — только разработчику</h3>
+<div class="notice">Платный тест: выбери фото и напиши пожелания выше. Запустится ОДНА генерация. Цена ориентировочно 3,90 ₽ или 7,50 ₽. В VseGPT проверь точную стоимость. Баланс SellerKit не списывается.</div>
+<label for="aiTestModel">Модель для редактирования фото</label>
+<select id="aiTestModel">
+<option value="img2img-flux/flux-2-klein-4b">FLUX.2 Klein 4B — ориентир 3,90 ₽</option>
+<option value="img2img-flux/kontext-pro-edit">FLUX Kontext Pro — ориентир 7,50 ₽</option>
+</select>
+<p class="muted"><small>Для теста нужно включить AI_TEST_ENABLED=1 в Yandex Cloud. Ответ может занять 1–2 минуты. После тайм-аута сначала проверь историю расходов VseGPT, прежде чем пробовать снова.</small></p>
+<button id="aiTestRunButton" class="wide" onclick="adminRunAiPilot()">🧪 Создать тестовую инфографику (платно)</button>
+<p id="aiTestStatus" class="muted" role="status" aria-live="polite">Генерация ещё не запускалась.</p>
+<img id="aiTestResult" alt="Тестовая AI-инфографика товара" style="display:none;width:100%;max-width:550px;border-radius:12px;margin-top:12px">
+<a id="aiTestDownload" download="SellerKit-test.jpg" style="display:none;color:var(--green);margin-top:12px" href="#">⬇️ Скачать результат</a>
+</div>
 </div>
 </section>
 
@@ -927,6 +942,114 @@ async function adminRequest(action,telegramId){
   return data;
  }finally{clearTimeout(timer);}
 }
+
+let aiTestRunning=false;
+async function adminPrepareJpeg(file){
+ if(!file||!/^image\/(jpeg|png|webp)$/.test(file.type))
+  throw new Error("Выбери JPEG, PNG или WebP.");
+ if(file.size>12*1024*1024)throw new Error("Фото больше 12 МБ — сначала уменьши.");
+ const objectUrl=URL.createObjectURL(file);
+ try{
+  const img=new Image();
+  await new Promise((resolve,reject)=>{
+   img.onload=resolve;
+   img.onerror=()=>reject(new Error("Не удалось открыть фотографию."));
+   img.src=objectUrl;
+  });
+  if(img.naturalWidth<200||img.naturalHeight<200)
+   throw new Error("Фото должно быть от 200×200 пикселей.");
+  const factor=Math.min(1,1024/Math.max(img.naturalWidth,img.naturalHeight));
+  const w=Math.max(1,Math.round(img.naturalWidth*factor));
+  const h=Math.max(1,Math.round(img.naturalHeight*factor));
+  const canvas=document.createElement("canvas");
+  const ctx=canvas.getContext("2d");
+  if(!ctx)throw new Error("Не удалось подготовить фото.");
+  for(const scale of [1,0.8,0.6]){
+   canvas.width=Math.max(200,Math.round(w*scale));
+   canvas.height=Math.max(200,Math.round(h*scale));
+   ctx.fillStyle="#ffffff";
+   ctx.fillRect(0,0,canvas.width,canvas.height);
+   ctx.drawImage(img,0,0,canvas.width,canvas.height);
+   for(const quality of [0.85,0.73,0.62,0.50]){
+    const output=canvas.toDataURL("image/jpeg",quality);
+    if(output.length<900000)return output;
+   }
+  }
+  throw new Error("Фото слишком большое для теста, сожми его.");
+ }finally{URL.revokeObjectURL(objectUrl);}
+}
+async function adminRunAiPilot(){
+ if(aiTestRunning)return;
+ const file=$("aiPhoto").files?.[0];
+ const prompt=$("aiPrompt").value.trim();
+ const status=$("aiTestStatus");
+ const button=$("aiTestRunButton");
+ const image=$("aiTestResult");
+ const link=$("aiTestDownload");
+ if(!file){status.textContent="Сначала прикрепи фото товара.";return;}
+ if(prompt.length<10){status.textContent="Напиши название товара и пожелания (минимум 10 символов).";return;}
+ if(prompt.length>1200){status.textContent="Сократи описание до 1200 символов.";return;}
+ const tg=window.Telegram?.WebApp;
+ if(!tg?.initData){status.textContent="Открой SellerKit через Telegram.";return;}
+ aiTestRunning=true;
+ button.disabled=true;
+ image.style.display="none";
+ image.removeAttribute("src");
+ link.style.display="none";
+ link.removeAttribute("href");
+ status.textContent="Подготавливаем фотографию…";
+ try{
+  const photo=await adminPrepareJpeg(file);
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),125000);
+  try{
+   status.textContent="Платный запрос выполняется. Не закрывай Mini App…";
+   const response=await fetch(SELLERKIT_API_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+     action:"admin_image_test",initData:tg.initData,
+     model:$("aiTestModel").value,prompt,imageData:photo
+    }),
+    signal:controller.signal,cache:"no-store"
+   });
+   const result=await response.json().catch(()=>({}));
+   if(!response.ok||result?.success!==true){
+    const reasons={
+     AI_TEST_DISABLED:"Поставь AI_TEST_ENABLED=1 в переменных функции Yandex Cloud.",
+     AI_TEST_BUSY:"Сейчас выполняется запрос или ещё не прошло 15 секунд после предыдущего.",
+     INVALID_AI_TEST_INPUT:"Проверь модель, фото и описание.",
+     INVALID_AI_TEST_IMAGE:"Фото не прошло проверку — выбери другое.",
+     AI_PROVIDER_REJECTED:"VseGPT отклонил запрос. Проверь тариф, лимит цены и историю генераций.",
+     AI_PROVIDER_TIMEOUT:"VseGPT не ответил вовремя. Списание возможно — проверь историю перед повтором.",
+     AI_PROVIDER_NETWORK_FAILED:"Сетевая ошибка. Проверь историю расходов прежде чем повторять.",
+     AI_IMAGE_MISSING:"Не удалось получить картинку от VseGPT. Проверь историю генераций.",
+     AI_IMAGE_TOO_LARGE:"Картинка больше лимита ответа Yandex Cloud. Запрос мог быть оплачен. Для больших файлов понадобится хранилище.",
+     VSEGPT_RATE_LIMIT:"Слишком много запросов к VseGPT — подожди.",
+     VSEGPT_API_KEY_NOT_SET:"Нет ключа VseGPT на сервере.",
+     INVALID_TELEGRAM_AUTH:"Сессия Telegram устарела, переоткрой приложение.",
+     FORBIDDEN:"Платные тесты доступны только владельцу.",
+     UNSUPPORTED_ACTION:"Обнови backend/index.js в Yandex Cloud."
+    };
+    throw new Error((reasons[result?.error]||("Ошибка "+String(result?.error||response.status)))+
+     (result?.upstreamStatus?" HTTP "+result.upstreamStatus:""));
+   }
+   if(typeof result.imageDataUrl!=="string"||!result.imageDataUrl.startsWith("data:image/jpeg;base64,"))
+    throw new Error("Сервер вернул некорректную картинку.");
+   image.src=result.imageDataUrl;
+   image.style.display="block";
+   link.href=result.imageDataUrl;
+   link.style.display="inline-block";
+   status.textContent="✅ Изображение готово. Ориентир: "+result.estimateRub+
+    " ₽. Точная сумма в VseGPT → Стоимость последних генераций. Генерации SellerKit не списывались.";
+  }finally{clearTimeout(timer);}
+ }catch(error){
+  status.textContent=error?.name==="AbortError"
+    ?"Ожидание истекло; списание возможно. Проверь VseGPT перед повтором."
+    :String(error?.message||"Генерация завершилась с ошибкой.");
+ }finally{aiTestRunning=false;button.disabled=false;}
+}
+
 async function adminCheckVseGpt(){
  const status=$("vsegptStatus");
  const button=$("vsegptCheckButton");
@@ -1616,6 +1739,7 @@ try{
     if(String(user.id)==="1046253780"){
       $("adminReportsTile").style.display="flex";
       $("adminUsersTile").style.display="flex";
+      $("adminAiPilot").style.display="block";
      }
    const name=[
     user.first_name,
