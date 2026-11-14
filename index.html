@@ -1088,7 +1088,12 @@ async function showAiHistory(){
    open.onclick=()=>aiRestoreHistory(item).catch(e=>msg.textContent=String(e?.message||e));
    const save=document.createElement("button");save.className="secondary";save.textContent="📤 Сохранить";
    save.onclick=()=>aiExportHistory(item).catch(e=>msg.textContent=String(e?.message||e));
-   actions.append(open,save);box.append(img,title,desc,actions);root.append(box);
+   const send=document.createElement("button");send.className="secondary";send.textContent="📩 В Telegram";
+   send.onclick=async()=>{
+    try{await aiRestoreHistory(item);await adminSendAiPilot();}
+    catch(e){$("aiTestDeliveryStatus").textContent=String(e?.message||e);}
+   };
+   actions.append(open,save,send);box.append(img,title,desc,actions);root.append(box);
   }
  }catch(e){msg.textContent="История недоступна: "+String(e?.message||e);}
 }
