@@ -1747,7 +1747,7 @@ function seriesCategory(){
  if(/фен|пылесос|блендер|массаж[её]р/.test(name))return "appliances";
  if(/сковород|кастрюл|посуда|чайник|кружк/.test(name))return "kitchen";
  if(/диван|стул|шкаф|кресл|мебель/.test(name))return "furniture";
- if(/плед|подушк|постельн|ковр|полотенц/.test(name))return "home_textile";
+ if(/плед|подушк|постельн|ковер|ковёр|полотенц/.test(name))return "home_textile";
  if(/игруш|кукл|машинк|конструктор|пазл/.test(name))return "toys";
  if(/гантел|коврик.*спорт|спортинвентар|фитнес/.test(name))return "sport";
  if(/авто|автомобил|держатель/.test(name))return "automotive";
@@ -1862,7 +1862,8 @@ async function seriesMakeCard(photoData,slide,index){
  const ctx=canvas.getContext("2d");if(!ctx)throw Error("Не работает canvas.");
  const W=900,H=1200;
  const layout=seriesTemplateFor(slide,index);
- const style=((seriesRefineStyle==="auto"?($("aiGuideStyle")?.value||""):seriesRefineStyle)+" "+($("aiGuideProduct")?.value||"")).toLowerCase();
+ const chosenStyle=seriesRefineStyle==="auto"?($("aiGuideStyle")?.value||""):seriesRefineStyle;
+ const style=(/подбери.*сам/i.test(chosenStyle)?($("aiGuideProduct")?.value||""):chosenStyle).toLowerCase();
  const palette=/нежн|розов|худи|плать|юбк|женск/.test(style)?
   {ink:"#352936",accent:"#e48fb0",paper:"#fff8fa",soft:"#f4d8e3",pale:"#f9ebf1"}:
   /спорт|кроссов|кед|ярк/.test(style)?
