@@ -1717,7 +1717,11 @@ function seriesRestoreCachedPlan(){
  }catch(e){alert(String(e?.message||"Не удалось открыть сохранённый план."));}
 }
 
-const SERIES_TEMPLATES=Object.freeze([{"id":"hero-bold","label":"01 · Hero — крупный товар"},{"id":"editorial","label":"02 · Editorial — журнальный"},{"id":"feature-left","label":"03 · Features — слева"},{"id":"feature-right","label":"04 · Features — справа"},{"id":"detail-focus","label":"05 · Detail — детали"},{"id":"benefit-grid","label":"06 · Benefits — сетка"},{"id":"lookbook","label":"07 · Lookbook — образ"},{"id":"spec-rail","label":"08 · Specs — характеристики"},{"id":"split-story","label":"09 · Split — два ракурса"},{"id":"numbered","label":"10 · Numbers — преимущества"},{"id":"premium","label":"11 · Premium — минимализм"},{"id":"final-summary","label":"12 · Summary — итог"},{"id":"arc-accent","label":"13 · Arc — мягкая арка"},{"id":"cover-frame","label":"14 · Frame — рамка обложки"},{"id":"photo-inset","label":"15 · Inset — фото в окне"},{"id":"diagonal-cut","label":"16 · Diagonal — диагональ"},{"id":"ribbon-title","label":"17 · Ribbon — лента заголовка"},{"id":"vertical-headline","label":"18 · Vertical — вертикальная типографика"},{"id":"two-crops","label":"19 · Crops — детали в кадрах"},{"id":"airy-minimal","label":"20 · Airy — лёгкий минимализм"},{"id":"soft-pastel","label":"21 · Pastel — нежный стиль"},{"id":"tech-grid","label":"22 · Tech — техносетка"},{"id":"icon-trio","label":"23 · Trio — три преимущества"},{"id":"portrait-column","label":"24 · Portrait — колонка"},{"id":"photo-grid","label":"25 · Grid — фотоколлаж"},{"id":"fabric-macro","label":"26 · Texture — фактура"},{"id":"outline-type","label":"27 · Outline — контурные акценты"},{"id":"spec-cards","label":"28 · Cards — факты"},{"id":"bottom-wave","label":"29 · Flow — плавная подложка"},{"id":"premium-border","label":"30 · Luxe — премиальная рамка"}]);
+const SERIES_TEMPLATES=Object.freeze([{"id":"hero-bold","label":"01 · Hero — крупный товар"},{"id":"editorial","label":"02 · Editorial — журнальный"},{"id":"feature-left","label":"03 · Features — слева"},{"id":"feature-right","label":"04 · Features — справа"},{"id":"detail-focus","label":"05 · Detail — детали"},{"id":"benefit-grid","label":"06 · Benefits — сетка"},{"id":"lookbook","label":"07 · Lookbook — образ"},{"id":"spec-rail","label":"08 · Specs — характеристики"},{"id":"split-story","label":"09 · Split — два ракурса"},{"id":"numbered","label":"10 · Numbers — преимущества"},{"id":"premium","label":"11 · Premium — минимализм"},{"id":"final-summary","label":"12 · Summary — итог"},{"id":"arc-accent","label":"13 · Arc — мягкая арка"},{"id":"cover-frame","label":"14 · Frame — рамка обложки"},{"id":"photo-inset","label":"15 · Inset — фото в окне"},{"id":"diagonal-cut","label":"16 · Diagonal — диагональ"},{"id":"ribbon-title","label":"17 · Ribbon — лента заголовка"},{"id":"vertical-headline","label":"18 · Vertical — вертикальная типографика"},{"id":"two-crops","label":"19 · Crops — детали в кадрах"},{"id":"airy-minimal","label":"20 · Airy — лёгкий минимализм"},{"id":"soft-pastel","label":"21 · Pastel — нежный стиль"},{"id":"tech-grid","label":"22 · Tech — техносетка"},{"id":"icon-trio","label":"23 · Trio — три преимущества"},{"id":"portrait-column","label":"24 · Portrait — колонка"},{"id":"photo-grid","label":"25 · Grid — фотоколлаж"},{"id":"fabric-macro","label":"26 · Texture — фактура"},{"id":"outline-type","label":"27 · Outline — контурные акценты"},{"id":"spec-cards","label":"28 · Cards — факты"},{"id":"bottom-wave","label":"29 · Flow — плавная подложка"},{"id":"premium-border","label":"30 · Luxe — премиальная рамка"}].concat(
+ (window.SellerKitInfographic?.TEMPLATES||[]).map((v,i)=>({
+  id:v.id,label:String(i+31).padStart(2,"0")+" · "+v.name
+ }))
+));
 const SERIES_ROLE_DEFAULT=Object.freeze({
  hero:"hero-bold",benefit:"benefit-grid",detail:"detail-focus",
  lifestyle:"lookbook",size:"spec-rail",care:"editorial",
@@ -1787,8 +1791,23 @@ function seriesCategory(){
  return "universal";
 }
 function seriesCategoryOrder(){
- const preferred=SERIES_CATEGORY_LAYOUTS[seriesCategory()]||SERIES_CATEGORY_LAYOUTS.universal;
- return [...new Set([...preferred,...SERIES_TEMPLATES.map(x=>x.id)])];
+ const cat=seriesCategory();
+ const preferred=SERIES_CATEGORY_LAYOUTS[cat]||SERIES_CATEGORY_LAYOUTS.universal;
+ const relevant={
+  electronics:[14,6,3,1,2,11,12,10,9,4],
+  appliances:[14,6,3,1,2,11,10,9,4],
+  sport:[14,3,1,2,6,8,11,12,4],
+  footwear:[3,14,1,8,9,12,4,7],
+  fashion:[7,4,9,12,0,11,8,13],
+  furniture:[7,0,4,9,11,13,12],
+  home_textile:[7,4,0,9,12,11,13],
+  bags:[12,4,0,9,11,13,7],
+  fragrance:[5,12,0,9,4,7],
+  lighting:[7,0,11,13,12,4],
+  universal:[0,11,12,7,3,13,14,9]
+ };
+ const ids=(relevant[cat]||relevant.universal).map(i=>"infog-"+i);
+ return [...new Set([...ids,...preferred,...SERIES_TEMPLATES.map(x=>x.id)])];
 }
 function seriesChooseInitialTemplate(index,role){
  const order=seriesCategoryOrder();
@@ -1901,6 +1920,18 @@ async function seriesMakeCard(photoData,slide,index){
  const ctx=canvas.getContext("2d");if(!ctx)throw Error("Не работает canvas.");
  const W=900,H=1200;
  const layout=seriesTemplateFor(slide,index);
+ if(/^infog-(?:[0-9]|1[0-4])$/.test(layout)){
+  const idx=Number(layout.slice(6));
+  if(!window.SellerKitInfographic)throw new Error("Модуль инфографики ещё не загрузился.");
+  if(idx===10&&!slide.claims.some(x=>/\b\d+(?:[.,]\d+)?\s*(?:мм|см|м|кг|г|дюйм)\b/i.test(x)))
+   throw new Error("На слайде "+(index+1)+" нет точных размеров. Выбери другой шаблон.");
+  window.SellerKitInfographic.draw(ctx,image,{index:idx,title:slide.title,claims:slide.claims});
+  let output=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.9));
+  if(!output)throw new Error("Не удалось сохранить инфографику.");
+  if(output.size>1900000)output=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.76));
+  if(!output)throw new Error("Не удалось уменьшить JPG.");
+  return output;
+ }
  const chosenStyle=seriesRefineStyle==="auto"?($("aiGuideStyle")?.value||""):seriesRefineStyle;
  const style=(/подбери.*сам/i.test(chosenStyle)?($("aiGuideProduct")?.value||""):chosenStyle).toLowerCase();
  const palette=/нежн|розов|худи|плать|юбк|женск/.test(style)?
@@ -2701,7 +2732,9 @@ function seriesProtectMissingMeasurements(slides){
  });
 }
 function showAiSeriesPlan(result){
- result={...result,slides:seriesProtectMissingMeasurements(result.slides)};
+ result={...result,slides:seriesProtectMissingMeasurements(result.slides).map((slide,i)=>({
+  ...slide,templateId:seriesChooseInitialTemplate(i,slide.role)
+ }))};
  aiSeriesPlan=result.slides;
  seriesLayoutUsed=new Map();
  seriesPreviousCards=new Map();
@@ -2734,7 +2767,7 @@ function showAiSeriesPlan(result){
   const title=document.createElement("input");
   title.dataset.field="title";title.maxLength=55;title.value=slide.title;
   const tplLabel=document.createElement("label");
-  tplLabel.textContent="Оформление — 30 композиций, смена бесплатно";
+  tplLabel.textContent="Оформление — 45 вариантов, включая 15 инфографик с иконками. Смена бесплатно";
   const tpl=document.createElement("select");
   tpl.dataset.field="template";
   SERIES_TEMPLATES.forEach(item=>{
