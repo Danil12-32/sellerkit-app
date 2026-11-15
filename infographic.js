@@ -72,7 +72,11 @@ const DICTIONARY=[
 [/управлен|функц|режим|настройк/i,"settings"],
 [/лёгк|вес\b|масса/i,"feather"],
 [/комплект|хранен|поставк/i,"box"],
-[/дизайн|стиль|элегант|красив/i,"sparkle"]
+[/дизайн|стиль|элегант|красив/i,"sparkle"],
+[/капюш|шнур|ворот|вырез/i,"hood"],
+[/карман/i,"pocket"],
+[/цвет|расцвет|контраст|блок|палитр/i,"palette"],
+[/посадк|крой|фасон|силуэт/i,"hanger"]
 ];
 function iconFor(s){return DICTIONARY.find(v=>v[0].test(s))?.[1]||"check";}
 function icon(ctx,id,x,y,size,color){
@@ -96,6 +100,10 @@ function icon(ctx,id,x,y,size,color){
  case "feather":ctx.beginPath();ctx.moveTo(8,40);ctx.quadraticCurveTo(6,14,41,7);ctx.quadraticCurveTo(43,36,8,40);ctx.stroke();path([8,40],[35,13]);break;
  case "box":path([5,16],[24,6],[43,16],[24,26],[5,16]);path([5,16],[5,37],[24,45],[24,26]);path([43,16],[43,37],[24,45]);break;
  case "sparkle":path([24,4],[29,19],[44,24],[29,29],[24,44],[19,29],[4,24],[19,19],[24,4]);break;
+ case "hood":ctx.beginPath();ctx.moveTo(9,40);ctx.quadraticCurveTo(4,12,24,5);ctx.quadraticCurveTo(44,12,39,40);ctx.stroke();path([16,42],[18,25],[30,25],[32,42]);break;
+ case "palette":circ(23,23,19);circ(14,16,2);circ(26,12,2);circ(35,22,2);circ(27,34,2);break;
+ case "hanger":ctx.beginPath();ctx.arc(24,13,6,Math.PI,0);ctx.stroke();path([30,13],[30,18],[44,34],[44,39],[4,39],[4,34],[20,18]);break;
+ case "pocket":path([8,11],[40,11],[37,40],[11,40],[8,11]);path([14,21],[34,21]);break;
  default:path([8,25],[19,36],[40,12]);
  }
  ctx.restore();
@@ -134,9 +142,71 @@ function round(ctx,x,y,w,h,r,fill){
  ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();ctx.fillStyle=fill;ctx.fill();
 }
+// A fashion cover needs its own design language, not generic bullet overlays.
+function fashionLabel(title){
+ const raw=String(title||"").trim(), match=raw.match(/худи|свитер|джемпер|кардиган|кофт[аы]|куртк[а-я]*|футболк[а-я]*|плать[а-я]*|рубашк[а-я]*|юбк[а-я]*|шорт[а-я]*|брюк[а-я]*/i);
+ if(!match)return {hero:raw.toLocaleUpperCase("ru-RU"),sub:""};
+ const noun=match[0].toLocaleUpperCase("ru-RU");
+ const rest=(raw.slice(0,match.index)+" "+raw.slice(match.index+match[0].length)).replace(/\s+/g," ").trim().replace(/^с\s+/i,"");
+ return {hero:noun,sub:rest.toLocaleUpperCase("ru-RU")};
+}
+function fashionSticker(ctx,value,x,y,w,h,accent,variant=0){
+ const c=String(value||"").trim();if(!c)return;
+ const dark="#302824",cream=variant===2?"rgba(255,250,246,.95)":"rgba(255,247,235,.92)";
+ ctx.save();ctx.shadowColor="rgba(55,35,28,.25)";ctx.shadowBlur=23;ctx.shadowOffsetY=9;
+ round(ctx,x,y,w,h,25,cream);ctx.restore();
+ ctx.save();ctx.globalAlpha=.72;ctx.fillStyle=accent;ctx.fillRect(x+17,y+17,57,5);ctx.restore();
+ const number=c.match(/(?:\d{1,3}\s*[–-]\s*\d{1,3}|\d{1,3}\s*%|\d+(?:[,.]\d+)?\s*(?:см|мм|кг))/i);
+ if(number){
+  const n=number[0].replace(/\s+/g," ");
+  text(ctx,n,x+21,y+31,w-38,69,{size:57,min:25,maxLines:1,color:dark,weight:800,shadow:false});
+  const description=c.replace(number[0],"").replace(/[·:,()]/g," ").trim().toLocaleUpperCase("ru-RU");
+  if(description)text(ctx,description,x+22,y+h-44,w-42,38,{size:19,min:12,maxLines:2,color:dark,weight:700,shadow:false});
+  return;
+ }
+ round(ctx,x+17,y+30,61,61,19,"rgba(235,195,202,.34)");
+ icon(ctx,iconFor(c),x+28,y+41,39,"#72544F");
+ text(ctx,c.toLocaleUpperCase("ru-RU"),x+92,y+27,w-107,h-42,
+  {size:27,min:17,maxLines:4,color:dark,weight:800,shadow:false});
+}
+function fashionHero(ctx,data,index,accent){
+ const title=fashionLabel(data.title);
+ const g=ctx.createLinearGradient(0,0,0,385);
+ g.addColorStop(0,"rgba(249,238,233,.96)");
+ g.addColorStop(.42,"rgba(249,238,233,.60)");
+ g.addColorStop(1,"rgba(249,238,233,0)");
+ ctx.fillStyle=g;ctx.fillRect(0,0,900,385);
+ // Big category typography as in a designed marketplace cover.
+ const isMinimal=index===4, isDark=index===5, isTech=index===14;
+ const headingColor=isDark?"#342621":"#2B2423";
+ const width=829;
+ text(ctx,title.hero,45,63,width,128,
+  {size:113,min:56,maxLines:1,color:headingColor,weight:900,shadow:false});
+ if(title.sub) {
+  ctx.fillStyle=accent;
+  round(ctx,43,201,Math.min(756,Math.max(238,title.sub.length*16+55)),56,24,"rgba(255,224,234,.86)");
+  text(ctx,title.sub,58,212,Math.min(732,Math.max(217,title.sub.length*16+36)),39,
+   {size:27,min:17,maxLines:2,color:"#2B2423",weight:800,shadow:false});
+ }
+ const claims=data.claims;
+ // Two big feature stickers; use only what the person supplied.
+ const placements=(
+  index===12?[[22,454,337,158],[541,716,337,158],[47,989,363,142]]:
+  index===4? [[22,607,334,156],[547,794,324,156],[35,1028,346,129]]:
+  index===0? [[22,491,339,158],[539,768,339,158],[39,1020,349,137]]:
+  index===5? [[24,577,346,159],[533,777,343,159],[40,1027,350,135]]:
+  index===14?[[26,466,341,162],[536,716,341,162],[40,1019,350,140]]:
+  [[25,523,344,158],[535,752,341,158],[43,1018,363,136]]
+ );
+ claims.slice(0,3).forEach((claim,i)=>{
+  const [x,y,w,h]=placements[i];fashionSticker(ctx,claim,x,y,w,h,accent,isMinimal?2:0);
+ });
+ // If users give more than three claims, these belong on the following informational slides,
+ // not as tiny, unreadable text on the hero.
+}
 const COLORS={lighting:"#E3C190",tech:"#F9A850",fashion:"#EFB5D1",footwear:"#8FDBF8",
 accessories:"#B6DCC7",beauty:"#FFC0C0",general:"#CDDFFA"};
-function draw(ctx,img,{index=0,title,claims=[]}={}){
+function draw(ctx,img,{index=0,title,claims=[],hero=false}={}){
  index=Number(index);if(!Number.isInteger(index)||index<0||index>=15)index=0;
  const data=prepare(title,claims),W=900,H=1200,accent=COLORS[data.category];
  if(data.title.length<3)throw Error("Введи название товара.");
@@ -146,6 +216,10 @@ function draw(ctx,img,{index=0,title,claims=[]}={}){
  // Full photo remains intact across free redesigns; no invented camera angles.
  const scale=Math.max(W/iw,H/ih),dw=iw*scale,dh=ih*scale;
  ctx.drawImage(img,(W-dw)/2,(H-dh)/2,dw,dh);
+ if(data.category==="fashion"&&hero&&[0,4,5,7,12,14].includes(index)){
+  fashionHero(ctx,data,index,accent);
+  return {name:TEMPLATES[index].name,prepared:data};
+ }
  const shade=(x,y,w,h,start,end,horizontal=false)=>{
   const g=ctx.createLinearGradient(x,y,horizontal?x+w:x,horizontal?y:y+h);
   g.addColorStop(0,start);g.addColorStop(1,end);ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
