@@ -1816,47 +1816,62 @@ function seriesCostPreview(){
   " ₽ = "+estimate.toFixed(2)+" ₽. "+(estimate>limit?"Сейчас выше выбранного лимита.":"Это оценка, реальную цену устанавливает VseGPT.");
  return {estimate,limit,count};
 }
+// Smart photo fill: no flat blank sidebars. Preserve actual product shape in narrow panels.
 function seriesDrawImage(ctx,img,x,y,w,h){
+ const srcW=img.naturalWidth||img.width,srcH=img.naturalHeight||img.height;
+ if(!srcW||!srcH)return;
  ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
- ctx.fillStyle="#dce7e6";ctx.fillRect(x,y,w,h);
- const scale=Math.min(w/img.naturalWidth,h/img.naturalHeight);
- const iw=img.naturalWidth*scale,ih=img.naturalHeight*scale;
- ctx.drawImage(img,x+(w-iw)/2,y+(h-ih)/2,iw,ih);
+ const cover=Math.max(w/srcW,h/srcH);
+ const contain=Math.min(w/srcW,h/srcH);
+ // Broad panels: controlled edge crop (< 22%) makes the merchandise much larger.
+ const cropShare=(w*h)/(srcW*cover*srcH*cover);
+ if(cropShare>=0.78){
+  const dw=srcW*cover,dh=srcH*cover;
+  ctx.drawImage(img,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
+ }else{
+  // Narrow magazine columns: protect the full shape; blurred photo fills unused space
+  // instead of gray/white bars. A mild zoom enlarges the original without hard cropping.
+  ctx.save();
+  ctx.filter="blur(34px) brightness(0.92)";
+  const bw=srcW*cover,bh=srcH*cover;
+  ctx.drawImage(img,x+(w-bw)/2-25,y+(h-bh)/2-25,bw+50,bh+50);
+  ctx.restore();
+  const zoom=Math.min(1.16,cover/contain);
+  const dw=srcW*contain*zoom,dh=srcH*contain*zoom;
+  ctx.drawImage(img,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
+ }
  ctx.restore();
 }
-function seriesTextLines(ctx,message,width,maxLines){
+// Never truncate a claim with an ellipsis: all text must be legible and complete.
+function seriesTextLines(ctx,message,width){
  const words=String(message||"").split(/\s+/).filter(Boolean);
  const lines=[];let current="";
  for(const word of words){
   const attempt=current?current+" "+word:word;
   if(ctx.measureText(attempt).width<=width){current=attempt;continue;}
-  if(current){lines.push(current);current=word;}
-  else{lines.push(word);current="";}
+  if(current)lines.push(current);
+  current=word;
  }
  if(current)lines.push(current);
- if(lines.length<=maxLines)return lines;
- const trimmed=lines.slice(0,maxLines);
- let last=trimmed[maxLines-1];
- while(last&&ctx.measureText(last+"…").width>width)last=last.slice(0,-1);
- trimmed[maxLines-1]=last+"…";
- return trimmed;
+ return lines;
 }
 function seriesWrite(ctx,text,x,y,maxWidth,maxLines,largest,smallest,color,weight){
- const font="system-ui,-apple-system,BlinkMacSystemFont,Arial,sans-serif";
+ const font="Arial,Helvetica,sans-serif";
  let fontSize=largest,arr=[];
- for(;fontSize>=smallest;fontSize-=2){
+ for(;fontSize>=smallest;fontSize-=1){
   ctx.font=(weight||700)+" "+fontSize+"px "+font;
-  const all=seriesTextLines(ctx,text,maxWidth,99);
+  const all=seriesTextLines(ctx,text,maxWidth);
   if(all.length<=maxLines){arr=all;break;}
  }
- ctx.font=(weight||700)+" "+Math.max(fontSize,smallest)+"px "+font;
- if(!arr.length)arr=seriesTextLines(ctx,text,maxWidth,maxLines);
+ fontSize=Math.max(fontSize,smallest);
+ ctx.font=(weight||700)+" "+fontSize+"px "+font;
+ if(!arr.length)arr=seriesTextLines(ctx,text,maxWidth);
  ctx.fillStyle=color;ctx.textBaseline="top";
- const step=Math.max(fontSize,smallest)*1.18;
+ const step=fontSize*1.18;
  arr.forEach((line,i)=>ctx.fillText(line,x,y+i*step,maxWidth));
  return arr.length*step;
 }
-// 12 marketplace layouts. Composition and photo areas are separate:
+// 30 responsive marketplace layouts. Photos and text are composed separately:
 // typography cannot cover the merchandise, and every slide chooses its own template.
 async function seriesMakeCard(photoData,slide,index){
  const image=new Image();
@@ -1881,9 +1896,9 @@ async function seriesMakeCard(photoData,slide,index){
  const {ink,accent,paper,soft,pale}=palette;
  const facts=(Array.isArray(slide.claims)?slide.claims:[]).map(x=>String(x).trim()).filter(Boolean).slice(0,seriesRefineDensity==="minimal"?1:3);
  const fill=(color,x,y,w,h)=>{ctx.fillStyle=color;ctx.fillRect(x,y,w,h);};
- const title=(x,y,w,max=2,size=56,color=ink)=>seriesWrite(ctx,slide.title||"Товар",x,y,w,max,size,26,color,800);
+ const title=(x,y,w,max=2,size=56,color=ink)=>seriesWrite(ctx,slide.title||"Товар",x,y,w,max,size,22,color,700);
  const cap=(text,x,y,w,max=2,size=26,color=ink,weight=600)=>
-  seriesWrite(ctx,String(text),x,y,w,max,size,19,color,weight);
+  seriesWrite(ctx,String(text),x,y,w,max,size,18,color,weight);
  const picture=(x,y,w,h,bg=paper)=>{
   fill(bg,x,y,w,h);
   seriesDrawImage(ctx,image,x,y,w,h);
@@ -1896,7 +1911,7 @@ async function seriesMakeCard(photoData,slide,index){
   facts.slice(0,max).forEach((value,i)=>{
    const yy=y+i*rowHeight;
    dot(x+8,yy+15,5);
-   cap(value,x+27,yy,w-30,2,w<255?25:29,color,630);
+   cap(value,x+27,yy,w-30,6,w<255?25:28,color,600);
   });
  };
  const factsGrid=(x,y,w,h)=>{
@@ -1907,7 +1922,7 @@ async function seriesMakeCard(photoData,slide,index){
    const xx=x+cell*i;
    if(i>0)fill(soft,xx,y+15,2,h-30);
    fill(accent,xx+24,y+22,45,4);
-   cap(text,xx+24,y+56,cell-45,3,27,ink,650);
+   cap(text,xx+24,y+56,cell-45,5,27,ink,600);
   });
  };
  fill(paper,0,0,W,H);
@@ -1935,7 +1950,7 @@ async function seriesMakeCard(photoData,slide,index){
    fill(ink,0,0,340,H);
    picture(340,0,560,H,pale);
    line(36,64,100);
-   title(34,114,276,3,43,"#ffffff");
+   title(34,114,276,6,39,"#ffffff");
    factsList(35,455,277,3,192,"#ffffff");
    break;
   }
@@ -1943,7 +1958,7 @@ async function seriesMakeCard(photoData,slide,index){
    picture(0,0,560,H,pale);
    fill(ink,560,0,340,H);
    line(598,61,105);
-   title(595,109,272,3,43,"#ffffff");
+   title(595,109,272,6,39,"#ffffff");
    factsList(596,463,270,3,186,"#ffffff");
    break;
   }
@@ -1978,7 +1993,7 @@ async function seriesMakeCard(photoData,slide,index){
    fill(paper,624,0,276,1200);
    fill(accent,624,0,7,1200);
    line(655,52,70);
-   title(652,98,215,4,35);
+   title(652,98,215,7,33);
    factsList(654,461,209,3,218,ink);
    break;
   }
@@ -2072,7 +2087,7 @@ async function seriesMakeCard(photoData,slide,index){
   }
   case "vertical-headline":{
    fill(ink,0,0,260,1200);picture(260,0,640,1200,pale);
-   line(31,47,100);title(28,95,204,6,40,"#ffffff");
+   line(31,47,100);title(28,95,204,8,35,"#ffffff");
    factsList(31,640,195,3,175,"#ffffff");
    break;
   }
@@ -2150,11 +2165,11 @@ async function seriesMakeCard(photoData,slide,index){
   case "spec-cards":{
    picture(0,0,560,1200,pale);fill(paper,560,0,340,1200);
    fill(soft,560,0,8,1200);line(590,49,92);
-   title(586,93,281,4,40);
+   title(586,93,281,7,36);
    facts.slice(0,3).forEach((value,i)=>{
     const y=445+i*219;
     fill(pale,586,y,282,184);fill(accent,586,y,6,184);
-    cap(value,605,y+45,244,3,28,ink,610);
+    cap(value,605,y+35,244,6,26,ink,600);
    });
    break;
   }
