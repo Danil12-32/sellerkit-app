@@ -2425,6 +2425,13 @@ async function seriesRepaintOne(number){
  }catch(e){status.textContent="Ошибка обновления: "+String(e?.message||e);}
  finally{seriesBundleBusy=false;}
 }
+// Respect the explicit clothing-on-model request; other products use studio mode.
+function seriesVisualMode(slide){
+ const scene=String($("aiGuideScene")?.value||"");
+ const wantsModel=/одежда на.*модел|на взрослой модели/i.test(scene)||
+  /на (взрослой )?модел[ьи]|на человеке/i.test(String(slide?.visual||""));
+ return seriesCategory()==="fashion"&&wantsModel?"on_model":"studio";
+}
 async function seriesRegenerateOne(number){
  const status=$("aiSeriesBundleStatus");
  const item=seriesBundleItems.find(x=>x.index===number&&x.paid);
@@ -2455,7 +2462,7 @@ async function seriesRegenerateOne(number){
     body:JSON.stringify({
      action:"admin_image_test",initData:tg.initData,model,prompt,
      templateId:seriesTemplateFor(slide,number-1),
-     visualMode:"studio",imageData,productTitle:$("aiGuideProduct").value.trim()
+     visualMode:seriesVisualMode(slide),imageData,productTitle:$("aiGuideProduct").value.trim()
     }),signal:ctl.signal,cache:"no-store"
    });
   }finally{clearTimeout(timer);}
@@ -2522,7 +2529,7 @@ async function seriesGeneratePaidBundle(){
     response=await fetch(SELLERKIT_API_URL,{
      method:"POST",headers:{"Content-Type":"application/json"},
      body:JSON.stringify({action:"admin_image_test",initData:tg.initData,
-       model,prompt,templateId:seriesTemplateFor(slide,i),visualMode:"studio",imageData,productTitle:$("aiGuideProduct").value.trim()}),
+       model,prompt,templateId:seriesTemplateFor(slide,i),visualMode:seriesVisualMode(slide),imageData,productTitle:$("aiGuideProduct").value.trim()}),
      signal:controller.signal,cache:"no-store"
     });
    }finally{clearTimeout(timer);}
