@@ -1674,6 +1674,73 @@ function seriesTemplateFor(slide,index){
   (SERIES_ROLE_DEFAULT[slide?.role]||SERIES_TEMPLATES[index%SERIES_TEMPLATES.length].id);
 }
 
+
+// Category-aware art direction: start with relevant layouts, then try unused alternatives.
+const SERIES_CATEGORY_LAYOUTS=Object.freeze({
+ fashion:["hero-bold","lookbook","fabric-macro","editorial","soft-pastel","photo-grid","airy-minimal","spec-rail","premium","feature-right","detail-focus","arc-accent"],
+ footwear:["hero-bold","diagonal-cut","detail-focus","tech-grid","split-story","benefit-grid","premium-border","feature-left","photo-grid","numbered","cover-frame","bottom-wave"],
+ bags:["cover-frame","editorial","spec-cards","detail-focus","premium","feature-right","two-crops","photo-inset","benefit-grid","lookbook","outline-type"],
+ beauty:["soft-pastel","photo-inset","premium","fabric-macro","detail-focus","benefit-grid","arc-accent","icon-trio","editorial"],
+ fragrance:["premium-border","premium","cover-frame","outline-type","arc-accent","editorial","photo-inset","airy-minimal"],
+ jewelry:["premium","premium-border","fabric-macro","detail-focus","photo-grid","airy-minimal","arc-accent","cover-frame"],
+ electronics:["tech-grid","hero-bold","icon-trio","feature-left","spec-cards","numbered","cover-frame","split-story","detail-focus"],
+ appliances:["feature-right","tech-grid","spec-cards","hero-bold","numbered","benefit-grid","photo-inset","editorial"],
+ kitchen:["editorial","photo-inset","benefit-grid","feature-left","airy-minimal","detail-focus","spec-cards"],
+ furniture:["lookbook","airy-minimal","cover-frame","editorial","split-story","feature-right","premium"],
+ home_textile:["soft-pastel","fabric-macro","airy-minimal","detail-focus","lookbook","photo-grid","arc-accent"],
+ toys:["hero-bold","bottom-wave","icon-trio","numbered","photo-grid","ribbon-title","diagonal-cut"],
+ sport:["diagonal-cut","hero-bold","tech-grid","feature-right","detail-focus","benefit-grid","numbered"],
+ automotive:["spec-cards","feature-left","detail-focus","tech-grid","cover-frame","numbered","two-crops"],
+ food:["premium","cover-frame","soft-pastel","fabric-macro","hero-bold","editorial","bottom-wave"],
+ universal:["hero-bold","editorial","cover-frame","photo-inset","benefit-grid","premium","arc-accent","final-summary"]
+});
+function seriesCategory(){
+ const selected=$("aiGuideScenario")?.value||"";
+ if(selected&&SERIES_CATEGORY_LAYOUTS[selected])return selected;
+ const name=($("aiGuideProduct")?.value||"").toLowerCase();
+ if(/худи|свитер|плать|юбк|куртк|футбол|джемпер|шорт|рубаш|одежд/.test(name))return "fashion";
+ if(/кроссов|обув|кед|ботин|сапог|туфл/.test(name))return "footwear";
+ if(/сумк|рюкзак|кошел|клатч|чемодан/.test(name))return "bags";
+ if(/дух|парфюм|аромат/.test(name))return "fragrance";
+ if(/крем|сыворот|косметик|шампун/.test(name))return "beauty";
+ if(/сер[ье]г|украшен|кольц|кулон|браслет/.test(name))return "jewelry";
+ if(/микрофон|наушник|телефон|смартфон|клавиатур|мышь|планшет/.test(name))return "electronics";
+ if(/фен|пылесос|блендер|массаж[её]р/.test(name))return "appliances";
+ if(/сковород|кастрюл|посуда|чайник|кружк/.test(name))return "kitchen";
+ if(/диван|стул|шкаф|кресл|мебель/.test(name))return "furniture";
+ if(/плед|подушк|постельн|ковр|полотенц/.test(name))return "home_textile";
+ if(/игруш|кукл|машинк|конструктор|пазл/.test(name))return "toys";
+ if(/гантел|коврик.*спорт|спортинвентар|фитнес/.test(name))return "sport";
+ if(/авто|органайзер|автомобил|держатель/.test(name))return "automotive";
+ if(/кофе|чай|шоколад|конфет|печенье/.test(name))return "food";
+ return "universal";
+}
+function seriesCategoryOrder(){
+ const preferred=SERIES_CATEGORY_LAYOUTS[seriesCategory()]||SERIES_CATEGORY_LAYOUTS.universal;
+ return [...new Set([...preferred,...SERIES_TEMPLATES.map(x=>x.id)])];
+}
+function seriesChooseInitialTemplate(index,role){
+ const order=seriesCategoryOrder();
+ if(index===0&&role==="hero")return order[0];
+ return order[index%order.length];
+}
+// Per-slide history prevents cycling the same template in a small set of attempts.
+let seriesLayoutUsed=new Map();
+let seriesRefineStyle="auto",seriesRefineDensity="normal";
+function seriesPickAnotherTemplate(number,slides){
+ const current=slides[number-1];
+ const order=seriesCategoryOrder();
+ const used=new Set(seriesLayoutUsed.get(number)||[]);
+ used.add(seriesTemplateFor(current,number-1));
+ const other=new Set(slides.filter((_,i)=>i!==number-1).map((s,i)=>s.templateId).filter(Boolean));
+ // Prefer relevant layouts, then try the rest; avoid repeats across a bundle.
+ const candidate=order.find(id=>!used.has(id)&&!other.has(id))||
+   order.find(id=>!used.has(id))||order.find(id=>id!==current.templateId);
+ if(!candidate)return current.templateId;
+ seriesLayoutUsed.set(number,[...used,candidate]);
+ return candidate;
+}
+
 // Multi-slide owner prototype. Free mockups are rendered on the device.
 // Paid requests are made only after the owner reviews the mockups and confirms costs.
 let seriesBundleItems=[];
