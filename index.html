@@ -1922,7 +1922,9 @@ async function seriesMakeCard(photoData,slide,index){
    const xx=x+cell*i;
    if(i>0)fill(soft,xx,y+15,2,h-30);
    fill(accent,xx+24,y+22,45,4);
-   cap(value,xx+24,y+56,cell-45,5,27,color,600);
+   // Tight captions are fitted into the available band instead of disappearing below the JPG.
+   const smallBand=h<170;
+   cap(value,xx+24,y+(smallBand?32:50),cell-45,5,smallBand?22:25,color,600);
   });
  };
  fill(paper,0,0,W,H);
