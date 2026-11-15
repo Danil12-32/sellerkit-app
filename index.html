@@ -524,42 +524,15 @@ SEO Analytics
 <label for="aiPrompt">5. Пожелания только к визуальному стилю</label>
 <textarea id="aiPrompt" placeholder="Например: премиальная fashion-съёмка, мягкий студийный свет, розово-бежевый фон, крупный товар"></textarea>
 <p class="muted"><small>Фотографию создаёт нейросеть, а текст SellerKit наносит отдельно. Чтобы исправить опечатки и составить текст без ТЗ, используй AI-помощника в разделе тестирования ниже.</small></p>
-<label for="aiDesignPreset">6. Дизайн карточки (смена без новой AI-генерации)</label>
-<select id="aiDesignPreset">
-<option value="auto">Автоматически под товар</option>
-<option value="layout-0">01 · Премиум — сверху слева / снизу слева</option>
-<option value="layout-1">02 · Премиум — сверху справа / снизу справа</option>
-<option value="layout-2">03 · Премиум — по центру / снизу</option>
-<option value="layout-3">04 · Премиум — сверху слева / снизу справа</option>
-<option value="layout-4">05 · Премиум — сверху справа / снизу слева</option>
-<option value="layout-5">06 · Премиум — снизу слева / сверху справа</option>
-<option value="layout-6">07 · Минимализм — сверху слева / снизу слева</option>
-<option value="layout-7">08 · Минимализм — сверху справа / снизу справа</option>
-<option value="layout-8">09 · Минимализм — по центру / снизу</option>
-<option value="layout-9">10 · Минимализм — сверху слева / снизу справа</option>
-<option value="layout-10">11 · Минимализм — сверху справа / снизу слева</option>
-<option value="layout-11">12 · Минимализм — снизу слева / сверху справа</option>
-<option value="layout-12">13 · Маркетплейс — сверху слева / снизу слева</option>
-<option value="layout-13">14 · Маркетплейс — сверху справа / снизу справа</option>
-<option value="layout-14">15 · Маркетплейс — по центру / снизу</option>
-<option value="layout-15">16 · Маркетплейс — сверху слева / снизу справа</option>
-<option value="layout-16">17 · Маркетплейс — сверху справа / снизу слева</option>
-<option value="layout-17">18 · Маркетплейс — снизу слева / сверху справа</option>
-<option value="layout-18">19 · Спорт — сверху слева / снизу слева</option>
-<option value="layout-19">20 · Спорт — сверху справа / снизу справа</option>
-<option value="layout-20">21 · Спорт — по центру / снизу</option>
-<option value="layout-21">22 · Спорт — сверху слева / снизу справа</option>
-<option value="layout-22">23 · Спорт — сверху справа / снизу слева</option>
-<option value="layout-23">24 · Спорт — снизу слева / сверху справа</option>
-<option value="layout-24">25 · Нежный — сверху слева / снизу слева</option>
-<option value="layout-25">26 · Нежный — сверху справа / снизу справа</option>
-<option value="layout-26">27 · Нежный — по центру / снизу</option>
-<option value="layout-27">28 · Нежный — сверху слева / снизу справа</option>
-<option value="layout-28">29 · Нежный — сверху справа / снизу слева</option>
-<option value="layout-29">30 · Нежный — снизу слева / сверху справа</option>
+<label for="aiDesignMode">6. Тип карточки</label>
+<select id="aiDesignMode" onchange="adminDesignModeChanged()">
+<option value="infographic" selected>Инфографика WB / Ozon — товар, преимущества, иконки</option>
+<option value="photo">Фото-стиль — надписи поверх фотографии</option>
 </select>
-<p class="muted"><small>30 вариантов: 5 дизайн-систем × 6 расположений. Все используют уже созданное фото. Изменение оформления бесплатно; новый ракурс или фон требует отдельной AI-генерации.</small></p>
-
+<label for="aiDesignPreset">7. Оформление карточки (смена бесплатно)</label>
+<select id="aiDesignPreset"><option value="auto">Подобрать под товар</option></select>
+<p class="muted" style="font-size:12px">15 разных композиций инфографики и 30 фото-стилей. При бесплатной смене фотографии, фон и ракурс не генерируются заново.</p>
+<p class="muted" id="aiCopyLocalStatus" role="status" aria-live="polite" style="font-size:12px"></p>
 <div class="notice">
 Публичная генерация пока не запущена. Тест доступен только владельцу. После запуска одна бесплатная пробная AI-карточка будет доступна только для предпросмотра; оригинал можно будет разблокировать за 5 токенов (100 ₽). Оплата и серверная защита оригиналов ещё не подключены.
 </div>
@@ -1093,6 +1066,7 @@ SEO Analytics
 </div>
 </div>
 
+<script src="./infographic.js?v=20261115-1"></script>
 <script>
 "use strict";
 
@@ -1340,7 +1314,7 @@ async function aiHistorySave(asNew,model){
  const record={
   id,owner:aiOwnerId(),date:Date.now(),model:model||$("aiTestModel").value,
   title:$("aiTitle").value,claims:$("aiFacts").value,style:$("aiPrompt").value,
-  visualMode:$("aiVisualMode").value,designPreset:$("aiDesignPreset").value,
+  visualMode:$("aiVisualMode").value,designMode:$("aiDesignMode").value,designPreset:$("aiDesignPreset").value,
   rawBlob,cardBlob:new Blob([aiPilotFile],{type:"image/jpeg"})
  };
  try{await new Promise((resolve,reject)=>{
@@ -1399,7 +1373,8 @@ async function showAiHistory(){
 async function aiRestoreHistory(item){
  $("aiTitle").value=item.title;$("aiFacts").value=item.claims;
  $("aiPrompt").value=item.style;$("aiVisualMode").value=item.visualMode;
- $("aiDesignPreset").value=item.designPreset||"auto";
+ $("aiDesignMode").value=item.designMode||(String(item.designPreset||"").startsWith("infog-")?"infographic":"photo");
+ adminDesignModeChanged(item.designPreset||"auto");
  if([...$("aiTestModel").options].some(o=>o.value===item.model))$("aiTestModel").value=item.model;
  aiPilotRawImage=await aiBlobDataUrl(item.rawBlob);
  aiPilotDataUrl=await aiBlobDataUrl(item.cardBlob);
@@ -2871,6 +2846,28 @@ const AI_CARD_THEMES=Object.freeze([
  {name:"Спорт",accent:"#83DFFF",font:'Arial,Helvetica,sans-serif',weight:800,titleSize:65,claimSize:30},
  {name:"Нежный",accent:"#F7B9D7",font:'Arial,Helvetica,sans-serif',weight:700,titleSize:57,claimSize:29}
 ]);
+const AI_PHOTO_DESIGN_OPTIONS=[{"value":"layout-0","label":"01 · Премиум — сверху слева / снизу слева"},{"value":"layout-1","label":"02 · Премиум — сверху справа / снизу справа"},{"value":"layout-2","label":"03 · Премиум — по центру / снизу"},{"value":"layout-3","label":"04 · Премиум — сверху слева / снизу справа"},{"value":"layout-4","label":"05 · Премиум — сверху справа / снизу слева"},{"value":"layout-5","label":"06 · Премиум — снизу слева / сверху справа"},{"value":"layout-6","label":"07 · Минимализм — сверху слева / снизу слева"},{"value":"layout-7","label":"08 · Минимализм — сверху справа / снизу справа"},{"value":"layout-8","label":"09 · Минимализм — по центру / снизу"},{"value":"layout-9","label":"10 · Минимализм — сверху слева / снизу справа"},{"value":"layout-10","label":"11 · Минимализм — сверху справа / снизу слева"},{"value":"layout-11","label":"12 · Минимализм — снизу слева / сверху справа"},{"value":"layout-12","label":"13 · Маркетплейс — сверху слева / снизу слева"},{"value":"layout-13","label":"14 · Маркетплейс — сверху справа / снизу справа"},{"value":"layout-14","label":"15 · Маркетплейс — по центру / снизу"},{"value":"layout-15","label":"16 · Маркетплейс — сверху слева / снизу справа"},{"value":"layout-16","label":"17 · Маркетплейс — сверху справа / снизу слева"},{"value":"layout-17","label":"18 · Маркетплейс — снизу слева / сверху справа"},{"value":"layout-18","label":"19 · Спорт — сверху слева / снизу слева"},{"value":"layout-19","label":"20 · Спорт — сверху справа / снизу справа"},{"value":"layout-20","label":"21 · Спорт — по центру / снизу"},{"value":"layout-21","label":"22 · Спорт — сверху слева / снизу справа"},{"value":"layout-22","label":"23 · Спорт — сверху справа / снизу слева"},{"value":"layout-23","label":"24 · Спорт — снизу слева / сверху справа"},{"value":"layout-24","label":"25 · Нежный — сверху слева / снизу слева"},{"value":"layout-25","label":"26 · Нежный — сверху справа / снизу справа"},{"value":"layout-26","label":"27 · Нежный — по центру / снизу"},{"value":"layout-27","label":"28 · Нежный — сверху слева / снизу справа"},{"value":"layout-28","label":"29 · Нежный — сверху справа / снизу слева"},{"value":"layout-29","label":"30 · Нежный — снизу слева / сверху справа"}];
+function adminDesignModeChanged(selected){
+ const mode=$("aiDesignMode")?.value||"photo";
+ const preset=$("aiDesignPreset");if(!preset)return;
+ const chosen=selected||preset.value;
+ const list=mode==="infographic"?(window.SellerKitInfographic?.TEMPLATES||[]).map(t=>({value:t.id,label:t.name})):AI_PHOTO_DESIGN_OPTIONS;
+ preset.replaceChildren(new Option("Подобрать под товар","auto"));
+ list.forEach((item,i)=>preset.add(new Option(String(i+1).padStart(2,"0")+" · "+item.label,item.value)));
+ preset.value=list.some(item=>item.value===chosen)?chosen:"auto";
+}
+function adminCurrentInfographicIndex(){
+ const v=$("aiDesignPreset")?.value||"auto";
+ if(/^infog-(?:[0-9]|1[0-4])$/.test(v))return Number(v.slice(6));
+ const category=window.SellerKitInfographic?.category($("aiTitle")?.value||"")||"general";
+ return ({tech:14,lighting:7,fashion:7,footwear:3,beauty:5,accessories:12,general:0})[category]??0;
+}
+function adminDesignCount(){return $("aiDesignMode")?.value==="infographic"?15:30;}
+function adminActiveDesignIndex(){return $("aiDesignMode")?.value==="infographic"?adminCurrentInfographicIndex():adminCurrentAiLayout();}
+function adminNextDesignPreset(){
+ const next=(adminActiveDesignIndex()+1)%adminDesignCount();
+ $("aiDesignPreset").value=($("aiDesignMode")?.value==="infographic"?"infog-":"layout-")+next;
+}
 function adminCurrentAiLayout(){
  const choice=String($("aiDesignPreset")?.value||"auto");
  const value=Number(choice.replace("layout-",""));
@@ -4100,6 +4097,7 @@ function openRequestedPage(){
  if(["ai","studio","ai-studio"].includes(selected))openPage("ai");
  else if(["series","designer","ai-series","pack"].includes(selected))openPage("ai-series");
 }
+adminDesignModeChanged();
 openRequestedPage();
 $("aiSeriesImageModel").addEventListener("change",seriesCostPreview);
 $("aiSeriesMaxBudget").addEventListener("input",seriesCostPreview);
