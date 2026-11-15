@@ -640,6 +640,30 @@ SEO Analytics
 <option value="5" selected>5 — главная + 4 инфографики</option>
 <option value="8">8 — полный комплект</option>
 </select>
+<details style="margin:10px 0">
+<summary style="cursor:pointer;color:#add8c0;font-size:13px">Категория товара (необязательно)</summary>
+<label for="aiGuideScenario">Какой товар оформляем?</label>
+<select id="aiGuideScenario">
+<option value="">Автоматически по товару</option>
+<option value="fashion">Одежда</option>
+<option value="footwear">Обувь</option>
+<option value="bags">Сумки / рюкзаки</option>
+<option value="beauty">Косметика</option>
+<option value="fragrance">Парфюмерия</option>
+<option value="jewelry">Украшения</option>
+<option value="electronics">Электроника</option>
+<option value="appliances">Бытовая техника</option>
+<option value="kitchen">Кухня / посуда</option>
+<option value="furniture">Мебель</option>
+<option value="home_textile">Домашний текстиль</option>
+<option value="toys">Игрушки</option>
+<option value="sport">Спорт</option>
+<option value="automotive">Автотовары</option>
+<option value="food">Еда / напитки</option>
+<option value="universal">Другое</option>
+</select>
+<p class="muted" style="font-size:12px">SellerKit автоматически выбирает один из 16 сценариев. Это не новая платная модель.</p>
+</details>
 <div id="aiGuideReadyFields" style="display:none">
 <label for="aiGuideReadyBrief">Вставь своё ТЗ</label>
 <textarea id="aiGuideReadyBrief" maxlength="850" placeholder="Например: первая карточка с крупным товаром, вторая — преимущества, третья — детали..." style="min-height:145px"></textarea>
@@ -1584,6 +1608,7 @@ function seriesBuildFreeDemo(){
   title:topics[i],
   claims:facts.length?[facts[i%facts.length]]:[],
   visual:photoBriefs[i]+" "+$("aiGuideExtra").value.trim(),
+  templateId:SERIES_TEMPLATES[i%12].id,
   verify:facts.length?[]:["Характеристики и материалы товара не предоставлены."]
  }));
  const result={
@@ -1624,6 +1649,18 @@ function seriesRestoreCachedPlan(){
   status.textContent="✅ Сохранённый план восстановлен бесплатно, без запроса к Qwen. Загрузи фотографию товара ещё раз, если она пропала.";
   seriesCostPreview();
  }catch(e){alert(String(e?.message||"Не удалось открыть сохранённый план."));}
+}
+
+const SERIES_TEMPLATES=Object.freeze([{"id":"hero-bold","label":"01 · Hero — крупный товар"},{"id":"editorial","label":"02 · Editorial — журнальный"},{"id":"feature-left","label":"03 · Features — слева"},{"id":"feature-right","label":"04 · Features — справа"},{"id":"detail-focus","label":"05 · Detail — детали"},{"id":"benefit-grid","label":"06 · Benefits — сетка"},{"id":"lookbook","label":"07 · Lookbook — образ"},{"id":"spec-rail","label":"08 · Specs — характеристики"},{"id":"split-story","label":"09 · Split — два ракурса"},{"id":"numbered","label":"10 · Numbers — преимущества"},{"id":"premium","label":"11 · Premium — минимализм"},{"id":"final-summary","label":"12 · Summary — итог"}]);
+const SERIES_ROLE_DEFAULT=Object.freeze({
+ hero:"hero-bold",benefit:"benefit-grid",detail:"detail-focus",
+ lifestyle:"lookbook",size:"spec-rail",care:"editorial",
+ comparison:"split-story",faq:"numbered",package:"feature-right"
+});
+function seriesTemplateFor(slide,index){
+ const id=slide?.templateId;
+ return SERIES_TEMPLATES.some(x=>x.id===id)?id:
+  (SERIES_ROLE_DEFAULT[slide?.role]||SERIES_TEMPLATES[index%12].id);
 }
 
 // Multi-slide owner prototype. Free mockups are rendered on the device.
@@ -2092,6 +2129,7 @@ function aiSeriesEdits(){
  return [...nodes].map((node,i)=>({
   index:i+1,role:node.dataset.role||"detail",
   title:node.querySelector("[data-field=title]").value.trim(),
+  templateId:node.querySelector("[data-field=template]").value,
   claims:node.querySelector("[data-field=claims]").value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean).slice(0,4),
   visual:node.querySelector("[data-field=visual]").value.trim(),
   verify:aiSeriesPlan[i]?.verify||[]
@@ -2122,6 +2160,15 @@ function showAiSeriesPlan(result){
   titleLabel.textContent="Заголовок";
   const title=document.createElement("input");
   title.dataset.field="title";title.maxLength=55;title.value=slide.title;
+  const tplLabel=document.createElement("label");
+  tplLabel.textContent="Шаблон оформления — 12 вариантов, смена бесплатно";
+  const tpl=document.createElement("select");
+  tpl.dataset.field="template";
+  SERIES_TEMPLATES.forEach(item=>{
+   const opt=document.createElement("option");
+   opt.value=item.id;opt.textContent=item.label;tpl.append(opt);
+  });
+  tpl.value=seriesTemplateFor(slide,i);
   const claimsLabel=document.createElement("label");
   claimsLabel.textContent="Надписи (каждая с новой строки, проверь факты)";
   const claims=document.createElement("textarea");
@@ -2135,7 +2182,7 @@ function showAiSeriesPlan(result){
   const verify=document.createElement("p");verify.className="muted";
   verify.textContent=slide.verify.length?"Проверить: "+slide.verify.join("; "):"Добавлены только нейтральные или указанные пользователем формулировки.";
   // Edit each slide in place; the whole set can be generated below with one action.
-  card.append(h,titleLabel,title,claimsLabel,claims,visualLabel,visual,verify);
+  card.append(h,titleLabel,title,tplLabel,tpl,claimsLabel,claims,visualLabel,visual,verify);
   root.append(card);
  });
  $("aiSeriesOwnerFeedback").style.display="block";
@@ -2183,7 +2230,7 @@ async function adminGenerateSeriesPlan(revise){
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
      action:"admin_series_plan",initData:tg.initData,
-     brief,count,feedback,previousPlan:revise?aiSeriesEdits().map(slide=>({index:slide.index,role:slide.role,title:slide.title,claims:slide.claims,visual:slide.visual})):[],imageData
+     brief,count,scenario:$("aiGuideScenario").value,feedback,previousPlan:revise?aiSeriesEdits().map(slide=>({index:slide.index,role:slide.role,templateId:slide.templateId,title:slide.title,claims:slide.claims,visual:slide.visual})):[],imageData
     }),signal:ctl.signal,cache:"no-store"
    });
   }finally{clearTimeout(timer);}
