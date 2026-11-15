@@ -634,10 +634,18 @@ SEO Analytics
 <button type="button" id="aiGuideHelpBtn" class="choice selected" onclick="seriesGuideSetMode('help')">Нет, подскажите</button>
 <button type="button" id="aiGuideReadyBtn" class="choice" onclick="seriesGuideSetMode('ready')">Да, есть ТЗ</button>
 </div>
+<label for="aiGuidePlatform">Для какой площадки?</label>
+<select id="aiGuidePlatform">
+<option value="wildberries" selected>Wildberries</option>
+<option value="ozon">Ozon</option>
+<option value="yandex-market">Яндекс Маркет</option>
+<option value="avito">Авито</option>
+</select>
 <label for="aiSeriesCount">Сколько карточек нужно?</label>
 <select id="aiSeriesCount">
 <option value="1">1 — главная</option>
-<option value="5" selected>5 — главная + 4 инфографики</option>
+<option value="5">5 — главная + 4 инфографики</option>
+<option value="6" selected>6 — главная + 5 дополнительных</option>
 <option value="8">8 — полный комплект</option>
 </select>
 <details style="margin:10px 0">
@@ -1542,6 +1550,7 @@ function seriesGuideDraft(){
  const facts=$("aiGuideFacts").value.trim();
  const lines=[
   "Товар: "+product,
+  "Площадка: "+$("aiGuidePlatform").selectedOptions[0].textContent,
   "Нужны "+count+" разных слайдов: 1 главная карточка"+(count>1?", остальные — раскрывают разные аспекты товара.":""),
   aiGuideMode==="ready"?"ТЗ заказчика: "+$("aiGuideReadyBrief").value.trim():
    "Стиль: "+$("aiGuideStyle").value+". Съёмка: "+$("aiGuideScene").value+".",
@@ -1580,7 +1589,7 @@ function seriesBuildFreeDemo(){
  const product=$("aiGuideProduct").value.trim();
  const count=Number($("aiSeriesCount").value);
  const status=$("aiSeriesStatus");
- if(!product||![1,5,8].includes(count)){status.textContent="Сначала укажи товар и количество карточек.";return;}
+ if(!product||![1,5,6,8].includes(count)){status.textContent="Сначала укажи товар и количество карточек.";return;}
  const facts=$("aiGuideFacts").value.split(/[\n;]+/).map(x=>x.trim()).filter(Boolean).slice(0,8);
  const roles=["hero","benefit","detail","lifestyle","size","care","comparison","faq"];
  const topics=[
@@ -1608,7 +1617,7 @@ function seriesBuildFreeDemo(){
   title:topics[i],
   claims:facts.length?[facts[i%facts.length]]:[],
   visual:photoBriefs[i]+" "+$("aiGuideExtra").value.trim(),
-  templateId:SERIES_TEMPLATES[i%12].id,
+  templateId:seriesChooseInitialTemplate(i,roles[i]),
   verify:facts.length?[]:["Характеристики и материалы товара не предоставлены."]
  }));
  const result={
@@ -1622,13 +1631,14 @@ function seriesBuildFreeDemo(){
 }
 
 // Persist text plans locally so an app restart does not require another paid Qwen call.
-const SERIES_PLAN_KEY="sellerkit-series-last-plan-v1";
+const SERIES_PLAN_KEY="sellerkit-series-last-plan-v2";
 function seriesSaveCachedPlan(result){
  try{
   localStorage.setItem(SERIES_PLAN_KEY,JSON.stringify({
    date:Date.now(),
    product:$("aiGuideProduct").value.trim(),
    count:Number($("aiSeriesCount").value),
+   platform:$("aiGuidePlatform").value,
    concept:result.concept||"",
    notes:result.notes||[],
    slides:result.slides||[]
@@ -1639,10 +1649,11 @@ function seriesRestoreCachedPlan(){
  const status=$("aiSeriesStatus");
  try{
   const saved=JSON.parse(localStorage.getItem(SERIES_PLAN_KEY)||"null");
-  if(!saved||![1,5,8].includes(saved.count)||!Array.isArray(saved.slides)||
+  if(!saved||![1,5,6,8].includes(saved.count)||!Array.isArray(saved.slides)||
      saved.slides.length!==saved.count)throw new Error("На этом устройстве пока нет сохранённого плана.");
   $("aiGuideProduct").value=saved.product||"";
   $("aiSeriesCount").value=String(saved.count);
+  if(saved.platform)$("aiGuidePlatform").value=saved.platform;
   seriesGuideStep(3);
   $("aiGuidePlanActions").style.display="block";
   showAiSeriesPlan({slides:saved.slides,concept:saved.concept||"",notes:saved.notes||[]});
@@ -1651,7 +1662,7 @@ function seriesRestoreCachedPlan(){
  }catch(e){alert(String(e?.message||"Не удалось открыть сохранённый план."));}
 }
 
-const SERIES_TEMPLATES=Object.freeze([{"id":"hero-bold","label":"01 · Hero — крупный товар"},{"id":"editorial","label":"02 · Editorial — журнальный"},{"id":"feature-left","label":"03 · Features — слева"},{"id":"feature-right","label":"04 · Features — справа"},{"id":"detail-focus","label":"05 · Detail — детали"},{"id":"benefit-grid","label":"06 · Benefits — сетка"},{"id":"lookbook","label":"07 · Lookbook — образ"},{"id":"spec-rail","label":"08 · Specs — характеристики"},{"id":"split-story","label":"09 · Split — два ракурса"},{"id":"numbered","label":"10 · Numbers — преимущества"},{"id":"premium","label":"11 · Premium — минимализм"},{"id":"final-summary","label":"12 · Summary — итог"}]);
+const SERIES_TEMPLATES=Object.freeze([{"id":"hero-bold","label":"01 · Hero — крупный товар"},{"id":"editorial","label":"02 · Editorial — журнальный"},{"id":"feature-left","label":"03 · Features — слева"},{"id":"feature-right","label":"04 · Features — справа"},{"id":"detail-focus","label":"05 · Detail — детали"},{"id":"benefit-grid","label":"06 · Benefits — сетка"},{"id":"lookbook","label":"07 · Lookbook — образ"},{"id":"spec-rail","label":"08 · Specs — характеристики"},{"id":"split-story","label":"09 · Split — два ракурса"},{"id":"numbered","label":"10 · Numbers — преимущества"},{"id":"premium","label":"11 · Premium — минимализм"},{"id":"final-summary","label":"12 · Summary — итог"},{"id":"arc-accent","label":"13 · Arc — мягкая арка"},{"id":"cover-frame","label":"14 · Frame — рамка обложки"},{"id":"photo-inset","label":"15 · Inset — фото в окне"},{"id":"diagonal-cut","label":"16 · Diagonal — диагональ"},{"id":"ribbon-title","label":"17 · Ribbon — лента заголовка"},{"id":"vertical-headline","label":"18 · Vertical — вертикальная типографика"},{"id":"two-crops","label":"19 · Crops — детали в кадрах"},{"id":"airy-minimal","label":"20 · Airy — лёгкий минимализм"},{"id":"soft-pastel","label":"21 · Pastel — нежный стиль"},{"id":"tech-grid","label":"22 · Tech — техносетка"},{"id":"icon-trio","label":"23 · Trio — три преимущества"},{"id":"portrait-column","label":"24 · Portrait — колонка"},{"id":"photo-grid","label":"25 · Grid — фотоколлаж"},{"id":"fabric-macro","label":"26 · Texture — фактура"},{"id":"outline-type","label":"27 · Outline — контурные акценты"},{"id":"spec-cards","label":"28 · Cards — факты"},{"id":"bottom-wave","label":"29 · Flow — плавная подложка"},{"id":"premium-border","label":"30 · Luxe — премиальная рамка"}]);
 const SERIES_ROLE_DEFAULT=Object.freeze({
  hero:"hero-bold",benefit:"benefit-grid",detail:"detail-focus",
  lifestyle:"lookbook",size:"spec-rail",care:"editorial",
@@ -1660,7 +1671,7 @@ const SERIES_ROLE_DEFAULT=Object.freeze({
 function seriesTemplateFor(slide,index){
  const id=slide?.templateId;
  return SERIES_TEMPLATES.some(x=>x.id===id)?id:
-  (SERIES_ROLE_DEFAULT[slide?.role]||SERIES_TEMPLATES[index%12].id);
+  (SERIES_ROLE_DEFAULT[slide?.role]||SERIES_TEMPLATES[index%SERIES_TEMPLATES.length].id);
 }
 
 // Multi-slide owner prototype. Free mockups are rendered on the device.
@@ -2302,7 +2313,7 @@ async function adminGenerateSeriesPlan(revise){
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
      action:"admin_series_plan",initData:tg.initData,
-     brief,count,scenario:$("aiGuideScenario").value,feedback,previousPlan:revise?aiSeriesEdits().map(slide=>({index:slide.index,role:slide.role,templateId:slide.templateId,title:slide.title,claims:slide.claims,visual:slide.visual})):[],imageData
+     brief,count,scenario:$("aiGuideScenario").value,platform:$("aiGuidePlatform").value,feedback,previousPlan:revise?aiSeriesEdits().map(slide=>({index:slide.index,role:slide.role,templateId:slide.templateId,title:slide.title,claims:slide.claims,visual:slide.visual})):[],imageData
     }),signal:ctl.signal,cache:"no-store"
    });
   }finally{clearTimeout(timer);}
