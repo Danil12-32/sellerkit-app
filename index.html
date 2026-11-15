@@ -2184,6 +2184,13 @@ function seriesRefreshGallery(){
   applyBtn.textContent="✏️ Применить правки (0 ₽)";
   applyBtn.onclick=()=>seriesRenderSelected([item.index],false);
   section.append(rerollBtn,applyBtn);
+  if(seriesPreviousCards.has(item.index)){
+   const undo=document.createElement("button");
+   undo.className="secondary";undo.style.cssText="margin:8px 5px 0 0;font-size:13px";
+   undo.textContent="↩️ Вернуть прошлый макет";
+   undo.onclick=()=>seriesUndoOne(item.index);
+   section.append(undo);
+  }
   if(item.paid){
    const save=document.createElement("a");
    save.href=url;save.download="SellerKit-slide-"+item.index+".jpg";
@@ -2205,6 +2212,114 @@ function seriesRefreshGallery(){
  $("aiSeriesBundleSaveActions").style.display=items.some(x=>x.paid)?"block":"none";
  $("aiSeriesRerollControls").style.display=items.length?"block":"none";
 }
+
+let seriesLastAffected=[];
+let seriesPreviousCards=new Map();
+let seriesRerollAttempts=new Map();
+function seriesSelectedNumbers(){
+ const available=new Set(seriesBundleItems.map(x=>x.index));
+ const typed=($("aiSeriesRerollText")?.value||"").match(/\b[1-8]\b/g)||[];
+ const checked=[...$("aiSeriesBundleGallery").querySelectorAll("[data-reroll-number]:checked")]
+  .map(el=>Number(el.dataset.rerollNumber));
+ return [...new Set([...typed.map(Number),...checked])].filter(n=>available.has(n)).sort((a,b)=>a-b);
+}
+function seriesRerollSelected(){
+ const numbers=seriesSelectedNumbers();
+ if(!numbers.length){
+  $("aiSeriesBundleStatus").textContent="Напиши номера слайдов (например 3,4,5) или отметь их в галерее.";
+  return;
+ }
+ return seriesRenderSelected(numbers,true);
+}
+async function seriesRenderSelected(numbers,useAnotherTemplate){
+ const status=$("aiSeriesBundleStatus");
+ if(seriesBundleBusy)return;
+ const selected=[...new Set(numbers)].filter(n=>Number.isInteger(n)&&
+  seriesBundleItems.some(x=>x.index===n));
+ if(!selected.length){status.textContent="Сначала создай бесплатный комплект, чтобы было что переделывать.";return;}
+ seriesBundleBusy=true;
+ const button=$("aiSeriesFreePreviewBtn");button.disabled=true;
+ const updated=[],failures=[];
+ try{
+  for(const number of selected){
+   const item=seriesBundleItems.find(x=>x.index===number);
+   const node=$("aiSeriesSlides").querySelector('[data-series-index="'+(number-1)+'"]');
+   if(!node){failures.push(number);continue;}
+   const templateSelector=node.querySelector("[data-field=template]");
+   const oldTemplate=templateSelector.value,oldCard=item.cardBlob;
+   try{
+    status.textContent="Обновляем оформление слайда "+number+" из "+selected.join(", ")+" — 0 ₽…";
+    if(useAnotherTemplate){
+     const slides=aiSeriesEdits();
+     templateSelector.value=seriesPickAnotherTemplate(number,slides);
+    }
+    let raw=item.rawBlob;
+    if(!raw){
+     const file=$("aiSeriesFile").files?.[0];
+     if(!file)throw new Error("Не найдено исходное фото. Выбери его снова.");
+     const data=await adminPrepareJpeg(file);
+     raw=await fetch(data).then(r=>r.blob());
+    }
+    const photo=await seriesBlobDataUrl(raw);
+    const slide=aiSeriesEdits()[number-1];
+    const cardBlob=await seriesMakeCard(photo,slide,number-1);
+    seriesPreviousCards.set(number,{templateId:oldTemplate,cardBlob:oldCard});
+    item.rawBlob=raw;item.cardBlob=cardBlob;item.title=slide.title;
+    updated.push(number);
+    if(useAnotherTemplate){
+     const nextCount=(seriesRerollAttempts.get(number)||0)+1;
+     seriesRerollAttempts.set(number,nextCount);
+    }
+    if(item.paid){
+     try{await seriesSaveImageHistory(item,item.rawBlob,slide,item.model||$("aiSeriesImageModel").value);}
+     catch(e){console.warn("SellerKit history save failed on free design refresh:",e?.name||"unknown");}
+    }
+   }catch(e){
+    templateSelector.value=oldTemplate;
+    failures.push(number);
+    console.warn("SellerKit template preview failed:",String(e?.message||e));
+   }
+  }
+  seriesLastAffected=updated;
+  seriesRefreshGallery();
+  if(updated.length){
+   seriesSaveCachedPlan({slides:aiSeriesEdits(),concept:$("aiSeriesConcept").textContent});
+  }
+  const anyThird=updated.some(n=>(seriesRerollAttempts.get(n)||0)>=3);
+  if(anyThird)$("aiSeriesRefine").style.display="block";
+  status.textContent=updated.length?
+   "✅ Обновлены только слайды "+updated.join(", ")+". Другие не изменились. Стоимость: 0 ₽."+
+    (failures.length?" Ошибка для: "+failures.join(", ")+".":"")+
+    (anyThird?" Не нравится? Уточни стиль и количество текста ниже.":""):
+   "Не получилось изменить макеты. Проверь фото и повтори, платных списаний не было.";
+ }finally{seriesBundleBusy=false;button.disabled=false;}
+}
+function seriesApplyRefinement(){
+ seriesRefineStyle=$("aiSeriesRefineStyle").value;
+ seriesRefineDensity=$("aiSeriesRefineDensity").value;
+ const selected=seriesSelectedNumbers();
+ const targets=selected.length?selected:seriesLastAffected;
+ if(!targets.length){
+  $("aiSeriesBundleStatus").textContent="Укажи номера слайдов, для которых нужен новый стиль.";return;
+ }
+ return seriesRenderSelected(targets,false);
+}
+function seriesUndoOne(number){
+ const previous=seriesPreviousCards.get(number);
+ const current=seriesBundleItems.find(x=>x.index===number);
+ if(!previous||!current||seriesBundleBusy)return;
+ const node=$("aiSeriesSlides").querySelector('[data-series-index="'+(number-1)+'"]');
+ if(!node)return;
+ const selected=node.querySelector("[data-field=template]");
+ const currentCard=current.cardBlob,currentTemplate=selected.value;
+ selected.value=previous.templateId;
+ current.cardBlob=previous.cardBlob;
+ seriesPreviousCards.set(number,{templateId:currentTemplate,cardBlob:currentCard});
+ seriesRefreshGallery();
+ seriesSaveCachedPlan({slides:aiSeriesEdits(),concept:$("aiSeriesConcept").textContent});
+ $("aiSeriesBundleStatus").textContent="↩️ Предыдущий макет слайда "+number+" восстановлен бесплатно.";
+}
+
 async function seriesCreateFreePreviews(){
  const btn=$("aiSeriesFreePreviewBtn"),status=$("aiSeriesBundleStatus");
  if(seriesBundleBusy)return;
@@ -2477,6 +2592,10 @@ function aiSeriesEdits(){
 function showAiSeriesPlan(result){
  aiSeriesPlan=result.slides;
  seriesLayoutUsed=new Map();
+ seriesPreviousCards=new Map();
+ seriesRerollAttempts=new Map();
+ seriesLastAffected=[];
+ seriesRefineStyle="auto";seriesRefineDensity="normal";
  seriesBundleItems=[];
  $("aiSeriesBundleGallery").replaceChildren();
  $("aiSeriesBundleSaveActions").style.display="none";
