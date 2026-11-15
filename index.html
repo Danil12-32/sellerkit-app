@@ -1080,7 +1080,7 @@ SEO Analytics
 </div>
 </div>
 
-<script src="./infographic.js?v=20261116-fashion1"></script>
+<script src="./infographic.js?v=20261116-fashion2"></script>
 <script>
 "use strict";
 
@@ -2309,32 +2309,39 @@ function seriesRefreshGallery(){
   const section=document.createElement("div");
   section.className="card";section.style.cssText="margin:10px 0;background:#11231a;padding:12px";
   const label=document.createElement("strong");
-  label.textContent="Слайд "+item.index+" · "+(item.paid?"AI-фотография":"Черновая схема — без AI");
+  label.textContent="Слайд "+item.index+" · "+(item.index===1?"Главная карточка":(item.title||"Инфографика"));
   const selectLabel=document.createElement("label");
   selectLabel.style.cssText="display:flex;align-items:center;gap:8px;font-size:13px;margin:9px 0";
   const selected=document.createElement("input");selected.type="checkbox";
   selected.dataset.rerollNumber=String(item.index);selected.style.cssText="width:18px;height:18px;flex:none";
-  selectLabel.append(selected,document.createTextNode("Изменить этот слайд"));
+  selectLabel.append(selected,document.createTextNode("Выбрать для изменений"));
   const img=document.createElement("img");
   const url=URL.createObjectURL(item.cardBlob);seriesGalleryUrls.push(url);
   img.src=url;img.alt=item.title||"Карточка";
   img.style.cssText="display:block;width:100%;margin:9px 0;border-radius:12px";
-  section.append(label,selectLabel,img);
+  section.append(label,img);
+  const more=document.createElement("details");
+  more.style.cssText="margin:10px 0;border:1px solid #345849;border-radius:12px;padding:10px";
+  const moreTitle=document.createElement("summary");
+  moreTitle.style.cssText="font-size:13px;font-weight:600;cursor:pointer";
+  moreTitle.textContent="⚙️ Изменить текст или фотографию";
+  more.append(moreTitle,selectLabel);
   const rerollBtn=document.createElement("button");
-  rerollBtn.className="secondary";rerollBtn.style.cssText="margin:8px 5px 0 0;font-size:13px";
-  rerollBtn.textContent="🔄 Другой макет (0 ₽)";
+  rerollBtn.className="wide";rerollBtn.style.cssText="margin:9px 0;font-size:14px";
+  rerollBtn.textContent="🎨 Другой дизайн — бесплатно";
   rerollBtn.onclick=()=>seriesRenderSelected([item.index],true);
   const applyBtn=document.createElement("button");
   applyBtn.className="secondary";applyBtn.style.cssText="margin:8px 5px 0 0;font-size:13px";
   applyBtn.textContent="✏️ Применить правки (0 ₽)";
   applyBtn.onclick=()=>seriesRenderSelected([item.index],false);
-  section.append(rerollBtn,applyBtn);
+  section.append(rerollBtn);
+  more.append(applyBtn);
   if(seriesPreviousCards.has(item.index)){
    const undo=document.createElement("button");
    undo.className="secondary";undo.style.cssText="margin:8px 5px 0 0;font-size:13px";
    undo.textContent="↩️ Вернуть прошлый макет";
    undo.onclick=()=>seriesUndoOne(item.index);
-   section.append(undo);
+   more.append(undo);
   }
   if(item.paid){
    const save=document.createElement("a");
@@ -2350,8 +2357,12 @@ function seriesRefreshGallery(){
    paidBtn.className="secondary";paidBtn.style.margin="8px 0 0";
    paidBtn.textContent="🔁 Переделать только этот слайд (платно)";
    paidBtn.onclick=()=>seriesRegenerateOne(item.index);
-   section.append(textBtn,paidBtn);
+   more.append(textBtn,paidBtn);
   }
+  const info=document.createElement("p");
+  info.className="muted";info.style.fontSize="12px";
+  info.textContent="«Другой дизайн» меняет только надписи, стикеры и их расположение. Фото и фон остаются прежними — за эту смену не платишь.";
+  section.append(info,more);
   root.append(section);
  }
  $("aiSeriesBundleSaveActions").style.display=items.some(x=>x.paid)?"block":"none";
