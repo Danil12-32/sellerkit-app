@@ -702,6 +702,31 @@ SEO Analytics
 <textarea id="aiSeriesFeedback" maxlength="700" style="min-height:100px" placeholder="Сделай третий слайд про детали, добавь больше воздуха, не используй белые блоки"></textarea>
 <button class="secondary wide" id="aiSeriesReviseBtn" onclick="adminGenerateSeriesPlan(true)">Переделать план по моим пожеланиям</button>
 </div>
+<div class="card" id="aiSeriesBundlePanel" style="margin-top:16px">
+<h3>🎨 Комплект целиком</h3>
+<p class="muted" style="font-size:13px">Посмотри разные макеты бесплатно — до оплаты фотографий. В бесплатном режиме исходное фото одно.</p>
+<button class="secondary wide" id="aiSeriesFreePreviewBtn" onclick="seriesCreateFreePreviews()">👁️ Посмотреть все макеты бесплатно</button>
+<div id="aiSeriesPaidOwner" style="display:none;margin-top:14px;border-top:1px solid #34503c;padding-top:12px">
+<p class="muted" style="font-size:13px"><strong>Тест владельца:</strong> создаём разные фотографии для всех слайдов. Каждый запрос списывается с VseGPT. Не запускай до проверки бесплатных макетов.</p>
+<label for="aiSeriesImageModel">Нейросеть комплекта</label>
+<select id="aiSeriesImageModel">
+<option value="img2img-bytedance/seedream-v4.5-edit-multi" selected>Seedream 4.5 — ~13,90 ₽ / слайд</option>
+<option value="img2img-google/nano-banana-2-edit-multi">Nano Banana 2 — ~19,90 ₽ / слайд</option>
+<option value="img2img-openai/gpt-image-2-edit-multi">GPT Image 2 Medium — ~21 ₽ / слайд</option>
+<option value="img2img-google/nano-banana-pro-edit-multi">Nano Banana Pro — ~29,90 ₽ / слайд</option>
+</select>
+<label for="aiSeriesMaxBudget">Лимит по расчётной стоимости (₽)</label>
+<input id="aiSeriesMaxBudget" inputmode="decimal" type="number" min="1" max="250" value="100">
+<p class="muted" id="aiSeriesPriceEstimate" aria-live="polite"></p>
+<button class="wide" id="aiSeriesPaidRunBtn" onclick="seriesGeneratePaidBundle()">Сгенерировать весь комплект (платно)</button>
+</div>
+<p class="muted" id="aiSeriesBundleStatus" role="status" aria-live="polite"></p>
+<div id="aiSeriesBundleGallery"></div>
+<div id="aiSeriesBundleSaveActions" style="display:none">
+<button class="secondary wide" onclick="seriesDownloadZip()">⬇️ Скачать весь комплект ZIP</button>
+<p class="muted" style="font-size:12px">В ZIP будут отдельные JPG для всех готовых слайдов.</p>
+</div>
+</div>
 </div>
 </div>
 </section>
@@ -1535,6 +1560,10 @@ function aiSeriesEdits(){
 }
 function showAiSeriesPlan(result){
  aiSeriesPlan=result.slides;
+ seriesBundleItems=[];
+ $("aiSeriesBundleGallery").replaceChildren();
+ $("aiSeriesBundleSaveActions").style.display="none";
+ $("aiSeriesBundleStatus").textContent="План готов. Посмотри все макеты бесплатно.";
  $("aiSeriesOutput").style.display="block";
  $("aiSeriesConcept").textContent=result.concept||"План карточек";
  const allChecks=result.slides.flatMap((slide,i)=>slide.verify.map(v=>"Слайд "+(i+1)+": "+v));
@@ -2662,6 +2691,7 @@ try{
       $("aiOwnerLegacyToggle").style.display="block";
       $("profileServerCheckBtn").style.display="inline-block";
       $("aiSeriesOwnerTools").style.display="block";
+      $("aiSeriesPaidOwner").style.display="block";
       $("ownerAiHistoryTile").style.display="flex";
      }
    const name=[
