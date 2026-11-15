@@ -526,12 +526,39 @@ SEO Analytics
 <p class="muted"><small>Фотографию создаёт нейросеть, а текст SellerKit наносит отдельно. Чтобы исправить опечатки и составить текст без ТЗ, используй AI-помощника в разделе тестирования ниже.</small></p>
 <label for="aiDesignPreset">6. Дизайн карточки (смена без новой AI-генерации)</label>
 <select id="aiDesignPreset">
-<option value="auto">Автоматически по категории</option>
-<option value="sport">⚡ Sport — энергичный спортивный стиль</option>
-<option value="editorial">✦ Fashion — журнальный минимализм</option>
-<option value="catalog">▣ Clean — светлая инфопанель</option>
+<option value="auto">Автоматически под товар</option>
+<option value="layout-0">01 · Премиум — сверху слева / снизу слева</option>
+<option value="layout-1">02 · Премиум — сверху справа / снизу справа</option>
+<option value="layout-2">03 · Премиум — по центру / снизу</option>
+<option value="layout-3">04 · Премиум — сверху слева / снизу справа</option>
+<option value="layout-4">05 · Премиум — сверху справа / снизу слева</option>
+<option value="layout-5">06 · Премиум — снизу слева / сверху справа</option>
+<option value="layout-6">07 · Минимализм — сверху слева / снизу слева</option>
+<option value="layout-7">08 · Минимализм — сверху справа / снизу справа</option>
+<option value="layout-8">09 · Минимализм — по центру / снизу</option>
+<option value="layout-9">10 · Минимализм — сверху слева / снизу справа</option>
+<option value="layout-10">11 · Минимализм — сверху справа / снизу слева</option>
+<option value="layout-11">12 · Минимализм — снизу слева / сверху справа</option>
+<option value="layout-12">13 · Маркетплейс — сверху слева / снизу слева</option>
+<option value="layout-13">14 · Маркетплейс — сверху справа / снизу справа</option>
+<option value="layout-14">15 · Маркетплейс — по центру / снизу</option>
+<option value="layout-15">16 · Маркетплейс — сверху слева / снизу справа</option>
+<option value="layout-16">17 · Маркетплейс — сверху справа / снизу слева</option>
+<option value="layout-17">18 · Маркетплейс — снизу слева / сверху справа</option>
+<option value="layout-18">19 · Спорт — сверху слева / снизу слева</option>
+<option value="layout-19">20 · Спорт — сверху справа / снизу справа</option>
+<option value="layout-20">21 · Спорт — по центру / снизу</option>
+<option value="layout-21">22 · Спорт — сверху слева / снизу справа</option>
+<option value="layout-22">23 · Спорт — сверху справа / снизу слева</option>
+<option value="layout-23">24 · Спорт — снизу слева / сверху справа</option>
+<option value="layout-24">25 · Нежный — сверху слева / снизу слева</option>
+<option value="layout-25">26 · Нежный — сверху справа / снизу справа</option>
+<option value="layout-26">27 · Нежный — по центру / снизу</option>
+<option value="layout-27">28 · Нежный — сверху слева / снизу справа</option>
+<option value="layout-28">29 · Нежный — сверху справа / снизу слева</option>
+<option value="layout-29">30 · Нежный — снизу слева / сверху справа</option>
 </select>
-<p class="muted"><small>Чтобы бесплатно посмотреть другой вариант, открой результат из истории, выбери стиль и нажми «Обновить текст и дизайн».</small></p>
+<p class="muted"><small>30 вариантов: 5 дизайн-систем × 6 расположений. Все используют уже созданное фото. Изменение оформления бесплатно; новый ракурс или фон требует отдельной AI-генерации.</small></p>
 
 <div class="notice">
 Публичная генерация пока не запущена. Тест доступен только владельцу. После запуска одна бесплатная пробная AI-карточка будет доступна только для предпросмотра; оригинал можно будет разблокировать за 5 токенов (100 ₽). Оплата и серверная защита оригиналов ещё не подключены.
@@ -572,7 +599,7 @@ SEO Analytics
 </select>
 <p class="muted"><small>Проверь актуальные цены и лимит API в VseGPT. Для Nano Banana Pro ориентир — 29,90 ₽ (лимит 35 ₽). Для GPT Image 2 тестируем medium (21 ₽). Новые модели требуют обновления backend/index.js в Yandex Cloud.</small></p>
 <button class="secondary wide" onclick="adminPreviewAiWithoutCharge()">👁️ Проверить надписи на исходном фото бесплатно</button>
-<p class="muted"><small>Это отдельный тест надписей, он больше не заменяет готовую AI-карточку.</small></p>
+<p class="muted"><small>Это технический просмотр исходного снимка с наложенным текстом, а не качество платной AI-фотографии.</small></p>
 <button id="aiTestRunButton" class="wide" style="margin-top:10px" onclick="adminRunAiPilot()">✨ Сгенерировать новую фотографию (платно)</button>
 <p id="aiTestStatus" class="muted" role="status" aria-live="polite">Генерация ещё не запускалась.</p>
 
@@ -585,11 +612,16 @@ SEO Analytics
 <h3>✨ Результат AI-генерации</h3>
 <img id="aiTestResult" alt="Карточка с проверенными русскими надписями" style="display:block;width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b;touch-action:manipulation" onclick="adminShowAiFullscreen()">
 <div class="actions">
-<button class="secondary" onclick="adminRepaintAiPilot()">🎨 Обновить текст и дизайн бесплатно</button>
-<button class="secondary" onclick="openPage('ai-history');showAiHistory()">🕘 Мои генерации</button>
-<button class="secondary" onclick="adminShareAiPilot()">📤 Поделиться / сохранить</button>
-<button class="secondary" id="aiTestSendToBot" onclick="adminSendAiPilot()">📩 Получить в Telegram</button>
+<button class="wide" id="aiNextDesign" onclick="adminRepaintAiPilot(true)">🎨 Другой дизайн · бесплатно</button>
+<button class="secondary" onclick="adminRepaintAiPilot(false)">✏️ Применить текст / выбранный стиль</button>
+<button class="secondary" onclick="openPage('ai-history');showAiHistory()">🕘 История</button>
+<button class="secondary" onclick="adminShareAiPilot()">📤 Сохранить / поделиться</button>
+<details style="width:100%">
+<summary style="font-size:12px;color:#a7c7b6;cursor:pointer;margin:5px 0">Дополнительно</summary>
+<button class="secondary" style="margin-top:9px" id="aiTestSendToBot" onclick="adminSendAiPilot()">📩 Получить в Telegram</button>
+</details>
 </div>
+<p class="muted" id="aiDesignResultStatus" role="status" aria-live="polite" style="font-size:13px"></p>
 <a id="aiTestDownload" download="SellerKit-Studio.jpg" style="display:inline-block;color:var(--green);margin-top:12px" href="#">⬇️ Скачать JPG (компьютер)</a>
 <p id="aiTestDeliveryStatus" class="muted" role="status" aria-live="polite"></p>
 <p class="muted"><small>На iPhone лучше нажать «Поделиться / сохранить» или «Получить в Telegram». Также можно открыть изображение на весь экран и удерживать его.</small></p>
