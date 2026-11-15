@@ -1724,6 +1724,8 @@ function seriesWrite(ctx,text,x,y,maxWidth,maxLines,largest,smallest,color,weigh
  arr.forEach((line,i)=>ctx.fillText(line,x,y+i*step,maxWidth));
  return arr.length*step;
 }
+// 12 marketplace layouts. Composition and photo areas are separate:
+// typography cannot cover the merchandise, and every slide chooses its own template.
 async function seriesMakeCard(photoData,slide,index){
  const image=new Image();
  await new Promise((resolve,reject)=>{
@@ -1734,105 +1736,174 @@ async function seriesMakeCard(photoData,slide,index){
  const canvas=document.createElement("canvas");canvas.width=900;canvas.height=1200;
  const ctx=canvas.getContext("2d");if(!ctx)throw Error("Не работает canvas.");
  const W=900,H=1200;
- const scheme=index%8,accent="#83d9d5",night="#102b2c",paper="#f7faf6";
- const claims=(Array.isArray(slide.claims)?slide.claims:[]).slice(0,3).filter(Boolean);
- const header=(x,y,w,max=2,size=50,color=night)=>seriesWrite(ctx,slide.title||"Товар",x,y,w,max,size,28,color,800);
- ctx.fillStyle=paper;ctx.fillRect(0,0,W,H);
- if(scheme===0){
-  // Hero: image in its own large zone, one compact name strip, no text covering product.
-  seriesDrawImage(ctx,image,0,0,W,1040);
-  ctx.fillStyle=night;ctx.fillRect(0,1040,W,160);
-  ctx.fillStyle=accent;ctx.fillRect(45,1060,86,5);
-  header(46,1084,812,2,48,"#fff");
- }else if(scheme===1){
-  // Benefit: text sidebar, image unaffected by headings.
-  ctx.fillStyle=night;ctx.fillRect(0,0,315,H);
-  seriesDrawImage(ctx,image,315,0,585,H);
-  ctx.fillStyle=accent;ctx.fillRect(33,65,85,5);
-  header(33,110,251,3,38,"#fff");
-  let y=370;
-  for(const fact of claims){
-   if(y>1020)break;
-   ctx.fillStyle=accent;ctx.fillRect(34,y+9,20,3);
-   const h=seriesWrite(ctx,fact,64,y,219,3,29,22,"#eaf9f5",600);
-   y+=Math.max(h+32,98);
-  }
- }else if(scheme===2){
-  // Detail close-up without overlay: photo top, typography beneath.
-  seriesDrawImage(ctx,image,0,0,W,940);
-  ctx.fillStyle=paper;ctx.fillRect(0,940,W,260);
-  ctx.fillStyle="#247872";ctx.fillRect(45,965,65,5);
-  header(45,995,808,2,48,night);
-  if(claims.length){
-   const y=1130;
-   ctx.fillStyle="#2c615d";
-   seriesWrite(ctx,claims[0],45,y,810,1,26,22,"#2c615d",600);
-  }
- }else if(scheme===3){
-  // Lifestyle: different asymmetrical header/footer arrangement, no giant card.
-  ctx.fillStyle=night;ctx.fillRect(0,0,W,178);
-  header(45,44,810,2,44,"#fff");
-  seriesDrawImage(ctx,image,0,178,W,877);
-  ctx.fillStyle="#d5e9e6";ctx.fillRect(0,1055,W,145);
-  ctx.fillStyle="#237269";ctx.fillRect(45,1082,79,5);
-  seriesWrite(ctx,claims[0]||"В деталях",45,1112,800,1,29,23,night,650);
- }else if(scheme===4){
-  // Specs: product on one side and narrow, separately contained facts on the other.
-  seriesDrawImage(ctx,image,0,0,635,H);
-  ctx.fillStyle=paper;ctx.fillRect(635,0,265,H);
-  ctx.fillStyle="#147569";ctx.fillRect(665,65,108,6);
-  header(663,101,211,4,34,night);
-  let y=420;
-  for(const fact of claims){
-   if(y>1040)break;
-   ctx.fillStyle="#247872";ctx.fillRect(663,y+11,18,3);
-   const h=seriesWrite(ctx,fact,663,y+30,212,3,27,21,night,550);
-   y+=Math.max(h+48,135);
-  }
- }else if(scheme===5){
-  // Comparison/benefits: deep-blue right information rail and wider product left.
-  ctx.fillStyle="#173f42";ctx.fillRect(0,0,W,H);
-  seriesDrawImage(ctx,image,0,0,630,1085);
-  ctx.fillStyle=night;ctx.fillRect(0,1085,630,115);
-  seriesWrite(ctx,"Детали товара",36,1119,558,1,32,24,"#fff",700);
-  ctx.fillStyle=accent;ctx.fillRect(666,60,120,5);
-  header(663,100,212,4,35,"#fff");
-  let y=440;
-  for(const value of claims){
-   if(y>1030)break;
-   ctx.fillStyle=accent;ctx.fillRect(663,y+8,22,3);
-   const h=seriesWrite(ctx,value,663,y+36,212,3,26,21,"#e9f9f7",600);
-   y+=Math.max(h+48,145);
-  }
- }else if(scheme===6){
-  // Editorial detail: airy title side, large hero image and small footer fact.
-  ctx.fillStyle="#e4eeea";ctx.fillRect(0,0,W,H);
-  ctx.fillStyle=night;ctx.fillRect(0,0,900,175);
-  ctx.fillStyle=accent;ctx.fillRect(45,28,130,5);
-  header(45,52,810,2,44,"#fff");
-  seriesDrawImage(ctx,image,0,175,W,865);
-  ctx.fillStyle="#e4eeea";ctx.fillRect(0,1040,W,160);
-  ctx.fillStyle="#26766f";ctx.fillRect(40,1071,7,75);
-  seriesWrite(ctx,claims[0]||"Внимание к деталям",72,1085,775,2,30,22,night,650);
- }else{
-  // Final/FAQ: center image with top statement and bottom numbered details.
-  ctx.fillStyle=paper;ctx.fillRect(0,0,W,H);
-  ctx.fillStyle="#daeae3";ctx.fillRect(25,25,850,950);
-  seriesDrawImage(ctx,image,25,25,850,950);
-  ctx.fillStyle=night;ctx.fillRect(0,0,900,125);
-  ctx.fillStyle=accent;ctx.fillRect(38,22,68,4);
-  header(38,42,824,2,35,"#fff");
-  ctx.fillStyle=paper;ctx.fillRect(0,975,900,225);
-  const claimTexts=claims.slice(0,2);
-  claimTexts.forEach((value,i)=>{
-   const x=44+i*420;
-   ctx.fillStyle="#237d73";ctx.beginPath();ctx.arc(x+12,1016,12,0,Math.PI*2);ctx.fill();
-   seriesWrite(ctx,value,x,1045,380,3,29,22,night,650);
+ const layout=seriesTemplateFor(slide,index);
+ const style=(($("aiGuideStyle")?.value||"")+" "+($("aiGuideProduct")?.value||"")).toLowerCase();
+ const palette=/нежн|розов|худи|плать|юбк|женск/.test(style)?
+  {ink:"#352936",accent:"#e48fb0",paper:"#fff8fa",soft:"#f4d8e3",pale:"#f9ebf1"}:
+  /спорт|кроссов|кед|ярк/.test(style)?
+  {ink:"#142c40",accent:"#47aee4",paper:"#f7fbff",soft:"#c4e5f8",pale:"#e7f4fd"}:
+  /премиум|сумк|парфюм|ювел|украшен/.test(style)?
+  {ink:"#322e2b",accent:"#b99270",paper:"#fdfaf5",soft:"#e8d9c9",pale:"#f6f0e8"}:
+  {ink:"#193830",accent:"#4d9b7c",paper:"#f9fcfa",soft:"#d5eae0",pale:"#eff7f2"};
+ const {ink,accent,paper,soft,pale}=palette;
+ const facts=(Array.isArray(slide.claims)?slide.claims:[]).map(x=>String(x).trim()).filter(Boolean).slice(0,3);
+ const fill=(color,x,y,w,h)=>{ctx.fillStyle=color;ctx.fillRect(x,y,w,h);};
+ const title=(x,y,w,max=2,size=56,color=ink)=>seriesWrite(ctx,slide.title||"Товар",x,y,w,max,size,26,color,800);
+ const cap=(text,x,y,w,max=2,size=26,color=ink,weight=600)=>
+  seriesWrite(ctx,String(text),x,y,w,max,size,19,color,weight);
+ const picture=(x,y,w,h,bg=paper)=>{
+  fill(bg,x,y,w,h);
+  seriesDrawImage(ctx,image,x,y,w,h);
+ };
+ const line=(x,y,w)=>fill(accent,x,y,w,5);
+ const dot=(x,y,r=5)=>{
+  ctx.fillStyle=accent;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+ };
+ const factsList=(x,y,w,max=3,rowHeight=100,color=ink)=>{
+  facts.slice(0,max).forEach((value,i)=>{
+   const yy=y+i*rowHeight;
+   dot(x+8,yy+15,5);
+   cap(value,x+27,yy,w-30,2,w<255?25:29,color,630);
   });
+ };
+ const factsGrid=(x,y,w,h)=>{
+  const count=Math.min(facts.length,3);
+  if(!count)return;
+  const cell=w/count;
+  facts.slice(0,count).forEach((text,i)=>{
+   const xx=x+cell*i;
+   if(i>0)fill(soft,xx,y+15,2,h-30);
+   fill(accent,xx+24,y+22,45,4);
+   cap(text,xx+24,y+56,cell-45,3,27,ink,650);
+  });
+ };
+ fill(paper,0,0,W,H);
+ switch(layout){
+  case "hero-bold":{
+   picture(0,0,900,935,pale);
+   fill(ink,0,935,900,265);
+   line(47,968,92);
+   title(46,1006,808,2,55,"#ffffff");
+   if(facts.length){
+    cap(facts.slice(0,2).join("  ·  "),48,1139,790,2,23,paper,550);
+   }
+   break;
+  }
+  case "editorial":{
+   fill(paper,0,0,900,188);
+   line(51,44,96);
+   title(49,76,804,2,52);
+   picture(0,188,900,875,pale);
+   fill(soft,0,1063,900,137);
+   cap(facts[0]||"Детали товара",53,1109,800,2,29,ink,650);
+   break;
+  }
+  case "feature-left":{
+   fill(ink,0,0,340,H);
+   picture(340,0,560,H,pale);
+   line(36,64,100);
+   title(34,114,276,3,43,"#ffffff");
+   factsList(35,455,277,3,192,"#ffffff");
+   break;
+  }
+  case "feature-right":{
+   picture(0,0,560,H,pale);
+   fill(ink,560,0,340,H);
+   line(598,61,105);
+   title(595,109,272,3,43,"#ffffff");
+   factsList(596,463,270,3,186,"#ffffff");
+   break;
+  }
+  case "detail-focus":{
+   picture(0,0,900,905,pale);
+   fill(paper,0,905,900,295);
+   line(48,946,96);
+   title(46,983,807,2,49);
+   cap(facts.slice(0,2).join("  •  ")||"Рассмотри товар крупно",46,1111,807,2,25,ink,550);
+   break;
+  }
+  case "benefit-grid":{
+   picture(0,0,900,756,pale);
+   fill(ink,0,756,900,137);
+   line(42,774,85);
+   title(41,812,811,2,41,"#ffffff");
+   fill(paper,0,893,900,307);
+   factsGrid(15,919,870,252);
+   break;
+  }
+  case "lookbook":{
+   fill(paper,0,0,900,171);
+   title(50,43,806,2,54);
+   line(50,145,113);
+   picture(0,171,900,895,pale);
+   fill(ink,0,1066,900,134);
+   cap(facts[0]||"Стиль в деталях",48,1110,804,2,29,"#ffffff",650);
+   break;
+  }
+  case "spec-rail":{
+   picture(0,0,624,1200,pale);
+   fill(paper,624,0,276,1200);
+   fill(accent,624,0,7,1200);
+   line(655,52,70);
+   title(652,98,215,4,35);
+   factsList(654,461,209,3,218,ink);
+   break;
+  }
+  case "split-story":{
+   // Two crops of the SAME photo: no pretend second AI angle.
+   picture(0,0,445,906,pale);
+   fill(soft,445,0,10,906);
+   picture(455,0,445,906,paper);
+   fill(ink,0,906,900,294);
+   line(48,943,86);
+   title(47,979,809,2,49,"#ffffff");
+   cap(facts.slice(0,2).join("  ·  ")||"Ракурсы и детали",47,1114,800,2,24,paper,550);
+   break;
+  }
+  case "numbered":{
+   fill(ink,0,0,900,157);
+   line(45,20,82);
+   title(44,53,815,2,43,"#ffffff");
+   picture(0,157,900,712,pale);
+   fill(paper,0,869,900,331);
+   const values=facts.length?facts:["Особенности","Детали","Внешний вид"];
+   const column=900/Math.min(values.length,3);
+   values.slice(0,3).forEach((value,i)=>{
+    const x=28+column*i;
+    cap(String(i+1).padStart(2,"0"),x,907,column-33,1,43,accent,800);
+    fill(soft,x,972,column-53,2);
+    cap(value,x,1008,column-41,3,26,ink,620);
+   });
+   break;
+  }
+  case "premium":{
+   fill(ink,0,0,900,1200);
+   fill(accent,54,36,105,5);
+   title(52,75,796,2,52,"#ffffff");
+   picture(43,203,814,820,pale);
+   fill(ink,0,1023,900,177);
+   line(54,1050,88);
+   cap(facts.slice(0,2).join("  ·  ")||"Детали товара",54,1090,790,2,28,paper,550);
+   break;
+  }
+  case "final-summary":{
+   fill(paper,0,0,900,170);
+   line(43,43,102);
+   title(40,79,815,2,49);
+   fill(ink,0,170,292,1030);
+   picture(292,170,608,1030,pale);
+   factsList(29,295,238,3,248,"#ffffff");
+   break;
+  }
+  default:{
+   picture(0,0,900,985,pale);
+   fill(ink,0,985,900,215);
+   title(48,1032,810,2,50,"#ffffff");
+  }
  }
- let blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.9));
+ let blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.9));
  if(!blob)throw Error("Не удалось сохранить JPG.");
- if(blob.size>1900000)blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.76));
+ if(blob.size>1900000)blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.76));
  if(!blob)throw Error("Не удалось уменьшить JPG.");
  return blob;
 }
