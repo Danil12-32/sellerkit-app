@@ -727,7 +727,7 @@ SEO Analytics
 Проверяем баланс через Telegram…
 </small>
 <button class="secondary" style="margin-top:12px" id="refreshBalanceBtn" onclick="loadTelegramBalance(true)">🔄 Обновить баланс</button>
-<button class="secondary" style="margin-top:10px" id="profileServerCheckBtn" onclick="checkProfileServer()">🔌 Проверить сервер и баланс</button>
+<button class="secondary" style="margin-top:10px;display:none" id="profileServerCheckBtn" onclick="checkProfileServer()">🔌 Проверить сервер и баланс</button>
 <p class="muted" id="profileServerCheckStatus" role="status" aria-live="polite"></p>
 <button class="wide" style="margin-top:10px" onclick="openPage('shop')">
 ＋ Пополнить баланс
@@ -1502,6 +1502,11 @@ function seriesGuideShowSummary(){
 function seriesGuidePrepare(){
  const draft=seriesGuideDraft();
  if(draft.length<15)return;
+ if(draft.length>1600){
+  $("aiGuideSummary").textContent="Слишком длинное ТЗ. Сократи пожелания до 1600 символов и попробуй ещё раз.";
+  $("aiGuidePlanActions").style.display="none";
+  return;
+ }
  $("aiGuideSummary").textContent=draft;
  $("aiGuidePlanActions").style.display="block";
  $("aiSeriesOutput").style.display="none";
@@ -2655,6 +2660,7 @@ try{
       $("adminUsersTile").style.display="flex";
       $("adminAiPilot").style.display="block";
       $("aiOwnerLegacyToggle").style.display="block";
+      $("profileServerCheckBtn").style.display="inline-block";
       $("aiSeriesOwnerTools").style.display="block";
       $("ownerAiHistoryTile").style.display="flex";
      }
@@ -2804,7 +2810,8 @@ async function loadTelegramBalance(force=false){
    }else{
     explanation="Ошибка получения баланса: "+code.slice(0,90);
    }
-   status.textContent=explanation;
+   const owner=String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id||"")==="1046253780";
+   status.textContent=owner?explanation:"Не удалось обновить баланс. Попробуй позже или напиши в поддержку.";
    console.warn("SellerKit balance request:",code);
   }finally{
    clearTimeout(timeout);
