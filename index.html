@@ -2653,7 +2653,25 @@ function aiSeriesEdits(){
   verify:aiSeriesPlan[i]?.verify||[]
  }));
 }
+// A size/measurement graphic is misleading when the seller provided no dimensions.
+function seriesProtectMissingMeasurements(slides){
+ const facts=String($("aiGuideFacts")?.value||"")+" "+String($("aiGuideReadyBrief")?.value||"");
+ const hasMeasurements=/\b\d+(?:[.,]\d+)?\s*(?:мм|см|м|дюйм|inch|кг|г)\b/i.test(facts)||
+  /(?:размер(?:ы)?|объ[её]м|высот[аы]|ширин[аы]|длин[аы])\s*[:—-]?\s*\d/i.test(facts);
+ if(hasMeasurements)return slides;
+ return slides.map(slide=>{
+  if(!/габарит|размер|высот|ширин|длин[аы]/i.test(slide.title||"")&&slide.role!=="size")return slide;
+  return {...slide,
+   role:"detail",
+   title:"Конструкция и внешний вид",
+   claims:(Array.isArray(slide.claims)?slide.claims:[]).filter(x=>!/размер|габарит|высот|ширин|длин|компактн/i.test(x)),
+   visual:"Предметная рекламная съёмка реального исходного товара. Подчеркни видимые детали без размерных стрелок, схем замеров и неподтверждённых чисел.",
+   verify:[...(slide.verify||[]),"Нет точных размеров: не делай размерную схему до подтверждения продавцом."]
+  };
+ });
+}
 function showAiSeriesPlan(result){
+ result={...result,slides:seriesProtectMissingMeasurements(result.slides)};
  aiSeriesPlan=result.slides;
  seriesLayoutUsed=new Map();
  seriesPreviousCards=new Map();
@@ -2665,7 +2683,7 @@ function showAiSeriesPlan(result){
  $("aiSeriesBundleSaveActions").style.display="none";
  $("aiSeriesRerollControls").style.display="none";
  $("aiSeriesRefine").style.display="none";
- $("aiSeriesBundleStatus").textContent="План готов. Посмотри все макеты бесплатно.";
+ $("aiSeriesBundleStatus").textContent="План готов. Можно запускать AI-фото, черновые схемы без нейросети доступны отдельно и не отражают платное качество.";
  $("aiSeriesOutput").style.display="block";
  $("aiSeriesConcept").textContent=result.concept||"План карточек";
  const allChecks=result.slides.flatMap((slide,i)=>slide.verify.map(v=>"Слайд "+(i+1)+": "+v));
@@ -2686,7 +2704,7 @@ function showAiSeriesPlan(result){
   const title=document.createElement("input");
   title.dataset.field="title";title.maxLength=55;title.value=slide.title;
   const tplLabel=document.createElement("label");
-  tplLabel.textContent="Шаблон оформления — 12 вариантов, смена бесплатно";
+  tplLabel.textContent="Оформление — 30 композиций, смена бесплатно";
   const tpl=document.createElement("select");
   tpl.dataset.field="template";
   SERIES_TEMPLATES.forEach(item=>{
@@ -2705,7 +2723,7 @@ function showAiSeriesPlan(result){
   visual.dataset.field="visual";visual.maxLength=350;
   visual.style.minHeight="120px";visual.value=slide.visual;
   const verify=document.createElement("p");verify.className="muted";
-  verify.textContent=slide.verify.length?"Проверить: "+slide.verify.join("; "):"Добавлены только нейтральные или указанные пользователем формулировки.";
+  verify.textContent=slide.verify.length?"Проверить: "+slide.verify.join("; "):"Надписи предложены ИИ: проверь все характеристики и факты перед публикацией.";
   // Edit each slide in place; the whole set can be generated below with one action.
   card.append(h,titleLabel,title,tplLabel,tpl,claimsLabel,claims,visualLabel,visual,verify);
   root.append(card);
