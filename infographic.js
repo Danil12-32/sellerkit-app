@@ -119,7 +119,7 @@ function wrap(ctx,str,maxW){
 function text(ctx,value,x,y,w,h,opts={}){
  const {size=30,min=13,maxLines=6,color="#fff",weight=700,align="left",shadow=true}=opts;
  let chosen=null;
- for(let px=size;px>=min;px--){
+ for(let px=Math.floor(size);px>=Math.floor(min);px--){
   ctx.font=weight+" "+px+"px Arial,Helvetica,sans-serif";
   const lines=wrap(ctx,value,w),step=px*1.14;
   if(lines.length<=maxLines&&lines.length*step<=h){chosen={lines,step,px};break;}
