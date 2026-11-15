@@ -475,10 +475,20 @@ SEO Analytics
 </div>
 </section>
 
-<!-- AI STUDIO -->
+<!-- AI STUDIO: простой вход, тестовые инструменты только у владельца -->
 <section class="page" id="ai">
+<div class="card" style="text-align:center;padding:26px 19px">
+<div style="font-size:36px;margin-bottom:10px">✨</div>
+<h2>AI Дизайнер</h2>
+<p class="muted">Создавай карточки товара для маркетплейсов — с готовым ТЗ или по подсказкам.</p>
+<button class="wide" onclick="openPage('ai-series');seriesGuideStep(1)">Создать карточки</button>
+</div>
+<div id="aiOwnerLegacyToggle" style="display:none;margin:12px 0">
+<button class="secondary wide" onclick="toggleAiAdvanced()">🛠 Тестирование и старые генерации</button>
+</div>
+<div id="aiAdvancedWrap" style="display:none">
 <div class="card">
-<h2>✨ AI Studio</h2>
+<h2>✨ AI Studio · Редактор для тестов</h2>
 <button class="secondary wide" onclick="openPage('ai-series')">🧠 Создать комплект из 1, 5 или 8 карточек — AI Дизайнер</button>
 <p>Профессиональные карточки товаров: нейросеть создаёт фотографию, а SellerKit накладывает <strong>настоящие русские надписи</strong>.</p>
 
@@ -577,6 +587,7 @@ SEO Analytics
 <button class="secondary" onclick="adminCloseAiFullscreen()">✕ Закрыть</button>
 <p style="color:white">Удерживай изображение, чтобы сохранить на телефон.</p>
 <img id="aiTestLightboxImage" alt="Карточка товара" style="display:block;max-width:100%;height:auto;margin:0 auto">
+</div>
 </div>
 </div>
 </div>
@@ -884,6 +895,12 @@ const num=id=>Number($(id).value)||0;
 const APP_URL="https://t.me/CardLab1_Bot/sellerkit";
 const AUTHOR_URL="https://t.me/danyaaarrrrr52";
 
+function toggleAiAdvanced(show){
+ const element=$("aiAdvancedWrap");if(!element)return;
+ const owner=window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+ if(String(owner)!=="1046253780")return;
+ element.style.display=(show===true||element.style.display==="none")?"block":"none";
+}
 function openPage(id){
  const page=$(id);
  if(!page)return;
@@ -1178,6 +1195,7 @@ async function aiRestoreHistory(item){
  aiHistoryCurrentId=item.id;
  adminDisplayAiOutput(item.cardBlob);
  openPage("ai");
+ toggleAiAdvanced(true);
  $("aiTestStatus").textContent="✅ Восстановлено из истории без нового платного запроса.";
  $("aiTestOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -1419,6 +1437,7 @@ function aiSeriesTransfer(index){
   catch(e){$("aiTestStatus").textContent="Выбери фотографию товара ещё раз в AI Studio.";}
  }
  openPage("ai");
+ toggleAiAdvanced(true);
  $("aiTestStatus").textContent="Слайд "+(index+1)+" перенесён в поля. Проверь текст и фото. Генерация изображения отдельно платная.";
  $("aiTitle").scrollIntoView({behavior:"smooth",block:"center"});
 }
@@ -2489,6 +2508,7 @@ try{
       $("adminReportsTile").style.display="flex";
       $("adminUsersTile").style.display="flex";
       $("adminAiPilot").style.display="block";
+      $("aiOwnerLegacyToggle").style.display="block";
       $("aiSeriesOwnerTools").style.display="block";
       $("ownerAiHistoryTile").style.display="flex";
      }
