@@ -1906,6 +1906,153 @@ async function seriesMakeCard(photoData,slide,index){
    factsList(29,295,238,3,248,"#ffffff");
    break;
   }
+  case "arc-accent":{
+   fill(soft,0,0,W,H);
+   ctx.fillStyle=accent;ctx.beginPath();ctx.arc(450,495,380,Math.PI,Math.PI*2);ctx.fill();
+   fill(paper,28,145,844,880);
+   picture(56,172,788,824,pale);
+   fill(paper,0,0,900,143);title(46,44,808,2,46);
+   fill(ink,0,1025,900,175);cap(facts[0]||"Особенности товара",46,1072,810,2,30,"#ffffff");
+   break;
+  }
+  case "cover-frame":{
+   fill(ink,0,0,W,H);
+   fill(accent,29,29,842,6);fill(accent,29,29,6,978);
+   picture(48,65,804,902,pale);
+   fill(ink,0,986,900,214);
+   title(48,1031,800,2,49,"#ffffff");
+   cap(facts[0]||"Выразительный дизайн",50,1149,800,1,23,soft,550);
+   break;
+  }
+  case "photo-inset":{
+   fill(paper,0,0,W,H);
+   line(44,31,110);title(42,69,812,2,52);
+   fill(soft,31,213,838,810);
+   picture(51,232,798,772,pale);
+   cap(facts[0]||"Внимание к каждой детали",47,1080,790,2,28,ink,620);
+   break;
+  }
+  case "diagonal-cut":{
+   picture(0,0,900,869,pale);
+   fill(paper,0,869,900,331);
+   ctx.fillStyle=soft;ctx.beginPath();ctx.moveTo(0,869);ctx.lineTo(900,869);
+   ctx.lineTo(900,925);ctx.lineTo(0,1030);ctx.closePath();ctx.fill();
+   line(44,954,100);title(44,1012,805,2,52);
+   break;
+  }
+  case "ribbon-title":{
+   fill(paper,0,0,900,1200);picture(0,0,900,920,pale);
+   fill(accent,0,920,900,12);
+   fill(ink,0,932,900,268);
+   line(45,958,105);title(43,998,812,2,51,"#ffffff");
+   cap(facts[0]||"",44,1117,790,2,24,soft,530);
+   break;
+  }
+  case "vertical-headline":{
+   fill(ink,0,0,260,1200);picture(260,0,640,1200,pale);
+   line(31,47,100);title(28,95,204,6,40,"#ffffff");
+   factsList(31,640,195,3,175,"#ffffff");
+   break;
+  }
+  case "two-crops":{
+   fill(paper,0,0,900,1200);
+   picture(0,0,900,542,pale);fill(accent,0,542,900,10);
+   picture(0,552,900,499,pale);
+   fill(ink,0,1051,900,149);
+   line(44,1071,88);title(43,1097,811,2,39,"#ffffff");
+   break;
+  }
+  case "airy-minimal":{
+   fill(paper,0,0,900,1200);
+   line(85,49,102);title(83,87,727,2,48);
+   picture(80,226,740,795,pale);
+   fill(soft,80,1036,740,3);
+   cap(facts[0]||"Чистая композиция",83,1060,724,2,26,ink,550);
+   break;
+  }
+  case "soft-pastel":{
+   fill(soft,0,0,900,1200);
+   fill(paper,34,35,832,1119);
+   line(67,68,100);title(65,114,780,2,50);
+   picture(64,272,772,733,pale);
+   cap(facts[0]||"Детали товара",68,1053,751,2,28,ink,590);
+   break;
+  }
+  case "tech-grid":{
+   fill(ink,0,0,900,1200);
+   ctx.strokeStyle=accent;ctx.lineWidth=1;
+   for(let x=0;x<900;x+=90){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,176);ctx.stroke();}
+   line(43,22,92);title(42,58,809,2,45,"#ffffff");
+   picture(24,178,852,842,pale);
+   factsGrid(14,1045,870,142);
+   break;
+  }
+  case "icon-trio":{
+   picture(0,0,900,765,pale);fill(ink,0,765,900,143);
+   line(46,785,92);title(44,824,808,2,42,"#ffffff");
+   fill(paper,0,908,900,292);factsGrid(0,943,900,250);
+   break;
+  }
+  case "portrait-column":{
+   fill(paper,0,0,900,1200);picture(0,175,637,1025,pale);
+   fill(ink,637,175,263,1025);
+   fill(accent,637,175,7,1025);
+   fill(paper,0,0,900,175);line(42,26,88);title(40,62,814,2,44);
+   factsList(659,314,213,3,222,"#ffffff");
+   break;
+  }
+  case "photo-grid":{
+   fill(paper,0,0,900,1200);
+   line(42,35,102);title(40,78,813,2,46);
+   picture(0,200,597,787,pale);
+   picture(607,200,293,386,soft);
+   picture(607,596,293,391,pale);
+   fill(ink,0,998,900,202);
+   cap(facts.slice(0,2).join(" · ")||"Ракурсы товара",48,1052,806,3,29,"#ffffff");
+   break;
+  }
+  case "fabric-macro":{
+   picture(0,0,900,630,pale);fill(accent,0,630,900,8);
+   picture(0,638,450,439,pale);picture(460,638,440,439,soft);
+   fill(ink,0,1077,900,123);title(45,1105,809,2,37,"#ffffff");
+   break;
+  }
+  case "outline-type":{
+   fill(paper,0,0,900,1200);
+   fill(accent,24,29,852,3);fill(accent,24,29,3,966);
+   picture(36,72,828,903,pale);
+   fill(paper,0,983,900,217);line(45,1005,80);
+   title(43,1040,812,2,50);
+   break;
+  }
+  case "spec-cards":{
+   picture(0,0,560,1200,pale);fill(paper,560,0,340,1200);
+   fill(soft,560,0,8,1200);line(590,49,92);
+   title(586,93,281,4,40);
+   facts.slice(0,3).forEach((value,i)=>{
+    const y=445+i*219;
+    fill(pale,586,y,282,184);fill(accent,586,y,6,184);
+    cap(value,605,y+45,244,3,28,ink,610);
+   });
+   break;
+  }
+  case "bottom-wave":{
+   picture(0,0,900,860,pale);
+   fill(paper,0,860,900,340);
+   ctx.fillStyle=soft;ctx.beginPath();ctx.moveTo(0,860);
+   ctx.bezierCurveTo(260,795,515,960,900,830);
+   ctx.lineTo(900,1000);ctx.lineTo(0,1000);ctx.closePath();ctx.fill();
+   line(43,1006,105);title(42,1044,816,2,49);
+   break;
+  }
+  case "premium-border":{
+   fill(ink,0,0,900,1200);
+   fill(accent,29,30,842,4);fill(accent,29,30,4,972);
+   fill(accent,868,30,4,972);picture(49,55,802,907,pale);
+   fill(ink,0,985,900,215);line(46,1009,90);
+   title(45,1050,808,2,48,"#ffffff");
+   break;
+  }
   default:{
    picture(0,0,900,985,pale);
    fill(ink,0,985,900,215);
