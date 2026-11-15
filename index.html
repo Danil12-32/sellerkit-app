@@ -1435,17 +1435,25 @@ async function adminPrepareJpeg(file){
 
 // Strictly user-provided copy. Never fabricate material, size or measurements.
 function adminAiCopy(){
- const title=$("aiTitle").value.trim().replace(/\s+/g," ");
- const claims=$("aiFacts").value.split(/\r?\n/)
-  .map(x=>x.trim().replace(/\s+/g," ")).filter(Boolean);
- if(title.length<3||title.length>55)
-  throw new Error("Напиши короткое название товара (3–55 символов).");
- if(claims.length>6)throw new Error("Максимум 6 строк. Удали лишние или объедини похожие.");
- if(claims.some(x=>x.length>34))
-  throw new Error("Одна характеристика — до 34 символов. Укороти слишком длинные строки.");
+ const inputTitle=$("aiTitle").value;
+ const inputClaims=$("aiFacts").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ if(inputClaims.length>6)throw new Error("Добавь не более 6 преимуществ.");
+ const result=window.SellerKitInfographic?
+  window.SellerKitInfographic.prepare(inputTitle,inputClaims):
+  {title:inputTitle.trim(),claims:inputClaims,warnings:[],changed:false};
+ const {title,claims}=result;
+ if(title.length<3||title.length>70)throw new Error("Название: от 3 до 70 символов.");
+ if(claims.some(x=>x.length>54))throw new Error("Укороти длинные характеристики до 54 символов.");
+ if(result.changed){
+  $("aiTitle").value=title;$("aiFacts").value=claims.join("\n");
+  aiFactCounter();
+ }
+ const status=$("aiCopyLocalStatus");
+ if(status)status.textContent=result.changed?
+   "Локальная проверка: "+result.warnings.join(" ")+" Обязательно проверь товарные факты.":
+   "Иконки подбираются по смыслу. Сложные ошибки можно исправить через AI-помощника; факты нужно проверять.";
  return {title,claims};
-}
-function aiFactCounter(){
+}function aiFactCounter(){
  const n=$("aiFacts").value.split(/\r?\n/).filter(x=>x.trim()).length;
  $("aiFactCount").textContent=n+" из 6 строк"+
   (n>6?" — слишком много, сократи список.":". Все строки попадут на карточку.");
@@ -2942,6 +2950,14 @@ async function adminRenderAiCard(sourceImage,isSample=false){
  const ctx=canvas.getContext("2d");
  if(!ctx)throw new Error("В браузере недоступен редактор Canvas.");
  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+ const designMode=$("aiDesignMode")?.value||"photo";
+ if(designMode==="infographic"){
+  if(!window.SellerKitInfographic)throw new Error("Не загрузился модуль инфографики. Переоткрой Mini App.");
+  const chosen=adminCurrentInfographicIndex();
+  if(chosen===10&&!claims.some(x=>/\b\d+(?:[.,]\d+)?\s*(?:мм|см|м|дюйм|кг|г)\b/i.test(x)))
+   throw new Error("Для размерной инфографики нужно указать подтверждённые размеры с единицами. Выбери другой шаблон или добавь реальные замеры.");
+  window.SellerKitInfographic.draw(ctx,photo,{index:chosen,title,claims});
+ }else{
  const sw=photo.naturalWidth,sh=photo.naturalHeight;
  if(!sw||!sh)throw new Error("Изображение пустое.");
  // Image first, full-bleed cover. Do not alter the product or invent a new angle.
@@ -3010,6 +3026,7 @@ async function adminRenderAiCard(sourceImage,isSample=false){
    });
   }
  }
+ }
  const compress=async(q)=>new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",q));
  let blob=await compress(.92);
  if(!blob)throw new Error("Не удалось создать JPG.");
@@ -3025,10 +3042,11 @@ async function adminRenderAiCard(sourceImage,isSample=false){
  aiPilotFile=new File([blob],"SellerKit-Studio.jpg",{type:"image/jpeg"});
  aiPilotDataUrl=await aiBlobDataUrl(blob);
  adminDisplayAiOutput(blob);
- const label=$("aiDesignPreset").selectedOptions?.[0]?.textContent||("Вариант "+(id+1));
+ const label=$("aiDesignPreset").selectedOptions?.[0]?.textContent||"Автоподбор";
  const hint=$("aiDesignResultStatus");
- if(hint)hint.textContent="Макет "+(id+1)+" из 30 · "+label+
-  ". Использована та же фотография, без платного AI-запроса.";
+ if(hint)hint.textContent=($("aiDesignMode")?.value==="infographic"?"Инфографика ":"Фото-стиль ")+
+  (adminActiveDesignIndex()+1)+"/"+adminDesignCount()+" · "+label+
+  ". Новые AI-фотографии не создавались, фон и ракурс исходного снимка сохранены.";
 }
 
 async function adminPreviewAiWithoutCharge(){
@@ -3051,9 +3069,9 @@ async function adminCycleAiSample(){
  const preset=$("aiDesignPreset"),previous=preset.value;
  button.disabled=true;
  try{
-  preset.value="layout-"+((adminCurrentAiLayout()+1)%30);
+  adminNextDesignPreset();
   await adminRenderAiCard(aiSampleRawImage,true);
-  status.textContent="Черновик "+(adminCurrentAiLayout()+1)+"/30. Изменён только текстовый дизайн, стоимость 0 ₽.";
+  status.textContent="Черновик "+(adminActiveDesignIndex()+1)+"/"+adminDesignCount()+". Новых запросов к VseGPT нет (0 ₽).";
  }catch(e){preset.value=previous;status.textContent="Ошибка черновика: "+String(e?.message||e);}
  finally{button.disabled=false;}
 }
@@ -3071,16 +3089,15 @@ async function adminRepaintAiPilot(nextDesign=false){
  if(button)button.disabled=true;
  try{
   // A repeated click cycles all 30 variations instead of redrawing the same preset.
-  const index=adminCurrentAiLayout();
-  if(nextDesign)preset.value="layout-"+((index+1)%30);
-  else if(preset.value==="auto"||!/^layout-/.test(preset.value))
-   preset.value="layout-"+index;
+  const index=adminActiveDesignIndex();
+  if(nextDesign)adminNextDesignPreset();
+  else if(preset.value==="auto")preset.value=($("aiDesignMode").value==="infographic"?"infog-":"layout-")+index;
   status.textContent="Перерисовываем текст и композицию без нового AI-запроса…";
   await adminRenderAiCard(aiPilotRawImage);
   let note="Результат готов — 0 ₽, VseGPT не вызывался.";
   try{await aiHistorySave(false);}
   catch(e){note+=" Не удалось записать историю: "+String(e?.message||e)+". Сохрани JPG вручную.";}
-  status.textContent=note+" Макет "+(adminCurrentAiLayout()+1)+"/30. Нажми «Другой дизайн», чтобы сравнить.";
+  status.textContent=note+" Вариант "+(adminActiveDesignIndex()+1)+"/"+adminDesignCount()+". Нажми «Другой дизайн», чтобы сравнить.";
  }catch(error){
   preset.value=previous;
   status.textContent="Не удалось поменять оформление: "+String(error?.message||error);
