@@ -623,6 +623,8 @@ SEO Analytics
 <input id="aiSeriesFile" type="file" accept="image/jpeg,image/png,image/webp">
 <p class="muted" style="font-size:13px">Нет фото? Мы всё равно поможем продумать карточки. Точный визуал создадим после добавления фото.</p>
 <button class="wide" onclick="seriesGuideNext()">Продолжить</button>
+<button class="secondary wide" style="margin-top:9px" id="aiSeriesRestoreButton" onclick="seriesRestoreCachedPlan()">🕘 Восстановить последний план</button>
+<p class="muted" style="font-size:12px">План сохраняется на этом устройстве. Фотографию после повторного открытия может понадобиться выбрать заново.</p>
 </div>
 
 <div id="aiGuideStep2" class="wizard-step" style="display:none">
@@ -1542,6 +1544,37 @@ function seriesGuidePrepare(){
 }
 
 
+
+// Persist text plans locally so an app restart does not require another paid Qwen call.
+const SERIES_PLAN_KEY="sellerkit-series-last-plan-v1";
+function seriesSaveCachedPlan(result){
+ try{
+  localStorage.setItem(SERIES_PLAN_KEY,JSON.stringify({
+   date:Date.now(),
+   product:$("aiGuideProduct").value.trim(),
+   count:Number($("aiSeriesCount").value),
+   concept:result.concept||"",
+   notes:result.notes||[],
+   slides:result.slides||[]
+  }));
+ }catch(e){console.warn("Series plan cache unavailable:",e?.name||"unknown");}
+}
+function seriesRestoreCachedPlan(){
+ const status=$("aiSeriesStatus");
+ try{
+  const saved=JSON.parse(localStorage.getItem(SERIES_PLAN_KEY)||"null");
+  if(!saved||![1,5,8].includes(saved.count)||!Array.isArray(saved.slides)||
+     saved.slides.length!==saved.count)throw new Error("На этом устройстве пока нет сохранённого плана.");
+  $("aiGuideProduct").value=saved.product||"";
+  $("aiSeriesCount").value=String(saved.count);
+  seriesGuideStep(3);
+  $("aiGuidePlanActions").style.display="block";
+  showAiSeriesPlan({slides:saved.slides,concept:saved.concept||"",notes:saved.notes||[]});
+  status.textContent="✅ Сохранённый план восстановлен бесплатно, без запроса к Qwen. Загрузи фотографию товара ещё раз, если она пропала.";
+  seriesCostPreview();
+ }catch(e){alert(String(e?.message||"Не удалось открыть сохранённый план."));}
+}
+
 // Multi-slide owner prototype. Free mockups are rendered on the device.
 // Paid requests are made only after the owner reviews the mockups and confirms costs.
 let seriesBundleItems=[];
@@ -2118,6 +2151,7 @@ async function adminGenerateSeriesPlan(revise){
   if(!Array.isArray(data.slides)||data.slides.length!==count)
    throw new Error("Сервер вернул неполный набор карточек.");
   showAiSeriesPlan(data);
+  seriesSaveCachedPlan(data);
   status.textContent="✅ План на "+count+" слайдов готов. Это только структура, без генерации картинок. Можно изменить любой слайд вручную или отправить пожелания Qwen.";
  }catch(e){
   const message=String(e?.message||"Ошибка создания плана.");
