@@ -591,17 +591,17 @@ SEO Analytics
 <div id="aiSampleOutput" style="display:none">
 <h3>👁️ Черновое оформление исходного фото (без AI)</h3>
 <img id="aiSampleImage" alt="Бесплатный черновик на исходной фотографии" style="width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b">
-<button class="secondary wide" style="margin-top:9px" id="aiSampleNextDesign" onclick="adminCycleAiSample()">🎨 Другой вариант — бесплатно</button>
+<button class="secondary wide" style="margin-top:9px" id="aiSampleNextDesign" onclick="adminCycleAiSample()">🎨 Другая композиция — бесплатно</button>
 <p class="muted" id="aiSampleDesignStatus" role="status" aria-live="polite"><small>Это только пример расположения текста. Новую AI-фотографию он не создаёт.</small></p>
 </div>
 <div id="aiTestOutput" style="display:none">
 <h3>✨ Результат AI-генерации</h3>
 <img id="aiTestResult" alt="Карточка товара с русскими надписями" style="display:block;width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b;touch-action:manipulation" onclick="adminShowAiFullscreen()">
 <div class="actions">
-<button class="wide" id="aiNextDesign" onclick="adminRepaintAiPilot(true)">🎨 Другой вариант · бесплатно</button>
+<button class="wide" id="aiNextDesign" onclick="adminRepaintAiPilot(true)">🎨 Другая композиция · бесплатно</button>
 <button class="secondary wide" onclick="adminShareAiPilot()">📤 Сохранить карточку</button>
 </div>
-<p class="muted" style="font-size:12px">Другой вариант меняет только расположение текста и иконок на том же фото. Новых списаний VseGPT нет. Новый фон или ракурс — отдельная платная генерация.</p>
+<p class="muted" style="font-size:12px">Новый макет одежды может менять фон, тени и положение модели за счёт бесплатного выделения человека. При недоступном выделении покажем фото в другой композиции без подмены его фона. Другой ракурс или вешалка вместо человека потребуют нового AI-фото. Новый фон или ракурс — отдельная платная генерация.</p>
 <details style="margin:9px 0;border:1px solid #365544;border-radius:12px;padding:10px">
 <summary style="font-size:13px;font-weight:600;cursor:pointer">⚙️ Ещё действия</summary>
 <button class="secondary wide" style="margin-top:10px" onclick="adminRepaintAiPilot(false)">✏️ Применить изменённый текст</button>
@@ -1080,8 +1080,9 @@ SEO Analytics
 </div>
 </div>
 
-<script src="./infographic.js?v=20261116-premium1"></script>
-<script src="./premium-infographic.js?v=20261116-premium1"></script>
+<script src="./infographic.js?v=20261116-fashion-scene1"></script>
+<script src="./premium-infographic.js?v=20261116-fashion-scene1"></script>
+<script src="./fashion-scene.js?v=20261116-fashion-scene1"></script>
 <script>
 "use strict";
 
@@ -1967,7 +1968,7 @@ async function seriesMakeCard(photoData,slide,index){
  const ctx=canvas.getContext("2d");if(!ctx)throw Error("Не работает canvas.");
  const W=900,H=1200;
  const layout=seriesTemplateFor(slide,index);
- if(/^infog-(?:[0-9]|1[0-7])$/.test(layout)){
+ if(/^infog-(?:[0-9]|1[0-9]|20)$/.test(layout)){
   const idx=Number(layout.slice(6));
   if(!window.SellerKitInfographic)throw new Error("Модуль инфографики ещё не загрузился.");
   if(idx===10&&!slide.claims.some(x=>/\b\d+(?:[.,]\d+)?\s*(?:мм|см|м|кг|г|дюйм)\b/i.test(x)))
@@ -3011,7 +3012,7 @@ function adminRelevantInfographicOrder(){
   eyewear:[15,14,12,6,3,1,0,11,5],
   cookware:[16,5,12,0,7,11,4,9,14],
   footwear:[3,12,0,6,1,14,8,4,5,11,2,7,9,13],
-  fashion:[7,12,4,0,5,14,11,9,13,1,2,3,6,8],
+  fashion:[18,19,20,7,12,4,0,5,14,11,9,13,1,2,3,6,8],
   beauty:[17,5,4,12,0,7,11,13,9,1,2,14,6,3,8],
   accessories:[17,12,7,4,9,0,11,13,5,1,2,3,14,6,8],
   general:[0,12,7,4,11,1,2,5,14,13,3,6,9,8]
@@ -3024,15 +3025,16 @@ function adminRelevantInfographicOrder(){
   tech:[14,6,3,1,2,12,11,9]
  };
  const hasMeasures=/\b\d+(?:[,.]\d+)?\s*(?:мм|см|м|кг|г|дюйм)\b/i.test($("aiFacts")?.value||"");
+ if(cat==="fashion")return [18,19,20]; // Keep free fashion redesigns meaningfully different.
  return [...new Set([...(byStyle[adminSuggestedStyle()]||[]),...(byProduct[cat]||byProduct.general),...Array.from({length:18},(_,i)=>i)])]
   .filter(i=>i!==10||hasMeasures);
 }
 function adminCurrentInfographicIndex(){
  const v=$("aiDesignPreset")?.value||"auto";
- if(/^infog-(?:[0-9]|1[0-7])$/.test(v))return Number(v.slice(6));
+ if(/^infog-(?:[0-9]|1[0-9]|20)$/.test(v))return Number(v.slice(6));
  return adminRelevantInfographicOrder()[0]??0;
 }
-function adminDesignCount(){return $("aiDesignMode")?.value==="infographic"?18:30;}
+function adminDesignCount(){return $("aiDesignMode")?.value==="infographic"?21:30;}
 function adminActiveDesignIndex(){return $("aiDesignMode")?.value==="infographic"?adminCurrentInfographicIndex():adminCurrentAiLayout();}
 function adminNextDesignPreset(){
  const preset=$("aiDesignPreset");
@@ -3175,7 +3177,12 @@ async function adminRenderAiCard(sourceImage,isSample=false){
   const chosen=adminCurrentInfographicIndex();
   if(chosen===10&&!claims.some(x=>/\b\d+(?:[.,]\d+)?\s*(?:мм|см|м|дюйм|кг|г)\b/i.test(x)))
    throw new Error("Для размерной инфографики нужно указать подтверждённые размеры с единицами. Выбери другой шаблон или добавь реальные замеры.");
-  window.SellerKitInfographic.draw(ctx,photo,{index:chosen,title,claims,hero:true});
+  let subject=null;
+  if(chosen>=18){
+   if(!window.SellerKitFashion?.extract)throw new Error("Не загрузился движок Fashion Studio. Переоткрой приложение.");
+   subject=await window.SellerKitFashion.extract(photo,sourceImage);
+  }
+  window.SellerKitInfographic.draw(ctx,photo,{index:chosen,title,claims,hero:true,subject});
  }else{
  const sw=photo.naturalWidth,sh=photo.naturalHeight;
  if(!sw||!sh)throw new Error("Изображение пустое.");
@@ -3264,7 +3271,7 @@ async function adminRenderAiCard(sourceImage,isSample=false){
  const label=$("aiDesignPreset").selectedOptions?.[0]?.textContent||"Автоподбор";
  const hint=$("aiDesignResultStatus");
  if(hint)hint.textContent="Оформление: "+label+
-  ". Фото, фон и ракурс не менялись. За смену оформления списаний нет.";
+  (designMode==="infographic"&&adminCurrentInfographicIndex()>=18?". Для одежды изменены композиция, свет и фон макета. Если вырезание модели недоступно, используется фото в рамке.":". Исходная сцена не менялась.")+" Платных AI-запросов не было.";
 }
 
 async function adminPreviewAiWithoutCharge(){
@@ -3315,7 +3322,7 @@ async function adminRepaintAiPilot(nextDesign=false){
   let note="Результат готов — 0 ₽, VseGPT не вызывался.";
   try{await aiHistorySave(false);}
   catch(e){note+=" Не удалось записать историю: "+String(e?.message||e)+". Сохрани JPG вручную.";}
-  status.textContent=note+" Показываем оформление под твой товар. Если не понравилось, нажми «Другой вариант».";
+  status.textContent=note+" Показываем оформление под твой товар. Если не понравилось, попробуй другую композицию.";
  }catch(error){
   preset.value=previous;
   status.textContent="Не удалось поменять оформление: "+String(error?.message||error);
