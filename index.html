@@ -513,7 +513,7 @@ SEO Analytics
 <label for="aiFacts">3. Реальные преимущества и характеристики — каждое с новой строки</label>
 <textarea id="aiFacts" maxlength="380" spellcheck="true" oninput="aiFactCounter()" style="min-height:135px" placeholder="Например: для прогулок&#10;Лёгкий дизайн&#10;Разные цвета"></textarea>
 <p class="muted" id="aiFactCount"><small>0 из 6 строк. Если нет ТЗ, ниже есть AI-помощник.</small></p>
-<p class="muted"><small>Можно указать до 6 характеристик. SellerKit покажет все шесть, не обрезая список до трёх. Факты вроде состава, подлинности и размеров нужно подтверждать — AI их не проверяет.</small></p>
+<p class="muted"><small>На главной карточке одежды SellerKit крупно показывает до трёх самых важных преимуществ, чтобы товар оставался заметным. Остальные характеристики можно раскрыть на следующих слайдах. Состав, размеры и свойства нужно подтвердить самостоятельно.</small></p>
 
 <label for="aiVisualMode">4. Как показывать товар?</label>
 <select id="aiVisualMode">
@@ -1080,7 +1080,7 @@ SEO Analytics
 </div>
 </div>
 
-<script src="./infographic.js?v=20261115-2"></script>
+<script src="./infographic.js?v=20261116-fashion1"></script>
 <script>
 "use strict";
 
@@ -1488,7 +1488,7 @@ function adminPreflightInfographic(){
  bg.fillStyle="#d5dce3";bg.fillRect(0,0,900,1200);
  const test=document.createElement("canvas");test.width=900;test.height=1200;
  const ctx=test.getContext("2d");if(!ctx)throw new Error("Не работает Canvas.");
- engine.draw(ctx,source,{index:idx,title,claims});
+ engine.draw(ctx,source,{index:idx,title,claims,hero:true});
 }
 function adminPhotoCompositionHint(){
  if($("aiDesignMode")?.value!=="infographic")return "hero-bold";
@@ -1841,7 +1841,7 @@ function seriesCategoryOrder(){
   appliances:[14,6,3,1,2,11,10,9,4],
   sport:[14,3,1,2,6,8,11,12,4],
   footwear:[3,14,1,8,9,12,4,7],
-  fashion:[7,4,9,12,0,11,8,13],
+  fashion:[7,12,4,0,5,14,11,1,2,9,13],
   furniture:[7,0,4,9,11,13,12],
   home_textile:[7,4,0,9,12,11,13],
   bags:[12,4,0,9,11,13,7],
@@ -1850,6 +1850,9 @@ function seriesCategoryOrder(){
   universal:[0,11,12,7,3,13,14,9]
  };
  const ids=(relevant[cat]||relevant.universal).map(i=>"infog-"+i);
+ // Apparel cover should not auto-cycle into collage layouts that duplicate one photo.
+ // Manual 45-template selection is still available in advanced settings.
+ if(cat==="fashion")return [...new Set(ids)];
  return [...new Set([...ids,...preferred,...SERIES_TEMPLATES.map(x=>x.id)])];
 }
 function seriesChooseInitialTemplate(index,role){
@@ -1968,7 +1971,7 @@ async function seriesMakeCard(photoData,slide,index){
   if(!window.SellerKitInfographic)throw new Error("Модуль инфографики ещё не загрузился.");
   if(idx===10&&!slide.claims.some(x=>/\b\d+(?:[.,]\d+)?\s*(?:мм|см|м|кг|г|дюйм)\b/i.test(x)))
    throw new Error("На слайде "+(index+1)+" нет точных размеров. Выбери другой шаблон.");
-  window.SellerKitInfographic.draw(ctx,image,{index:idx,title:slide.title,claims:slide.claims});
+  window.SellerKitInfographic.draw(ctx,image,{index:idx,title:slide.title,claims:slide.claims,hero:index===0});
   let output=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.9));
   if(!output)throw new Error("Не удалось сохранить инфографику.");
   if(output.size>1900000)output=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.76));
@@ -2573,7 +2576,7 @@ function seriesPreflightRender(slides,indices){
   const idx=Number(id.slice(6));
   if(idx===10&&!slide.claims.some(x=>/\b\d+(?:[.,]\d+)?\s*(?:мм|см|м|кг|г|дюйм)\b/i.test(x)))
    throw new Error("Слайд "+((indices?indices[i]:i)+1)+": укажи подтверждённые размеры.");
-  try{api.draw(ctx,src,{index:idx,title:slide.title,claims:slide.claims});}
+  try{api.draw(ctx,src,{index:idx,title:slide.title,claims:slide.claims,hero:(indices?indices[i]:i)===0});}
   catch(e){throw new Error("Слайд "+((indices?indices[i]:i)+1)+": "+String(e?.message||e));}
  });
 }
@@ -2993,7 +2996,7 @@ function adminRelevantInfographicOrder(){
   lighting:[7,0,11,13,4,5,12,9,14,1,2,3,6,8],
   tech:[14,6,3,1,2,0,12,4,5,11,8,13,7,9],
   footwear:[3,12,0,6,1,14,8,4,5,11,2,7,9,13],
-  fashion:[7,4,0,12,13,11,5,8,1,2,9,3,14,6],
+  fashion:[7,12,4,0,5,14,11,9,13,1,2,3,6,8],
   beauty:[5,4,12,0,7,11,13,9,1,2,14,6,3,8],
   accessories:[12,7,4,9,0,11,13,5,1,2,3,14,6,8],
   general:[0,12,7,4,11,1,2,5,14,13,3,6,9,8]
@@ -3154,7 +3157,7 @@ async function adminRenderAiCard(sourceImage,isSample=false){
   const chosen=adminCurrentInfographicIndex();
   if(chosen===10&&!claims.some(x=>/\b\d+(?:[.,]\d+)?\s*(?:мм|см|м|дюйм|кг|г)\b/i.test(x)))
    throw new Error("Для размерной инфографики нужно указать подтверждённые размеры с единицами. Выбери другой шаблон или добавь реальные замеры.");
-  window.SellerKitInfographic.draw(ctx,photo,{index:chosen,title,claims});
+  window.SellerKitInfographic.draw(ctx,photo,{index:chosen,title,claims,hero:true});
  }else{
  const sw=photo.naturalWidth,sh=photo.naturalHeight;
  if(!sw||!sh)throw new Error("Изображение пустое.");
