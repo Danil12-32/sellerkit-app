@@ -1328,7 +1328,7 @@ async function aiHistorySave(asNew,model){
  const record={
   id,owner:aiOwnerId(),date:Date.now(),model:model||$("aiTestModel").value,
   title:$("aiTitle").value,claims:$("aiFacts").value,style:$("aiPrompt").value,
-  visualMode:$("aiVisualMode").value,designMode:$("aiDesignMode").value,designPreset:$("aiDesignPreset").value,
+  visualMode:$("aiVisualMode").value,designMode:$("aiDesignMode").value,designStyle:$("aiDesignStyle").value,designPreset:$("aiDesignPreset").value,
   rawBlob,cardBlob:new Blob([aiPilotFile],{type:"image/jpeg"})
  };
  try{await new Promise((resolve,reject)=>{
@@ -1388,6 +1388,7 @@ async function aiRestoreHistory(item){
  $("aiTitle").value=item.title;$("aiFacts").value=item.claims;
  $("aiPrompt").value=item.style;$("aiVisualMode").value=item.visualMode;
  $("aiDesignMode").value=item.designMode||(String(item.designPreset||"").startsWith("infog-")?"infographic":"photo");
+ $("aiDesignStyle").value=["auto","premium","clean","bright","tech"].includes(item.designStyle)?item.designStyle:"auto";
  adminDesignModeChanged(item.designPreset||"auto");
  if([...$("aiTestModel").options].some(o=>o.value===item.model))$("aiTestModel").value=item.model;
  aiPilotRawImage=await aiBlobDataUrl(item.rawBlob);
@@ -2976,17 +2977,70 @@ function adminDesignModeChanged(selected){
  list.forEach((item,i)=>preset.add(new Option(String(i+1).padStart(2,"0")+" · "+item.label,item.value)));
  preset.value=list.some(item=>item.value===chosen)?chosen:"auto";
 }
+function adminSuggestedStyle(){
+ const manually=$("aiDesignStyle")?.value||"auto";
+ if(manually!=="auto")return manually;
+ const prompt=String($("aiPrompt")?.value||"").toLowerCase();
+ if(/преми|люкс|дорого|дорогой|элегантн/.test(prompt))return "premium";
+ if(/минимал|чистый фон|без лишнего/.test(prompt))return "clean";
+ if(/яркий|цветной|динамич|контраст/.test(prompt))return "bright";
+ if(/технологич|инфографик|иконк|характеристик/.test(prompt))return "tech";
+ return "auto";
+}
+function adminRelevantInfographicOrder(){
+ const cat=window.SellerKitInfographic?.category($("aiTitle")?.value||"")||"general";
+ const byProduct={
+  lighting:[7,0,11,13,4,5,12,9,14,1,2,3,6,8],
+  tech:[14,6,3,1,2,0,12,4,5,11,8,13,7,9],
+  footwear:[3,12,0,6,1,14,8,4,5,11,2,7,9,13],
+  fashion:[7,4,0,12,13,11,5,8,1,2,9,3,14,6],
+  beauty:[5,4,12,0,7,11,13,9,1,2,14,6,3,8],
+  accessories:[12,7,4,9,0,11,13,5,1,2,3,14,6,8],
+  general:[0,12,7,4,11,1,2,5,14,13,3,6,9,8]
+ };
+ const byStyle={
+  auto:[],
+  premium:[5,13,7,0,11,4,12,14],
+  clean:[4,0,13,7,11,1,2],
+  bright:[12,6,3,11,8,0,14],
+  tech:[14,6,3,1,2,12,11,9]
+ };
+ const hasMeasures=/\b\d+(?:[,.]\d+)?\s*(?:мм|см|м|кг|г|дюйм)\b/i.test($("aiFacts")?.value||"");
+ return [...new Set([...(byStyle[adminSuggestedStyle()]||[]),...(byProduct[cat]||byProduct.general),...Array.from({length:15},(_,i)=>i)])]
+  .filter(i=>i!==10||hasMeasures);
+}
 function adminCurrentInfographicIndex(){
  const v=$("aiDesignPreset")?.value||"auto";
  if(/^infog-(?:[0-9]|1[0-4])$/.test(v))return Number(v.slice(6));
- const category=window.SellerKitInfographic?.category($("aiTitle")?.value||"")||"general";
- return ({tech:14,lighting:7,fashion:7,footwear:3,beauty:5,accessories:12,general:0})[category]??0;
+ return adminRelevantInfographicOrder()[0]??0;
 }
 function adminDesignCount(){return $("aiDesignMode")?.value==="infographic"?15:30;}
 function adminActiveDesignIndex(){return $("aiDesignMode")?.value==="infographic"?adminCurrentInfographicIndex():adminCurrentAiLayout();}
 function adminNextDesignPreset(){
- const next=(adminActiveDesignIndex()+1)%adminDesignCount();
- $("aiDesignPreset").value=($("aiDesignMode")?.value==="infographic"?"infog-":"layout-")+next;
+ const preset=$("aiDesignPreset");
+ if($("aiDesignMode")?.value==="infographic"){
+  const available=adminRelevantInfographicOrder();
+  const index=available.indexOf(adminCurrentInfographicIndex());
+  preset.value="infog-"+available[(index+1)%available.length];
+  return;
+ }
+ preset.value="layout-"+((adminCurrentAiLayout()+1)%30);
+}
+function adminChooseAiStyle(){
+ // This changes local overlays only, never calls Yandex Cloud or VseGPT.
+ if($("aiDesignMode").value!=="infographic"){
+  $("aiDesignMode").value="infographic";
+  adminDesignModeChanged("auto");
+ }
+ $("aiDesignPreset").value="auto";
+ if(aiPilotRawImage){
+  adminRepaintAiPilot(false);
+ }else if(aiSampleRawImage){
+  adminRenderAiCard(aiSampleRawImage,true).catch(e=>{
+   const status=$("aiSampleDesignStatus");
+   if(status)status.textContent=String(e?.message||e);
+  });
+ }
 }
 function adminCurrentAiLayout(){
  const choice=String($("aiDesignPreset")?.value||"auto");
@@ -3156,9 +3210,8 @@ async function adminRenderAiCard(sourceImage,isSample=false){
  adminDisplayAiOutput(blob);
  const label=$("aiDesignPreset").selectedOptions?.[0]?.textContent||"Автоподбор";
  const hint=$("aiDesignResultStatus");
- if(hint)hint.textContent=($("aiDesignMode")?.value==="infographic"?"Инфографика ":"Фото-стиль ")+
-  (adminActiveDesignIndex()+1)+"/"+adminDesignCount()+" · "+label+
-  ". Новые AI-фотографии не создавались, фон и ракурс исходного снимка сохранены.";
+ if(hint)hint.textContent="Оформление: "+label+
+  ". Фото, фон и ракурс не менялись. За смену оформления списаний нет.";
 }
 
 async function adminPreviewAiWithoutCharge(){
@@ -3183,7 +3236,7 @@ async function adminCycleAiSample(){
  try{
   adminNextDesignPreset();
   await adminRenderAiCard(aiSampleRawImage,true);
-  status.textContent="Черновик "+(adminActiveDesignIndex()+1)+"/"+adminDesignCount()+". Новых запросов к VseGPT нет (0 ₽).";
+  status.textContent="Готов ещё один вариант. Это бесплатно: фотографию нейросеть повторно не создавала.";
  }catch(e){preset.value=previous;status.textContent="Ошибка черновика: "+String(e?.message||e);}
  finally{button.disabled=false;}
 }
@@ -3209,7 +3262,7 @@ async function adminRepaintAiPilot(nextDesign=false){
   let note="Результат готов — 0 ₽, VseGPT не вызывался.";
   try{await aiHistorySave(false);}
   catch(e){note+=" Не удалось записать историю: "+String(e?.message||e)+". Сохрани JPG вручную.";}
-  status.textContent=note+" Вариант "+(adminActiveDesignIndex()+1)+"/"+adminDesignCount()+". Нажми «Другой дизайн», чтобы сравнить.";
+  status.textContent=note+" Показываем оформление под твой товар. Если не понравилось, нажми «Другой вариант».";
  }catch(error){
   preset.value=previous;
   status.textContent="Не удалось поменять оформление: "+String(error?.message||error);
