@@ -2581,6 +2581,8 @@ async function seriesRegenerateOne(number){
  const tg=window.Telegram?.WebApp;
  const file=$("aiSeriesFile").files?.[0];
  if(!file||!tg?.initData){status.textContent="Нужно фото и открытый Telegram.";return;}
+ try{seriesPreflightRender([aiSeriesEdits()[number-1]],[number-1]);}
+ catch(e){status.textContent="Исправь макет до оплаты: "+String(e?.message||e);return;}
  if(!window.confirm("Переделать только слайд "+number+" за ориентировочно "+
   cost.toFixed(2)+" ₽ из VseGPT? Предыдущая версия сохранена в истории."))return;
  seriesBundleBusy=true;
@@ -2601,7 +2603,7 @@ async function seriesRegenerateOne(number){
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
      action:"admin_image_test",initData:tg.initData,model,prompt,
-     templateId:seriesTemplateFor(slide,number-1),
+     templateId:seriesPhotoDirection(slide,number-1),
      visualMode:seriesVisualMode(slide),imageData,productTitle:$("aiGuideProduct").value.trim()
     }),signal:ctl.signal,cache:"no-store"
    });
@@ -2635,6 +2637,8 @@ async function seriesGeneratePaidBundle(){
  const textIssue=seriesTypographyIssue(slides);
  if(textIssue){status.textContent=textIssue+" Генерация не запущена, деньги не списаны.";return;}
  if(!file||!slides.length||slides.length!==count){status.textContent="Сначала создай план и прикрепи фото.";return;}
+ try{seriesPreflightRender(slides);}
+ catch(e){status.textContent="Исправь оформление до оплаты: "+String(e?.message||e);return;}
  if(!$("aiSeriesClaimsVerified").checked){
   status.textContent="Сначала проверь утверждения и поставь отметку о проверке характеристик.";return;
  }
@@ -2671,7 +2675,7 @@ async function seriesGeneratePaidBundle(){
     response=await fetch(SELLERKIT_API_URL,{
      method:"POST",headers:{"Content-Type":"application/json"},
      body:JSON.stringify({action:"admin_image_test",initData:tg.initData,
-       model,prompt,templateId:seriesTemplateFor(slide,i),visualMode:seriesVisualMode(slide),imageData,productTitle:$("aiGuideProduct").value.trim()}),
+       model,prompt,templateId:seriesPhotoDirection(slide,i),visualMode:seriesVisualMode(slide),imageData,productTitle:$("aiGuideProduct").value.trim()}),
      signal:controller.signal,cache:"no-store"
     });
    }finally{clearTimeout(timer);}
