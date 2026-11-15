@@ -685,6 +685,7 @@ SEO Analytics
 <button onclick="seriesGuidePrepare()">Проверить задание</button>
 </div>
 <div id="aiGuidePlanActions" style="display:none">
+<button class="secondary wide" style="margin:8px 0" onclick="seriesBuildFreeDemo()">✨ Бесплатный демо-комплект без нейросети</button>
 <p class="muted" style="font-size:13px">Пока это пробный режим. Сначала составим план разных слайдов. Автоматическая генерация всего комплекта и оплата ещё не подключены.</p>
 <div id="aiSeriesOwnerTools" style="display:none">
 <button class="wide" id="aiSeriesGenerateBtn" onclick="adminGenerateSeriesPlan(false)">Составить план с AI</button>
@@ -1549,6 +1550,51 @@ function seriesGuidePrepare(){
 }
 
 
+
+
+function seriesBuildFreeDemo(){
+ const product=$("aiGuideProduct").value.trim();
+ const count=Number($("aiSeriesCount").value);
+ const status=$("aiSeriesStatus");
+ if(!product||![1,5,8].includes(count)){status.textContent="Сначала укажи товар и количество карточек.";return;}
+ const facts=$("aiGuideFacts").value.split(/[\n;]+/).map(x=>x.trim()).filter(Boolean).slice(0,8);
+ const roles=["hero","benefit","detail","lifestyle","size","care","comparison","faq"];
+ const topics=[
+  product,
+  "Детали товара",
+  "Форма и фактура",
+  "В разных ракурсах",
+  "Особенности модели",
+  "Внимание к мелочам",
+  "Под другим углом",
+  "Что важно знать"
+ ];
+ const photoBriefs=[
+  "Крупная рекламная фотография самого товара. Акцент на силуэте и цвете.",
+  "Другой ракурс, крупный товар, чистый фон, оставить место для преимуществ.",
+  "Крупный план реальных деталей исходного товара, не придумывать элементы.",
+  "Товар в подходящем окружении, без неподтверждённых сценариев и свойств.",
+  "Предметная фотография с акцентом на форму и конструкцию.",
+  "Реалистичная макрофотография настоящих деталей товара.",
+  "Тот же товар с другой стороны, единый стиль серии.",
+  "Простая композиция для ответов и подтверждённых сведений о товаре."
+ ];
+ const slides=Array.from({length:count},(_,i)=>({
+  index:i+1,role:roles[i],
+  title:topics[i],
+  claims:facts.length?[facts[i%facts.length]]:[],
+  visual:photoBriefs[i]+" "+$("aiGuideExtra").value.trim(),
+  verify:facts.length?[]:["Характеристики и материалы товара не предоставлены."]
+ }));
+ const result={
+  success:true,concept:"Демо-макет для «"+product+"» — разные композиции, без платных запросов.",
+  slides,notes:["Демонстрационный план. Отредактируй заголовки и утверждения перед публикацией."]
+ };
+ showAiSeriesPlan(result);
+ seriesSaveCachedPlan(result);
+ status.textContent="✅ Демонстрационный план на "+count+" слайдов создан бесплатно. Если есть фотография, нажми «Посмотреть все макеты бесплатно».";
+ $("aiSeriesOutput").scrollIntoView({behavior:"smooth",block:"start"});
+}
 
 // Persist text plans locally so an app restart does not require another paid Qwen call.
 const SERIES_PLAN_KEY="sellerkit-series-last-plan-v1";
