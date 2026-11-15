@@ -1733,7 +1733,19 @@ function seriesRefreshGallery(){
   save.href=url;save.download="SellerKit-slide-"+item.index+".jpg";
   save.className="secondary";save.style.cssText="display:inline-block;border-radius:9px;padding:10px;color:white;text-decoration:none";
   save.textContent="⬇️ Скачать слайд "+item.index;
-  section.append(label,img,save);root.append(section);
+  section.append(label,img,save);
+  if(item.paid){
+   const textBtn=document.createElement("button");
+   textBtn.className="secondary";textBtn.style.margin="8px 6px 0 0";
+   textBtn.textContent="✏️ Обновить текст бесплатно";
+   textBtn.onclick=()=>seriesRepaintOne(item.index);
+   const paidBtn=document.createElement("button");
+   paidBtn.className="secondary";paidBtn.style.margin="8px 0 0";
+   paidBtn.textContent="🔁 Переделать только этот слайд (платно)";
+   paidBtn.onclick=()=>seriesRegenerateOne(item.index);
+   section.append(textBtn,paidBtn);
+  }
+  root.append(section);
  }
  $("aiSeriesBundleSaveActions").style.display=items.length?"block":"none";
 }
@@ -1763,11 +1775,12 @@ async function seriesCreateFreePreviews(){
 }
 async function seriesSaveImageHistory(item,rawBlob,slide,model){
  const db=await aiOpenHistory();
+ const id=item.historyId||("series-"+Date.now()+"-"+item.index+"-"+Math.random().toString(36).slice(2,8));
  try{
   await new Promise((resolve,reject)=>{
    const tx=db.transaction("images","readwrite");
    tx.objectStore("images").put({
-    id:"series-"+Date.now()+"-"+item.index+"-"+Math.random().toString(36).slice(2,8),
+    id,
     owner:aiOwnerId(),date:Date.now(),model,title:slide.title,
     claims:slide.claims.join("\n"),style:slide.visual,
     visualMode:"studio",designPreset:"auto",
@@ -1777,7 +1790,85 @@ async function seriesSaveImageHistory(item,rawBlob,slide,model){
    tx.onerror=()=>reject(tx.error||new Error("Не удалось сохранить карточку."));
    tx.onabort=()=>reject(tx.error||new Error("Не удалось сохранить карточку."));
   });
+  item.historyId=id;
  }finally{db.close();}
+}
+function seriesBlobDataUrl(blob){
+ return new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onload=()=>resolve(String(reader.result));
+  reader.onerror=()=>reject(reader.error||new Error("Не удалось открыть сохранённую фотографию."));
+  reader.readAsDataURL(blob);
+ });
+}
+async function seriesRepaintOne(number){
+ const status=$("aiSeriesBundleStatus");
+ const item=seriesBundleItems.find(x=>x.index===number&&x.paid);
+ if(!item||!item.rawBlob){status.textContent="Исходная фотография этого слайда не найдена.";return;}
+ if(seriesBundleBusy)return;
+ seriesBundleBusy=true;
+ try{
+  const slide=aiSeriesEdits()[number-1];
+  const photo=await seriesBlobDataUrl(item.rawBlob);
+  const updated=await seriesMakeCard(photo,slide,number-1);
+  item.cardBlob=updated;item.title=slide.title;
+  seriesRefreshGallery();
+  try{await seriesSaveImageHistory(item,item.rawBlob,slide,item.model||$("aiSeriesImageModel").value);}
+  catch(e){status.textContent="⚠️ Текст обновлён, но историю сохранить не удалось. Скачай JPG.";return;}
+  status.textContent="✅ Текст слайда "+number+" обновлён без расходов на AI. Другие слайды не изменились.";
+ }catch(e){status.textContent="Ошибка обновления: "+String(e?.message||e);}
+ finally{seriesBundleBusy=false;}
+}
+async function seriesRegenerateOne(number){
+ const status=$("aiSeriesBundleStatus");
+ const item=seriesBundleItems.find(x=>x.index===number&&x.paid);
+ if(!item){status.textContent="Сначала сгенерируй этот слайд.";return;}
+ if(seriesBundleBusy)return;
+ if(String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id||"")!=="1046253780")return;
+ const model=$("aiSeriesImageModel").value,cost=SERIES_COSTS[model];
+ if(!Number.isFinite(cost))return;
+ const tg=window.Telegram?.WebApp;
+ const file=$("aiSeriesFile").files?.[0];
+ if(!file||!tg?.initData){status.textContent="Нужно фото и открытый Telegram.";return;}
+ if(!window.confirm("Переделать только слайд "+number+" за ориентировочно "+
+  cost.toFixed(2)+" ₽ из VseGPT? Предыдущая версия сохранена в истории."))return;
+ seriesBundleBusy=true;
+ const button=$("aiSeriesPaidRunBtn");button.disabled=true;
+ try{
+  const slide=aiSeriesEdits()[number-1];
+  const imageData=await adminPrepareJpeg(file);
+  const prompt=("Новая версия для слайда "+number+". "+
+    slide.visual+". Учти пожелания пользователя, другой красивый коммерческий ракурс. "+
+    "Сохрани оригинальный товар, точную форму и цвет. Без надписей и выдуманных деталей.").slice(0,1140);
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),123000);
+  let res;
+  try{
+   status.textContent="Перегенерируем только слайд "+number+". Остальной комплект не трогаем…";
+   res=await fetch(SELLERKIT_API_URL,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+     action:"admin_image_test",initData:tg.initData,model,prompt,
+     visualMode:"studio",imageData,productTitle:$("aiGuideProduct").value.trim()
+    }),signal:ctl.signal,cache:"no-store"
+   });
+  }finally{clearTimeout(timer);}
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok||data?.success!==true)
+   throw Error("Ошибка "+String(data.error||res.status)+". Повтор автоматически не делаем: запрос мог быть оплачен.");
+  if(typeof data.imageDataUrl!=="string"||!data.imageDataUrl.startsWith("data:image/jpeg;base64,"))
+   throw Error("Сервис не вернул изображение. Проверь списание VseGPT.");
+  const rawBlob=await fetch(data.imageDataUrl).then(r=>r.blob());
+  let cardBlob;
+  try{cardBlob=await seriesMakeCard(data.imageDataUrl,slide,number-1);}
+  catch{cardBlob=rawBlob;}
+  // Keep the old paid version in IndexedDB as a separate history item.
+  item.historyId=null;item.rawBlob=rawBlob;item.cardBlob=cardBlob;item.title=slide.title;item.model=model;
+  seriesRefreshGallery();
+  try{await seriesSaveImageHistory(item,rawBlob,slide,model);}
+  catch(e){status.textContent="⚠️ Новая фотография готова, но история недоступна. Сохрани JPG/ZIP.";return;}
+  status.textContent="✅ Перегенерирован только слайд "+number+". Остальные остались прежними. Ориентир: "+cost.toFixed(2)+" ₽.";
+ }catch(e){status.textContent="⚠️ "+String(e?.message||e)+". Старый слайд остался в галерее.";}
+ finally{seriesBundleBusy=false;button.disabled=false;}
 }
 async function seriesGeneratePaidBundle(){
  const btn=$("aiSeriesPaidRunBtn"),status=$("aiSeriesBundleStatus");
@@ -1839,7 +1930,7 @@ async function seriesGeneratePaidBundle(){
     cardBlob=rawBlob;
     console.warn("Card typography failed, preserving paid image:",String(e?.message||e));
    }
-   const item={index:i+1,title:slide.title,cardBlob,paid:true};
+   const item={index:i+1,title:slide.title,cardBlob,rawBlob,paid:true,model};
    seriesBundleItems.push(item);completed++;spentEstimate+=unit;
    seriesRefreshGallery();
    try{await seriesSaveImageHistory(item,rawBlob,slide,model);}
