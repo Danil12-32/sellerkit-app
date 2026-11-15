@@ -9,7 +9,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-art-director-13";
+const SERVER_BUILD = "sellerkit-art-director-14";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "AI Studio",
@@ -597,9 +597,36 @@ const SERIES_SCENARIOS = Object.freeze([
   focus:"Товар крупно, реальный материал и форма, минимум неподтверждённых надписей, визуальный рассказ по категории."}
 ]);
 const SERIES_TEMPLATE_IDS=Object.freeze([
- "hero-bold","editorial","feature-left","feature-right",
- "detail-focus","benefit-grid","lookbook","spec-rail",
- "split-story","numbered","premium","final-summary"
+ "hero-bold",
+ "editorial",
+ "feature-left",
+ "feature-right",
+ "detail-focus",
+ "benefit-grid",
+ "lookbook",
+ "spec-rail",
+ "split-story",
+ "numbered",
+ "premium",
+ "final-summary",
+ "arc-accent",
+ "cover-frame",
+ "photo-inset",
+ "diagonal-cut",
+ "ribbon-title",
+ "vertical-headline",
+ "two-crops",
+ "airy-minimal",
+ "soft-pastel",
+ "tech-grid",
+ "icon-trio",
+ "portrait-column",
+ "photo-grid",
+ "fabric-macro",
+ "outline-type",
+ "spec-cards",
+ "bottom-wave",
+ "premium-border"
 ]);
 const SERIES_ROLE_TEMPLATE=Object.freeze({
  hero:"hero-bold",benefit:"benefit-grid",detail:"detail-focus",
@@ -624,7 +651,7 @@ async function adminSeriesPlan(body){
  const feedback=typeof body.feedback==="string"?body.feedback.trim():"";
  const previous=Array.isArray(body.previousPlan)?body.previousPlan:[];
  const imageData=typeof body.imageData==="string"?body.imageData:"";
- if(![1,5,8].includes(count)||brief.length<8||brief.length>1600||
+ if(![1,5,6,8].includes(count)||brief.length<8||brief.length>1600||
     feedback.length>700||previous.length>8||JSON.stringify(previous).length>6500)
   return {status:400,payload:{error:"INVALID_SERIES_INPUT"}};
  if(imageData&&(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(imageData)||
@@ -641,11 +668,12 @@ async function adminSeriesPlan(body){
   'JSON: {"concept":string,"slides":[{"role":string,"templateId":string,"title":string,"claims":string[],"visual":string,"verify":string[]}],"notes":string[]}.',
   "В серии ровно "+count+" разных слайдов. Первый — hero. Каждый другой раскрывает отдельную задачу.",
   "Сценарий категории: "+scenario.name+". Арт-дирекшн: "+scenario.focus,
-  "Доступные 12 шаблонов композиции: "+SERIES_TEMPLATE_IDS.join(", ")+".",
-  "Назначь templateId каждому слайду и НЕ повторяй шаблон в пределах комплекта.",
+  "Доступные 30 шаблонов композиции: "+SERIES_TEMPLATE_IDS.join(", ")+".",
+  "Назначь templateId каждому слайду и НЕ повторяй шаблон в пределах комплекта. Подбирай макет под САМ ТОВАР, не по одному универсальному паттерну.",
   "Выбирай композицию ПО СОДЕРЖАНИЮ: главный товар крупно, преимущества отдельно,",
   "детали — кропы, использование — подходящая среда, параметры — отдельная колонка.",
   "Визуальная система комплекта общая: согласованные палитра, шрифтовая иерархия, акценты.",
+  "Площадка: "+(typeof body.platform==="string"?body.platform.slice(0,30):"wildberries")+". Придерживайся её рекламного стиля, не выдавай юридическую гарантию соответствия правилам.",,
   "Не рисуй товарные фейковые элементы: значки сертификатов, бренды, характеристики и замеры.",
   "Пиши title не больше 55 знаков, claims — не больше 3 строк по 34 знака каждая.",
   "visual — до 290 знаков, конкретный фотопромпт БЕЗ текста (текст наносит движок SellerKit).",
@@ -721,7 +749,25 @@ const SERIES_PHOTO_DIRECTIONS=Object.freeze({
  "split-story":"Detailed product photo with strong texture and enough sharpness for two safe crops of the SAME image.",
  "numbered":"Modern commercial lighting with distinctive but restrained angle, focus on product clarity.",
  "premium":"Luxury studio lighting, believable subtle shadow, minimal refined art direction, hero product crisp.",
- "final-summary":"Photorealistic closing beauty shot, confident clean silhouette, a distinct but accurate viewpoint."
+ "final-summary":"Photorealistic closing beauty shot, confident clean silhouette, a distinct but accurate viewpoint.",
+ "arc-accent":"Sculptural arch-shaped background, deliberate editorial composition with photo-safe negative space",
+ "cover-frame":"Polished full-object photograph with a sophisticated framed catalog look",
+ "photo-inset":"Premium inset studio photo, balanced airy surroundings and crisp merchandise detail",
+ "diagonal-cut":"Dynamic product photography composed with diagonal shadow lines, no artificial alteration to the product",
+ "ribbon-title":"Minimal clean advertisement with natural product shadow and precise hero detail",
+ "vertical-headline":"Tall editorial magazine composition, accurate product identity and natural light",
+ "two-crops":"Authentic product with strong resolution for side-by-side crops, without inventing details",
+ "airy-minimal":"Spacious soft natural studio product photograph, minimalist material and clean light",
+ "soft-pastel":"Soft pastel product scene, accurate original colors and coherent delicate lighting",
+ "tech-grid":"Crisp geometric studio photography, sharp genuine hardware details, no fabricated controls",
+ "icon-trio":"Product packshot with careful shadows and room for separately rendered benefit icons",
+ "portrait-column":"Elegant portrait-oriented product shot, exact construction, modern art direction",
+ "photo-grid":"Photograph of merchandise that remains sharp in a masonry arrangement of crops",
+ "fabric-macro":"Close study of real texture and authentic seam structure from reference, not synthetic fabric",
+ "outline-type":"Premium high-key product photograph, simple accurate silhouette, refined depth",
+ "spec-cards":"Detail-rich neutral photographic base for separate specifications; no unsupported technical claims",
+ "bottom-wave":"Creative flowing shadow and backdrop, genuine product edges, pleasing visual rhythm",
+ "premium-border":"Luxury atmospheric hero photograph, true-to-life materials and balanced composition"
 });
 
 // Owner-only image-edit testing. No paid public generation or credit mutation.
