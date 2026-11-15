@@ -2543,6 +2543,33 @@ function seriesTypographyIssue(slides){
  }
  return "";
 }
+// Checks layout fitting for each infographic before invoking a billable image model.
+function seriesPreflightRender(slides,indices){
+ const api=window.SellerKitInfographic;
+ if(!api)throw new Error("Не загрузился файл infographic.js.");
+ const src=document.createElement("canvas");src.width=900;src.height=1200;
+ const bg=src.getContext("2d");if(!bg)throw new Error("Canvas недоступен.");
+ bg.fillStyle="#d4dce2";bg.fillRect(0,0,900,1200);
+ const canvas=document.createElement("canvas");canvas.width=900;canvas.height=1200;
+ const ctx=canvas.getContext("2d");if(!ctx)throw new Error("Canvas недоступен.");
+ slides.forEach((slide,i)=>{
+  const id=seriesTemplateFor(slide,indices?indices[i]:i);
+  if(!/^infog-(?:[0-9]|1[0-4])$/.test(id))return;
+  const idx=Number(id.slice(6));
+  if(idx===10&&!slide.claims.some(x=>/\b\d+(?:[.,]\d+)?\s*(?:мм|см|м|кг|г|дюйм)\b/i.test(x)))
+   throw new Error("Слайд "+((indices?indices[i]:i)+1)+": укажи подтверждённые размеры.");
+  try{api.draw(ctx,src,{index:idx,title:slide.title,claims:slide.claims});}
+  catch(e){throw new Error("Слайд "+((indices?indices[i]:i)+1)+": "+String(e?.message||e));}
+ });
+}
+function seriesPhotoDirection(slide,index){
+ const id=seriesTemplateFor(slide,index);
+ if(!/^infog-/.test(id))return id;
+ const mapping=["hero-bold","feature-left","feature-right","tech-grid","airy-minimal",
+ "premium","tech-grid","lookbook","lookbook","detail-focus","spec-rail",
+ "benefit-grid","icon-trio","split-story","tech-grid"];
+ return mapping[Number(id.slice(6))]||"hero-bold";
+}
 async function seriesRegenerateOne(number){
  const status=$("aiSeriesBundleStatus");
  const item=seriesBundleItems.find(x=>x.index===number&&x.paid);
