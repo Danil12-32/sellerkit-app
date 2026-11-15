@@ -524,14 +524,26 @@ SEO Analytics
 <label for="aiPrompt">5. Пожелания только к визуальному стилю</label>
 <textarea id="aiPrompt" placeholder="Например: премиальная fashion-съёмка, мягкий студийный свет, розово-бежевый фон, крупный товар"></textarea>
 <p class="muted"><small>Фотографию создаёт нейросеть, а текст SellerKit наносит отдельно. Чтобы исправить опечатки и составить текст без ТЗ, используй AI-помощника в разделе тестирования ниже.</small></p>
-<label for="aiDesignMode">6. Тип карточки</label>
-<select id="aiDesignMode" onchange="adminDesignModeChanged()">
-<option value="infographic" selected>Инфографика WB / Ozon — товар, преимущества, иконки</option>
-<option value="photo">Фото-стиль — надписи поверх фотографии</option>
+<label for="aiDesignStyle">6. Какой стиль карточки тебе нравится?</label>
+<select id="aiDesignStyle" onchange="adminChooseAiStyle()">
+<option value="auto" selected>✨ Подбери сам под мой товар</option>
+<option value="premium">💎 Премиум — сдержанно и дорого</option>
+<option value="clean">🤍 Минимализм — чисто и понятно</option>
+<option value="bright">⚡ Яркий — заметно и динамично</option>
+<option value="tech">🧩 С иконками — характеристики на виду</option>
 </select>
-<label for="aiDesignPreset">7. Оформление карточки (смена бесплатно)</label>
+<p class="muted" style="font-size:12px">Не нужно разбираться в шаблонах: SellerKit сам расположит товар, заголовок и иконки. «Другой вариант» бесплатно изменит оформление той же фотографии — без повторной генерации.</p>
+<details id="aiDesignFineTune" style="border:1px solid #365544;border-radius:12px;padding:11px;margin:10px 0">
+<summary style="cursor:pointer;font-weight:600">⚙️ Точная настройка (необязательно)</summary>
+<label for="aiDesignMode">Способ оформления</label>
+<select id="aiDesignMode" onchange="adminDesignModeChanged()">
+<option value="infographic" selected>Инфографика: преимущества и иконки</option>
+<option value="photo">Только надписи на фотографии</option>
+</select>
+<label for="aiDesignPreset">Конкретный макет</label>
 <select id="aiDesignPreset"><option value="auto">Подобрать под товар</option></select>
-<p class="muted" style="font-size:12px">15 разных композиций инфографики и 30 фото-стилей. При бесплатной смене фотографии, фон и ракурс не генерируются заново.</p>
+<p class="muted" style="font-size:12px">Для опытных пользователей: доступны 15 схем инфографики и 30 фото-стилей. Выбирать вручную необязательно.</p>
+</details>
 <p class="muted" id="aiCopyLocalStatus" role="status" aria-live="polite" style="font-size:12px"></p>
 <div class="notice">
 Публичная генерация пока не запущена. Тест доступен только владельцу. После запуска одна бесплатная пробная AI-карточка будет доступна только для предпросмотра; оригинал можно будет разблокировать за 5 токенов (100 ₽). Оплата и серверная защита оригиналов ещё не подключены.
@@ -579,26 +591,28 @@ SEO Analytics
 <div id="aiSampleOutput" style="display:none">
 <h3>👁️ Черновое оформление исходного фото (без AI)</h3>
 <img id="aiSampleImage" alt="Бесплатный черновик на исходной фотографии" style="width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b">
-<button class="secondary wide" style="margin-top:9px" id="aiSampleNextDesign" onclick="adminCycleAiSample()">🎨 Другой черновой дизайн — 0 ₽</button>
+<button class="secondary wide" style="margin-top:9px" id="aiSampleNextDesign" onclick="adminCycleAiSample()">🎨 Другой вариант — бесплатно</button>
 <p class="muted" id="aiSampleDesignStatus" role="status" aria-live="polite"><small>Это только пример расположения текста. Новую AI-фотографию он не создаёт.</small></p>
 </div>
 <div id="aiTestOutput" style="display:none">
 <h3>✨ Результат AI-генерации</h3>
 <img id="aiTestResult" alt="Карточка товара с русскими надписями" style="display:block;width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b;touch-action:manipulation" onclick="adminShowAiFullscreen()">
 <div class="actions">
-<button class="wide" id="aiNextDesign" onclick="adminRepaintAiPilot(true)">🎨 Другой дизайн · бесплатно</button>
-<button class="secondary" onclick="adminRepaintAiPilot(false)">✏️ Применить текст / выбранный стиль</button>
-<button class="secondary" onclick="openPage('ai-history');showAiHistory()">🕘 История</button>
-<button class="secondary" onclick="adminShareAiPilot()">📤 Сохранить / поделиться</button>
-<details style="width:100%">
-<summary style="font-size:12px;color:#a7c7b6;cursor:pointer;margin:5px 0">Дополнительно</summary>
-<button class="secondary" style="margin-top:9px" id="aiTestSendToBot" onclick="adminSendAiPilot()">📩 Получить в Telegram</button>
-</details>
+<button class="wide" id="aiNextDesign" onclick="adminRepaintAiPilot(true)">🎨 Другой вариант · бесплатно</button>
+<button class="secondary wide" onclick="adminShareAiPilot()">📤 Сохранить карточку</button>
 </div>
+<p class="muted" style="font-size:12px">Другой вариант меняет только расположение текста и иконок на том же фото. Новых списаний VseGPT нет. Новый фон или ракурс — отдельная платная генерация.</p>
+<details style="margin:9px 0;border:1px solid #365544;border-radius:12px;padding:10px">
+<summary style="font-size:13px;font-weight:600;cursor:pointer">⚙️ Ещё действия</summary>
+<button class="secondary wide" style="margin-top:10px" onclick="adminRepaintAiPilot(false)">✏️ Применить изменённый текст</button>
+<button class="secondary wide" style="margin-top:8px" onclick="openPage('ai-history');showAiHistory()">🕘 История карточек</button>
+<button class="secondary wide" style="margin-top:8px" id="aiTestSendToBot" onclick="adminSendAiPilot()">📩 Отправить себе в Telegram</button>
+<a id="aiTestDownload" download="SellerKit-Studio.jpg" style="display:block;color:var(--green);margin-top:12px" href="#">⬇️ Скачать JPG на компьютер</a>
+</details>
 <p class="muted" id="aiDesignResultStatus" role="status" aria-live="polite" style="font-size:13px"></p>
-<a id="aiTestDownload" download="SellerKit-Studio.jpg" style="display:inline-block;color:var(--green);margin-top:12px" href="#">⬇️ Скачать JPG (компьютер)</a>
+
 <p id="aiTestDeliveryStatus" class="muted" role="status" aria-live="polite"></p>
-<p class="muted"><small>На iPhone лучше нажать «Поделиться / сохранить» или «Получить в Telegram». Также можно открыть изображение на весь экран и удерживать его.</small></p>
+<p class="muted"><small>На iPhone нажми «Сохранить карточку». Если не получается, открой «Ещё действия» → «Отправить себе в Telegram».</small></p>
 </div>
 
 <div id="aiTestLightbox" style="display:none;position:fixed;inset:0;z-index:9999;overflow:auto;background:#050705;padding:18px;text-align:center">
@@ -2846,8 +2860,14 @@ function showAiSeriesPlan(result){
   visual.style.minHeight="120px";visual.value=slide.visual;
   const verify=document.createElement("p");verify.className="muted";
   verify.textContent=slide.verify.length?"Проверить: "+slide.verify.join("; "):"Надписи предложены ИИ: проверь все характеристики и факты перед публикацией.";
-  // Edit each slide in place; the whole set can be generated below with one action.
-  card.append(h,titleLabel,title,tplLabel,tpl,claimsLabel,claims,visualLabel,visual,verify);
+  // Keep the 45-template selector for designers, not in the default flow.
+  const fineTune=document.createElement("details");
+  fineTune.style.cssText="margin:12px 0;border:1px solid #365544;border-radius:10px;padding:10px";
+  const fineSummary=document.createElement("summary");
+  fineSummary.style.cssText="cursor:pointer;font-size:13px;font-weight:600";
+  fineSummary.textContent="⚙️ Выбрать конкретный макет (необязательно)";
+  fineTune.append(fineSummary,tplLabel,tpl);
+  card.append(h,titleLabel,title,claimsLabel,claims,visualLabel,visual,verify,fineTune);
   root.append(card);
  });
  $("aiSeriesOwnerFeedback").style.display="block";
