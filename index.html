@@ -571,7 +571,7 @@ SEO Analytics
 <option value="img2img-google/nano-banana-pro-edit-multi">Google Nano Banana Pro Edit — ориентир 29,90 ₽</option>
 </select>
 <p class="muted"><small>Проверь актуальные цены и лимит API в VseGPT. Для Nano Banana Pro ориентир — 29,90 ₽ (лимит 35 ₽). Для GPT Image 2 тестируем medium (21 ₽). Новые модели требуют обновления backend/index.js в Yandex Cloud.</small></p>
-<button class="secondary wide" onclick="adminPreviewAiWithoutCharge()">👁️ Проверить надписи на исходном фото бесплатно</button>
+<button class="secondary wide" onclick="adminPreviewAiWithoutCharge()">👁️ Проверить готовую инфографику бесплатно (без AI-фото)</button>
 <p class="muted"><small>Это технический просмотр исходного снимка с наложенным текстом, а не качество платной AI-фотографии.</small></p>
 <button id="aiTestRunButton" class="wide" style="margin-top:10px" onclick="adminRunAiPilot()">✨ Сгенерировать новую фотографию (платно)</button>
 <p id="aiTestStatus" class="muted" role="status" aria-live="polite">Генерация ещё не запускалась.</p>
@@ -584,7 +584,7 @@ SEO Analytics
 </div>
 <div id="aiTestOutput" style="display:none">
 <h3>✨ Результат AI-генерации</h3>
-<img id="aiTestResult" alt="Карточка с проверенными русскими надписями" style="display:block;width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b;touch-action:manipulation" onclick="adminShowAiFullscreen()">
+<img id="aiTestResult" alt="Карточка товара с русскими надписями" style="display:block;width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b;touch-action:manipulation" onclick="adminShowAiFullscreen()">
 <div class="actions">
 <button class="wide" id="aiNextDesign" onclick="adminRepaintAiPilot(true)">🎨 Другой дизайн · бесплатно</button>
 <button class="secondary" onclick="adminRepaintAiPilot(false)">✏️ Применить текст / выбранный стиль</button>
@@ -1457,6 +1457,34 @@ function adminAiCopy(){
  const n=$("aiFacts").value.split(/\r?\n/).filter(x=>x.trim()).length;
  $("aiFactCount").textContent=n+" из 6 строк"+
   (n>6?" — слишком много, сократи список.":". Все строки попадут на карточку.");
+}
+// Free local typography preflight before ANY billable image request.
+function adminPreflightInfographic(){
+ if($("aiDesignMode")?.value!=="infographic")return;
+ const engine=window.SellerKitInfographic;
+ if(!engine)throw new Error("Не удалось загрузить 15 шаблонов. Переоткрой SellerKit.");
+ const {title,claims}=adminAiCopy();
+ const idx=adminCurrentInfographicIndex();
+ if(idx===10&&!claims.some(x=>/\b\d+(?:[,.]\d+)?\s*(?:мм|см|м|дюйм|кг|г)\b/i.test(x)))
+  throw new Error("Для размерной инфографики добавь реальные размеры с единицами.");
+ const source=document.createElement("canvas");source.width=900;source.height=1200;
+ const bg=source.getContext("2d");
+ if(!bg)throw new Error("Не работает Canvas.");
+ bg.fillStyle="#d5dce3";bg.fillRect(0,0,900,1200);
+ const test=document.createElement("canvas");test.width=900;test.height=1200;
+ const ctx=test.getContext("2d");if(!ctx)throw new Error("Не работает Canvas.");
+ engine.draw(ctx,source,{index:idx,title,claims});
+}
+function adminPhotoCompositionHint(){
+ if($("aiDesignMode")?.value!=="infographic")return "hero-bold";
+ const idx=adminCurrentInfographicIndex();
+ const choices={
+  0:"hero-bold",1:"feature-left",2:"feature-right",3:"tech-grid",
+  4:"airy-minimal",5:"premium",6:"tech-grid",7:"lookbook",
+  8:"lookbook",9:"detail-focus",10:"spec-rail",11:"benefit-grid",
+  12:"icon-trio",13:"split-story",14:"tech-grid"
+ };
+ return choices[idx]||"hero-bold";
 }
 function aiManualClaimsWarning(){
  const {claims}=adminAiCopy();
@@ -3146,6 +3174,7 @@ async function adminRunAiPilot(){
  const prompt=$("aiPrompt").value.trim();
  try{
   adminAiCopy();
+  adminPreflightInfographic();
   if(!file)throw new Error("Сначала выбери фото товара.");
   if(!aiManualClaimsWarning())return;
   if(prompt.length<10||prompt.length>1200)
@@ -3168,7 +3197,7 @@ async function adminRunAiPilot(){
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
      action:"admin_image_test",initData:tg.initData,model,prompt,
-     visualMode:$("aiVisualMode").value,imageData,
+     visualMode:$("aiVisualMode").value,imageData,templateId:adminPhotoCompositionHint(),
       productTitle:$("aiTitle").value.trim()
     }),signal:controller.signal,cache:"no-store"
    });
