@@ -19,7 +19,10 @@ const NAMES=[
 "Флагманская инфографика",
 "PRO · Технологичная витрина",
 "PRO · Кухня и посуда",
-"PRO · Редакционный стиль"
+"PRO · Редакционный стиль",
+"Fashion Studio · Тёплый журнал",
+"Fashion Studio · Розовый каталог",
+"Fashion Studio · Тёмный editorial"
 ];
 const TEMPLATES=Object.freeze(NAMES.map((name,i)=>Object.freeze({id:"infog-"+i,name})));
 const fixes=[
@@ -214,7 +217,7 @@ function fashionHero(ctx,data,index,accent){
 }
 const COLORS={lighting:"#E3C190",tech:"#F9A850",fashion:"#EFB5D1",footwear:"#8FDBF8",
 accessories:"#B6DCC7",beauty:"#FFC0C0",appliance:"#8CFF4D",eyewear:"#8CFF4D",cookware:"#E9404A",general:"#CDDFFA"};
-function draw(ctx,img,{index=0,title,claims=[],hero=false}={}){
+function draw(ctx,img,{index=0,title,claims=[],hero=false,subject=null}={}){
  index=Number(index);if(!Number.isInteger(index)||index<0||index>=TEMPLATES.length)index=0;
  const data=prepare(title,claims),W=900,H=1200,accent=COLORS[data.category];
  if(data.title.length<3)throw Error("Введи название товара.");
@@ -224,6 +227,11 @@ function draw(ctx,img,{index=0,title,claims=[],hero=false}={}){
  // Full photo remains intact across free redesigns; no invented camera angles.
  const scale=Math.max(W/iw,H/ih),dw=iw*scale,dh=ih*scale;
  ctx.drawImage(img,(W-dw)/2,(H-dh)/2,dw,dh);
+ if(index>=18){
+  if(!root.SellerKitFashion?.draw)throw Error("Fashion Studio не загрузился. Обнови приложение.");
+  root.SellerKitFashion.draw(ctx,img,{index,title:data.title,claims:data.claims,mask:subject});
+  return {name:TEMPLATES[index].name,prepared:data};
+ }
  if(index>=15){
   if(!root.SellerKitPremium?.draw)throw Error("Модуль PRO-шаблонов не загрузился. Обнови приложение.");
   root.SellerKitPremium.draw(ctx,{index,title:data.title,claims:data.claims});
