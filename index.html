@@ -1533,11 +1533,326 @@ function seriesGuidePrepare(){
   return;
  }
  $("aiGuideSummary").textContent=draft;
+ seriesCostPreview();
  $("aiGuidePlanActions").style.display="block";
  $("aiSeriesOutput").style.display="none";
  $("aiSeriesFeedback").value="";
  aiSeriesPlan=[];
  $("aiGuidePlanActions").scrollIntoView({block:"nearest",behavior:"smooth"});
+}
+
+
+// Multi-slide owner prototype. Free mockups are rendered on the device.
+// Paid requests are made only after the owner reviews the mockups and confirms costs.
+let seriesBundleItems=[];
+let seriesBundleBusy=false;
+let seriesGalleryUrls=[];
+const SERIES_COSTS={
+ "img2img-bytedance/seedream-v4.5-edit-multi":13.9,
+ "img2img-google/nano-banana-2-edit-multi":19.9,
+ "img2img-openai/gpt-image-2-edit-multi":21,
+ "img2img-google/nano-banana-pro-edit-multi":29.9
+};
+function seriesCostPreview(){
+ const model=$("aiSeriesImageModel")?.value;
+ const count=Number($("aiSeriesCount")?.value||0);
+ const estimate=(SERIES_COSTS[model]||0)*count;
+ const limit=Number($("aiSeriesMaxBudget")?.value||0);
+ const target=$("aiSeriesPriceEstimate");
+ if(target)target.textContent="Ориентировочно: "+count+" × "+(SERIES_COSTS[model]||0).toFixed(2)+
+  " ₽ = "+estimate.toFixed(2)+" ₽. "+(estimate>limit?"Сейчас выше выбранного лимита.":"Это оценка, реальную цену устанавливает VseGPT.");
+ return {estimate,limit,count};
+}
+function seriesDrawImage(ctx,img,x,y,w,h){
+ ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
+ ctx.fillStyle="#dce7e6";ctx.fillRect(x,y,w,h);
+ const scale=Math.min(w/img.naturalWidth,h/img.naturalHeight);
+ const iw=img.naturalWidth*scale,ih=img.naturalHeight*scale;
+ ctx.drawImage(img,x+(w-iw)/2,y+(h-ih)/2,iw,ih);
+ ctx.restore();
+}
+function seriesTextLines(ctx,message,width,maxLines){
+ const words=String(message||"").split(/\s+/).filter(Boolean);
+ const lines=[];let current="";
+ for(const word of words){
+  const attempt=current?current+" "+word:word;
+  if(ctx.measureText(attempt).width<=width){current=attempt;continue;}
+  if(current){lines.push(current);current=word;}
+  else{lines.push(word);current="";}
+ }
+ if(current)lines.push(current);
+ if(lines.length<=maxLines)return lines;
+ const trimmed=lines.slice(0,maxLines);
+ let last=trimmed[maxLines-1];
+ while(last&&ctx.measureText(last+"…").width>width)last=last.slice(0,-1);
+ trimmed[maxLines-1]=last+"…";
+ return trimmed;
+}
+function seriesWrite(ctx,text,x,y,maxWidth,maxLines,largest,smallest,color,weight){
+ const font="system-ui,-apple-system,BlinkMacSystemFont,Arial,sans-serif";
+ let fontSize=largest,arr=[];
+ for(;fontSize>=smallest;fontSize-=2){
+  ctx.font=(weight||700)+" "+fontSize+"px "+font;
+  const all=seriesTextLines(ctx,text,maxWidth,99);
+  if(all.length<=maxLines){arr=all;break;}
+ }
+ ctx.font=(weight||700)+" "+Math.max(fontSize,smallest)+"px "+font;
+ if(!arr.length)arr=seriesTextLines(ctx,text,maxWidth,maxLines);
+ ctx.fillStyle=color;ctx.textBaseline="top";
+ const step=Math.max(fontSize,smallest)*1.18;
+ arr.forEach((line,i)=>ctx.fillText(line,x,y+i*step,maxWidth));
+ return arr.length*step;
+}
+async function seriesMakeCard(photoData,slide,index){
+ const image=new Image();
+ await new Promise((resolve,reject)=>{
+  image.onload=resolve;image.onerror=()=>reject(new Error("Не удалось открыть фотографию слайда."));
+  image.src=photoData;
+ });
+ if(document.fonts?.ready)await document.fonts.ready;
+ const canvas=document.createElement("canvas");canvas.width=900;canvas.height=1200;
+ const ctx=canvas.getContext("2d");if(!ctx)throw Error("Не работает canvas.");
+ const W=900,H=1200;
+ const scheme=index%5,accent="#83d9d5",night="#102b2c",paper="#f7faf6";
+ const claims=(Array.isArray(slide.claims)?slide.claims:[]).slice(0,3).filter(Boolean);
+ const header=(x,y,w,max=2,size=50,color=night)=>seriesWrite(ctx,slide.title||"Товар",x,y,w,max,size,28,color,800);
+ ctx.fillStyle=paper;ctx.fillRect(0,0,W,H);
+ if(scheme===0){
+  // Hero: image in its own large zone, one compact name strip, no text covering product.
+  seriesDrawImage(ctx,image,0,0,W,1040);
+  ctx.fillStyle=night;ctx.fillRect(0,1040,W,160);
+  ctx.fillStyle=accent;ctx.fillRect(45,1060,86,5);
+  header(46,1084,812,2,48,"#fff");
+ }else if(scheme===1){
+  // Benefit: text sidebar, image unaffected by headings.
+  ctx.fillStyle=night;ctx.fillRect(0,0,315,H);
+  seriesDrawImage(ctx,image,315,0,585,H);
+  ctx.fillStyle=accent;ctx.fillRect(33,65,85,5);
+  header(33,110,251,3,38,"#fff");
+  let y=370;
+  for(const fact of claims){
+   if(y>1020)break;
+   ctx.fillStyle=accent;ctx.fillRect(34,y+9,20,3);
+   const h=seriesWrite(ctx,fact,64,y,219,3,29,22,"#eaf9f5",600);
+   y+=Math.max(h+32,98);
+  }
+ }else if(scheme===2){
+  // Detail close-up without overlay: photo top, typography beneath.
+  seriesDrawImage(ctx,image,0,0,W,940);
+  ctx.fillStyle=paper;ctx.fillRect(0,940,W,260);
+  ctx.fillStyle="#247872";ctx.fillRect(45,965,65,5);
+  header(45,995,808,2,48,night);
+  if(claims.length){
+   const y=1130;
+   ctx.fillStyle="#2c615d";
+   seriesWrite(ctx,claims[0],45,y,810,1,26,22,"#2c615d",600);
+  }
+ }else if(scheme===3){
+  // Lifestyle: different asymmetrical header/footer arrangement, no giant card.
+  ctx.fillStyle=night;ctx.fillRect(0,0,W,178);
+  header(45,44,810,2,44,"#fff");
+  seriesDrawImage(ctx,image,0,178,W,877);
+  ctx.fillStyle="#d5e9e6";ctx.fillRect(0,1055,W,145);
+  ctx.fillStyle="#237269";ctx.fillRect(45,1082,79,5);
+  seriesWrite(ctx,claims[0]||"В деталях",45,1112,800,1,29,23,night,650);
+ }else{
+  // Specs: product on one side and narrow, separately contained facts on the other.
+  seriesDrawImage(ctx,image,0,0,635,H);
+  ctx.fillStyle=paper;ctx.fillRect(635,0,265,H);
+  ctx.fillStyle="#147569";ctx.fillRect(665,65,108,6);
+  header(663,101,211,4,34,night);
+  let y=420;
+  for(const fact of claims){
+   if(y>1040)break;
+   ctx.fillStyle="#247872";ctx.fillRect(663,y+11,18,3);
+   const h=seriesWrite(ctx,fact,663,y+30,212,3,27,21,night,550);
+   y+=Math.max(h+48,135);
+  }
+ }
+ let blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.9));
+ if(!blob)throw Error("Не удалось сохранить JPG.");
+ if(blob.size>1900000)blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.76));
+ if(!blob)throw Error("Не удалось уменьшить JPG.");
+ return blob;
+}
+function seriesRefreshGallery(){
+ for(const url of seriesGalleryUrls)URL.revokeObjectURL(url);
+ seriesGalleryUrls=[];
+ const root=$("aiSeriesBundleGallery");root.replaceChildren();
+ const items=seriesBundleItems.filter(Boolean).sort((a,b)=>a.index-b.index);
+ for(const item of items){
+  const section=document.createElement("div");
+  section.className="card";section.style.cssText="margin:10px 0;background:#11231a;padding:12px";
+  const label=document.createElement("strong");
+  label.textContent="Слайд "+item.index+" · "+(item.paid?"AI-фотография":"Бесплатный макет");
+  const img=document.createElement("img");
+  const url=URL.createObjectURL(item.cardBlob);seriesGalleryUrls.push(url);
+  img.src=url;img.alt=item.title||"Карточка";
+  img.style.cssText="display:block;width:100%;margin:9px 0;border-radius:12px";
+  const save=document.createElement("a");
+  save.href=url;save.download="SellerKit-slide-"+item.index+".jpg";
+  save.className="secondary";save.style.cssText="display:inline-block;border-radius:9px;padding:10px;color:white;text-decoration:none";
+  save.textContent="⬇️ Скачать слайд "+item.index;
+  section.append(label,img,save);root.append(section);
+ }
+ $("aiSeriesBundleSaveActions").style.display=items.length?"block":"none";
+}
+async function seriesCreateFreePreviews(){
+ const btn=$("aiSeriesFreePreviewBtn"),status=$("aiSeriesBundleStatus");
+ if(seriesBundleBusy)return;
+ const slides=aiSeriesEdits();
+ const file=$("aiSeriesFile").files?.[0];
+ if(!file){status.textContent="Для просмотра макетов загрузи фото товара на первом шаге.";return;}
+ if(slides.length!==Number($("aiSeriesCount").value)){
+  status.textContent="Сначала составь план комплекта через AI.";return;
+ }
+ seriesBundleBusy=true;btn.disabled=true;
+ try{
+  const photo=await adminPrepareJpeg(file);
+  const drafts=[];
+  for(let i=0;i<slides.length;i++){
+   status.textContent="Готовим бесплатный макет "+(i+1)+" из "+slides.length+"…";
+   const cardBlob=await seriesMakeCard(photo,slides[i],i);
+   drafts.push({index:i+1,title:slides[i].title,cardBlob,paid:false});
+  }
+  seriesBundleItems=drafts;
+  seriesRefreshGallery();
+  status.textContent="✅ Все "+drafts.length+" макетов готовы без расходов на нейросети. Сравни композиции, поправь текст — и только потом решай, нужны ли новые фотографии.";
+ }catch(e){status.textContent=String(e?.message||e);}
+ finally{seriesBundleBusy=false;btn.disabled=false;}
+}
+async function seriesSaveImageHistory(item,rawBlob,slide,model){
+ const db=await aiOpenHistory();
+ try{
+  await new Promise((resolve,reject)=>{
+   const tx=db.transaction("images","readwrite");
+   tx.objectStore("images").put({
+    id:"series-"+Date.now()+"-"+item.index+"-"+Math.random().toString(36).slice(2,8),
+    owner:aiOwnerId(),date:Date.now(),model,title:slide.title,
+    claims:slide.claims.join("\n"),style:slide.visual,
+    visualMode:"studio",designPreset:"auto",
+    rawBlob,cardBlob:item.cardBlob
+   });
+   tx.oncomplete=resolve;
+   tx.onerror=()=>reject(tx.error||new Error("Не удалось сохранить карточку."));
+   tx.onabort=()=>reject(tx.error||new Error("Не удалось сохранить карточку."));
+  });
+ }finally{db.close();}
+}
+async function seriesGeneratePaidBundle(){
+ const btn=$("aiSeriesPaidRunBtn"),status=$("aiSeriesBundleStatus");
+ const owner=String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id||"");
+ if(owner!=="1046253780"){status.textContent="Платный тест доступен только разработчику.";return;}
+ if(seriesBundleBusy)return;
+ const {estimate,limit,count}=seriesCostPreview();
+ const model=$("aiSeriesImageModel").value,unit=SERIES_COSTS[model];
+ const slides=aiSeriesEdits(),file=$("aiSeriesFile").files?.[0];
+ if(!file||!slides.length||slides.length!==count){status.textContent="Сначала создай план и прикрепи фото.";return;}
+ if(seriesBundleItems.filter(Boolean).length!==count||seriesBundleItems.some(x=>x.paid)){
+  status.textContent="Сначала нажми «Посмотреть все макеты бесплатно», проверь весь комплект и только потом запускай платный тест.";return;
+ }
+ if(!Number.isFinite(limit)||limit<=0||limit>250||estimate>limit||!unit){
+  status.textContent="Ориентировочная стоимость "+estimate.toFixed(2)+" ₽ выше выбранного лимита "+limit+" ₽. Измени модель или лимит (максимум 250 ₽).";return;
+ }
+ const tg=window.Telegram?.WebApp;if(!tg?.initData){status.textContent="Открой SellerKit из Telegram.";return;}
+ const checks=slides.flatMap((x,i)=>(x.verify||[]).map(v=>"№"+(i+1)+": "+v));
+ if(checks.length&&!window.confirm("В плане есть неподтверждённые сведения:\n"+checks.slice(0,8).join("; ")+"\nПроверь текст каждого слайда. Продолжить?"))return;
+ if(!window.confirm("ПЛАТНЫЙ ТЕСТ.\n"+count+" разных изображений × ~"+unit.toFixed(2)+
+  " ₽ = ориентировочно "+estimate.toFixed(2)+" ₽ из VseGPT.\n"+
+  "Если прервёшь процесс, уже выполненные запросы могут быть оплачены.\n"+
+  "Это не гарантированный предел фактической стоимости. Продолжить?"))return;
+ seriesBundleBusy=true;btn.disabled=true;$("aiSeriesFreePreviewBtn").disabled=true;
+ // Start from a blank paid gallery so user never mistakes mockups for generated photos.
+ seriesBundleItems=[];seriesRefreshGallery();
+ let completed=0,spentEstimate=0;
+ try{
+  const imageData=await adminPrepareJpeg(file);
+  for(let i=0;i<count;i++){
+   const start=Date.now(),slide=slides[i];
+   status.textContent="Платная генерация "+(i+1)+" из "+count+
+    " · ориентировочно списано за готовые слайды "+spentEstimate.toFixed(2)+" ₽. Не закрывай Mini App.";
+   const prompt=("Фото для слайда "+(i+1)+" из "+count+". "+slide.visual+
+    ". Полностью другой ракурс, сюжет и композиция относительно других слайдов. "+
+    "Сохрани тот же товар по исходному фото, точную расцветку и конструкцию. "+
+    "Фотореалистичная реклама маркетплейса. Никаких надписей, логотипов или выдуманных деталей.").slice(0,1160);
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),123000);
+   let response;
+   try{
+    response=await fetch(SELLERKIT_API_URL,{
+     method:"POST",headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({action:"admin_image_test",initData:tg.initData,
+       model,prompt,visualMode:"studio",imageData,productTitle:$("aiGuideProduct").value.trim()}),
+     signal:controller.signal,cache:"no-store"
+    });
+   }finally{clearTimeout(timer);}
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok||data?.success!==true){
+    throw new Error("Остановлено на слайде "+(i+1)+": "+String(data.error||response.status)+
+      ". Учитывай возможное списание за запрос, перед повтором проверь историю VseGPT.");
+   }
+   if(typeof data.imageDataUrl!=="string"||!data.imageDataUrl.startsWith("data:image/jpeg;base64,"))
+    throw new Error("Не получен JPG слайда "+(i+1)+". Проверь расходы перед повтором.");
+   const rawBlob=await fetch(data.imageDataUrl).then(r=>r.blob());
+   const cardBlob=await seriesMakeCard(data.imageDataUrl,slide,i);
+   const item={index:i+1,title:slide.title,cardBlob,paid:true};
+   seriesBundleItems.push(item);completed++;spentEstimate+=unit;
+   seriesRefreshGallery();
+   try{await seriesSaveImageHistory(item,rawBlob,slide,model);}
+   catch(e){status.textContent="⚠️ Слайд "+(i+1)+" не сохранился в истории. Сразу скачай ZIP или отдельный JPG."; }
+   // Backend currently rate-limits individual owner tests to one call per 15 seconds.
+   const rest=16000-(Date.now()-start);
+   if(i+1<count&&rest>0)await new Promise(resolve=>setTimeout(resolve,rest));
+  }
+  status.textContent="✅ Комплект из "+completed+" разных AI-фотографий готов. Ориентировочная сумма "+spentEstimate.toFixed(2)+
+   " ₽. Реальное списание смотри в VseGPT. Можно скачать все JPG одним архивом.";
+ }catch(e){
+  status.textContent="⚠️ Готово "+completed+" из "+count+". "+String(e?.message||e)+
+   " Успешные слайды остались в галерее и истории. Автоматический повтор отключён.";
+ }finally{seriesBundleBusy=false;btn.disabled=false;$("aiSeriesFreePreviewBtn").disabled=false;}
+}
+function seriesCrc32(bytes){
+ let crc=0xffffffff;
+ for(let i=0;i<bytes.length;i++){
+  crc^=bytes[i];
+  for(let k=0;k<8;k++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);
+ }
+ return (crc^0xffffffff)>>>0;
+}
+async function seriesDownloadZip(){
+ const items=seriesBundleItems.filter(Boolean).sort((a,b)=>a.index-b.index);
+ if(!items.length)return;
+ const encoder=new TextEncoder(),parts=[],central=[];let offset=0;
+ for(const item of items){
+  const data=new Uint8Array(await item.cardBlob.arrayBuffer());
+  const name=encoder.encode("SellerKit-slide-"+item.index+".jpg");
+  const crc=seriesCrc32(data);
+  const local=new Uint8Array(30+name.length),lv=new DataView(local.buffer);
+  lv.setUint32(0,0x04034b50,true);lv.setUint16(4,20,true);lv.setUint16(8,0,true);
+  lv.setUint32(14,crc,true);lv.setUint32(18,data.length,true);lv.setUint32(22,data.length,true);
+  lv.setUint16(26,name.length,true);local.set(name,30);
+  parts.push(local,data);
+  const dir=new Uint8Array(46+name.length),dv=new DataView(dir.buffer);
+  dv.setUint32(0,0x02014b50,true);dv.setUint16(4,20,true);dv.setUint16(6,20,true);
+  dv.setUint32(16,crc,true);dv.setUint32(20,data.length,true);dv.setUint32(24,data.length,true);
+  dv.setUint16(28,name.length,true);dv.setUint32(42,offset,true);dir.set(name,46);
+  central.push(dir);offset+=local.length+data.length;
+ }
+ const directorySize=central.reduce((n,c)=>n+c.length,0);
+ const end=new Uint8Array(22),ev=new DataView(end.buffer);
+ ev.setUint32(0,0x06054b50,true);ev.setUint16(8,items.length,true);
+ ev.setUint16(10,items.length,true);ev.setUint32(12,directorySize,true);
+ ev.setUint32(16,offset,true);
+ const blob=new Blob([...parts,...central,end],{type:"application/zip"});
+ const file=new File([blob],"SellerKit-"+items.length+"-cards.zip",{type:"application/zip"});
+ const status=$("aiSeriesBundleStatus");
+ if(navigator.share&&navigator.canShare?.({files:[file]})){
+  try{await navigator.share({files:[file],title:"SellerKit Studio"});return;}
+  catch(e){if(e?.name==="AbortError")return;}
+ }
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),45000);
+ status.textContent="Архив подготовлен. Если на iPhone загрузка не открылась, сохраняй JPG кнопками под каждым слайдом.";
 }
 
 // Experimental art-direction workflow: Qwen plans a SERIES, image generation stays separate.
@@ -2869,6 +3184,10 @@ function openRequestedPage(){
  else if(["series","designer","ai-series","pack"].includes(selected))openPage("ai-series");
 }
 openRequestedPage();
+$("aiSeriesImageModel").addEventListener("change",seriesCostPreview);
+$("aiSeriesMaxBudget").addEventListener("input",seriesCostPreview);
+$("aiSeriesCount").addEventListener("change",seriesCostPreview);
+seriesCostPreview();
 
 </script>
 </body>
