@@ -725,8 +725,12 @@ SEO Analytics
 <button onclick="seriesGuidePrepare()">Проверить задание</button>
 </div>
 <div id="aiGuidePlanActions" style="display:none">
-<button class="secondary wide" style="margin:8px 0" onclick="seriesBuildFreeDemo()">✨ Бесплатный демо-комплект без нейросети</button>
-<p class="muted" style="font-size:13px">Пока это пробный режим. Сначала составим план разных слайдов. Автоматическая генерация всего комплекта и оплата ещё не подключены.</p>
+<details style="margin:9px 0">
+<summary style="cursor:pointer;font-size:13px;color:#aec7b8">Для проверки интерфейса: черновой план без AI</summary>
+<p class="muted" style="font-size:12px">Только технические заголовки и варианты оформления, без генерации фото. Не показывает качество платных AI-карточек.</p>
+<button class="secondary wide" style="margin:8px 0" onclick="seriesBuildFreeDemo()">Открыть тестовый план без AI</button>
+</details>
+<p class="muted" style="font-size:12px">Публичная генерация пока закрыта. Разработчик может тестировать AI-план и фотографии через VseGPT.</p>
 <div id="aiSeriesOwnerTools" style="display:none">
 <button class="wide" id="aiSeriesGenerateBtn" onclick="adminGenerateSeriesPlan(false)">Составить план с AI</button>
 <p class="muted" style="font-size:12px">Текстовый запрос Qwen платный по тарифу VseGPT. Изображения не генерируются.</p>
@@ -747,8 +751,11 @@ SEO Analytics
 </div>
 <div class="card" id="aiSeriesBundlePanel" style="margin-top:16px">
 <h3>🎨 Комплект целиком</h3>
-<p class="muted" style="font-size:13px">Посмотри разные макеты бесплатно — до оплаты фотографий. В бесплатном режиме исходное фото одно.</p>
-<button class="secondary wide" id="aiSeriesFreePreviewBtn" onclick="seriesCreateFreePreviews()">👁️ Посмотреть все макеты бесплатно</button>
+<details id="aiSeriesDraftDisclosure" style="margin:12px 0">
+<summary style="cursor:pointer;font-size:13px;color:#a5c3b4">Черновые схемы оформления (не AI)</summary>
+<p class="muted" style="font-size:12px;line-height:1.6"><strong>Это не образец платного качества.</strong> Для проверки расположения блоков мы используем одно загруженное фото на всех слайдах, без изменения фона, ракурса или освещения. При платной генерации VseGPT создаёт новые изображения — итог может сильно отличаться, и качество заранее не гарантируется.</p>
+<button class="secondary wide" id="aiSeriesFreePreviewBtn" onclick="seriesCreateFreePreviews()">Посмотреть технические макеты без нейросети (0 ₽)</button>
+</details>
 <div id="aiSeriesRerollControls" style="display:none;margin:15px 0;border-top:1px solid #34503c;padding-top:13px">
 <strong>Не понравились отдельные карточки?</strong>
 <p class="muted" style="font-size:13px">Отметь их ниже или напиши номера. Изменим только оформление, без расходов на VseGPT.</p>
@@ -2189,7 +2196,7 @@ function seriesRefreshGallery(){
   const section=document.createElement("div");
   section.className="card";section.style.cssText="margin:10px 0;background:#11231a;padding:12px";
   const label=document.createElement("strong");
-  label.textContent="Слайд "+item.index+" · "+(item.paid?"AI-фотография":"Бесплатный макет");
+  label.textContent="Слайд "+item.index+" · "+(item.paid?"AI-фотография":"Черновая схема — без AI");
   const selectLabel=document.createElement("label");
   selectLabel.style.cssText="display:flex;align-items:center;gap:8px;font-size:13px;margin:9px 0";
   const selected=document.createElement("input");selected.type="checkbox";
@@ -2375,7 +2382,7 @@ async function seriesCreateFreePreviews(){
   }
   seriesBundleItems=drafts;
   seriesRefreshGallery();
-  status.textContent="✅ Все "+drafts.length+" макетов готовы без расходов на нейросети. Сравни композиции, поправь текст — и только потом решай, нужны ли новые фотографии.";
+  status.textContent="✅ Это только черновые схемы: одно исходное фото, без обработки нейросетью. Качество и ракурсы платного AI-результата будут другими и заранее не гарантированы. Затраты: 0 ₽.";
  }catch(e){status.textContent=String(e?.message||e);}
  finally{seriesBundleBusy=false;btn.disabled=false;}
 }
@@ -2496,8 +2503,8 @@ async function seriesGeneratePaidBundle(){
  if(!$("aiSeriesClaimsVerified").checked){
   status.textContent="Сначала проверь утверждения и поставь отметку о проверке характеристик.";return;
  }
- if(seriesBundleItems.filter(Boolean).length!==count||seriesBundleItems.some(x=>x.paid)){
-  status.textContent="Сначала нажми «Посмотреть все макеты бесплатно», проверь весь комплект и только потом запускай платный тест.";return;
+ if(seriesBundleItems.some(x=>x.paid)){
+  status.textContent="Платные изображения уже есть в галерее. Скачай их или переделай отдельные слайды — запуск заново не должен стирать готовые результаты.";return;
  }
  if(!Number.isFinite(limit)||limit<=0||limit>250||estimate>limit||!unit){
   status.textContent="Ориентировочная стоимость "+estimate.toFixed(2)+" ₽ выше выбранного лимита "+limit+" ₽. Измени модель или лимит (максимум 250 ₽).";return;
