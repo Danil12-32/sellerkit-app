@@ -2088,11 +2088,8 @@ function showAiSeriesPlan(result){
   visual.style.minHeight="120px";visual.value=slide.visual;
   const verify=document.createElement("p");verify.className="muted";
   verify.textContent=slide.verify.length?"Проверить: "+slide.verify.join("; "):"Добавлены только нейтральные или указанные пользователем формулировки.";
-  const apply=document.createElement("button");
-  apply.className="secondary wide";
-  apply.textContent="Перенести этот слайд в AI Studio";
-  apply.onclick=()=>aiSeriesTransfer(i);
-  card.append(h,titleLabel,title,claimsLabel,claims,visualLabel,visual,verify,apply);
+  // Edit each slide in place; the whole set can be generated below with one action.
+  card.append(h,titleLabel,title,claimsLabel,claims,visualLabel,visual,verify);
   root.append(card);
  });
  $("aiSeriesOwnerFeedback").style.display="block";
