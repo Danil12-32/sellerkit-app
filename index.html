@@ -1613,7 +1613,7 @@ async function seriesMakeCard(photoData,slide,index){
  const canvas=document.createElement("canvas");canvas.width=900;canvas.height=1200;
  const ctx=canvas.getContext("2d");if(!ctx)throw Error("Не работает canvas.");
  const W=900,H=1200;
- const scheme=index%5,accent="#83d9d5",night="#102b2c",paper="#f7faf6";
+ const scheme=index%8,accent="#83d9d5",night="#102b2c",paper="#f7faf6";
  const claims=(Array.isArray(slide.claims)?slide.claims:[]).slice(0,3).filter(Boolean);
  const header=(x,y,w,max=2,size=50,color=night)=>seriesWrite(ctx,slide.title||"Товар",x,y,w,max,size,28,color,800);
  ctx.fillStyle=paper;ctx.fillRect(0,0,W,H);
@@ -1655,7 +1655,7 @@ async function seriesMakeCard(photoData,slide,index){
   ctx.fillStyle="#d5e9e6";ctx.fillRect(0,1055,W,145);
   ctx.fillStyle="#237269";ctx.fillRect(45,1082,79,5);
   seriesWrite(ctx,claims[0]||"В деталях",45,1112,800,1,29,23,night,650);
- }else{
+ }else if(scheme===4){
   // Specs: product on one side and narrow, separately contained facts on the other.
   seriesDrawImage(ctx,image,0,0,635,H);
   ctx.fillStyle=paper;ctx.fillRect(635,0,265,H);
@@ -1668,6 +1668,46 @@ async function seriesMakeCard(photoData,slide,index){
    const h=seriesWrite(ctx,fact,663,y+30,212,3,27,21,night,550);
    y+=Math.max(h+48,135);
   }
+ }else if(scheme===5){
+  // Comparison/benefits: deep-blue right information rail and wider product left.
+  ctx.fillStyle="#173f42";ctx.fillRect(0,0,W,H);
+  seriesDrawImage(ctx,image,0,0,630,1085);
+  ctx.fillStyle=night;ctx.fillRect(0,1085,630,115);
+  seriesWrite(ctx,"Детали товара",36,1119,558,1,32,24,"#fff",700);
+  ctx.fillStyle=accent;ctx.fillRect(666,60,120,5);
+  header(663,100,212,4,35,"#fff");
+  let y=440;
+  for(const value of claims){
+   if(y>1030)break;
+   ctx.fillStyle=accent;ctx.fillRect(663,y+8,22,3);
+   const h=seriesWrite(ctx,value,663,y+36,212,3,26,21,"#e9f9f7",600);
+   y+=Math.max(h+48,145);
+  }
+ }else if(scheme===6){
+  // Editorial detail: airy title side, large hero image and small footer fact.
+  ctx.fillStyle="#e4eeea";ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=night;ctx.fillRect(0,0,900,175);
+  ctx.fillStyle=accent;ctx.fillRect(45,28,130,5);
+  header(45,52,810,2,44,"#fff");
+  seriesDrawImage(ctx,image,0,175,W,865);
+  ctx.fillStyle="#e4eeea";ctx.fillRect(0,1040,W,160);
+  ctx.fillStyle="#26766f";ctx.fillRect(40,1071,7,75);
+  seriesWrite(ctx,claims[0]||"Внимание к деталям",72,1085,775,2,30,22,night,650);
+ }else{
+  // Final/FAQ: center image with top statement and bottom numbered details.
+  ctx.fillStyle=paper;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#daeae3";ctx.fillRect(25,25,850,950);
+  seriesDrawImage(ctx,image,25,25,850,950);
+  ctx.fillStyle=night;ctx.fillRect(0,0,900,125);
+  ctx.fillStyle=accent;ctx.fillRect(38,22,68,4);
+  header(38,42,824,2,35,"#fff");
+  ctx.fillStyle=paper;ctx.fillRect(0,975,900,225);
+  const claimTexts=claims.slice(0,2);
+  claimTexts.forEach((value,i)=>{
+   const x=44+i*420;
+   ctx.fillStyle="#237d73";ctx.beginPath();ctx.arc(x+12,1016,12,0,Math.PI*2);ctx.fill();
+   seriesWrite(ctx,value,x,1045,380,3,29,22,night,650);
+  });
  }
  let blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.9));
  if(!blob)throw Error("Не удалось сохранить JPG.");
@@ -1793,7 +1833,12 @@ async function seriesGeneratePaidBundle(){
    if(typeof data.imageDataUrl!=="string"||!data.imageDataUrl.startsWith("data:image/jpeg;base64,"))
     throw new Error("Не получен JPG слайда "+(i+1)+". Проверь расходы перед повтором.");
    const rawBlob=await fetch(data.imageDataUrl).then(r=>r.blob());
-   const cardBlob=await seriesMakeCard(data.imageDataUrl,slide,i);
+   let cardBlob;
+   try{cardBlob=await seriesMakeCard(data.imageDataUrl,slide,i);}
+   catch(e){
+    cardBlob=rawBlob;
+    console.warn("Card typography failed, preserving paid image:",String(e?.message||e));
+   }
    const item={index:i+1,title:slide.title,cardBlob,paid:true};
    seriesBundleItems.push(item);completed++;spentEstimate+=unit;
    seriesRefreshGallery();
