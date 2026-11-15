@@ -2242,10 +2242,16 @@ let seriesPreviousCards=new Map();
 let seriesRerollAttempts=new Map();
 function seriesSelectedNumbers(){
  const available=new Set(seriesBundleItems.map(x=>x.index));
- const typed=($("aiSeriesRerollText")?.value||"").match(/\b[1-8]\b/g)||[];
+ const request=($("aiSeriesRerollText")?.value||"").toLowerCase();
+ const numeric=(request.match(/\b[1-8]\b/g)||[]).map(Number);
+ // Understand natural requests such as «не нравится третья, четвёртая и пятая».
+ const ordinalStems=[["перв",1],["втор",2],["трет",3],["треть",3],
+  ["четв",4],["пят",5],["шест",6],["седьм",7],["восьм",8]];
+ const written=ordinalStems.filter(([stem])=>
+  new RegExp("(^|[^а-яё])"+stem+"[а-яё]*","i").test(request)).map(([,n])=>n);
  const checked=[...$("aiSeriesBundleGallery").querySelectorAll("[data-reroll-number]:checked")]
   .map(el=>Number(el.dataset.rerollNumber));
- return [...new Set([...typed.map(Number),...checked])].filter(n=>available.has(n)).sort((a,b)=>a-b);
+ return [...new Set([...numeric,...written,...checked])].filter(n=>available.has(n)).sort((a,b)=>a-b);
 }
 function seriesRerollSelected(){
  const numbers=seriesSelectedNumbers();
