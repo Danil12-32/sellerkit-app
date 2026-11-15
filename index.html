@@ -1767,12 +1767,13 @@ function seriesRefreshGallery(){
   const url=URL.createObjectURL(item.cardBlob);seriesGalleryUrls.push(url);
   img.src=url;img.alt=item.title||"Карточка";
   img.style.cssText="display:block;width:100%;margin:9px 0;border-radius:12px";
-  const save=document.createElement("a");
-  save.href=url;save.download="SellerKit-slide-"+item.index+".jpg";
-  save.className="secondary";save.style.cssText="display:inline-block;border-radius:9px;padding:10px;color:white;text-decoration:none";
-  save.textContent="⬇️ Скачать слайд "+item.index;
-  section.append(label,img,save);
+  section.append(label,img);
   if(item.paid){
+   const save=document.createElement("a");
+   save.href=url;save.download="SellerKit-slide-"+item.index+".jpg";
+   save.className="secondary";save.style.cssText="display:inline-block;border-radius:9px;padding:10px;color:white;text-decoration:none";
+   save.textContent="⬇️ Скачать слайд "+item.index;
+   section.append(save);
    const textBtn=document.createElement("button");
    textBtn.className="secondary";textBtn.style.margin="8px 6px 0 0";
    textBtn.textContent="✏️ Обновить текст бесплатно";
@@ -1785,7 +1786,7 @@ function seriesRefreshGallery(){
   }
   root.append(section);
  }
- $("aiSeriesBundleSaveActions").style.display=items.length?"block":"none";
+ $("aiSeriesBundleSaveActions").style.display=items.some(x=>x.paid)?"block":"none";
 }
 async function seriesCreateFreePreviews(){
  const btn=$("aiSeriesFreePreviewBtn"),status=$("aiSeriesBundleStatus");
@@ -1996,7 +1997,7 @@ function seriesCrc32(bytes){
  return (crc^0xffffffff)>>>0;
 }
 async function seriesDownloadZip(){
- const items=seriesBundleItems.filter(Boolean).sort((a,b)=>a.index-b.index);
+ const items=seriesBundleItems.filter(x=>x?.paid).sort((a,b)=>a.index-b.index);
  if(!items.length)return;
  const encoder=new TextEncoder(),parts=[],central=[];let offset=0;
  for(const item of items){
