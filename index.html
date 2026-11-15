@@ -640,7 +640,7 @@ SEO Analytics
 </select>
 <div id="aiGuideReadyFields" style="display:none">
 <label for="aiGuideReadyBrief">Вставь своё ТЗ</label>
-<textarea id="aiGuideReadyBrief" maxlength="1400" placeholder="Например: первая карточка с крупным товаром, вторая — преимущества, третья — детали..." style="min-height:145px"></textarea>
+<textarea id="aiGuideReadyBrief" maxlength="850" placeholder="Например: первая карточка с крупным товаром, вторая — преимущества, третья — детали..." style="min-height:145px"></textarea>
 </div>
 <div id="aiGuideHelpFields">
 <label for="aiGuideStyle">Какой стиль тебе нравится?</label>
@@ -670,10 +670,10 @@ SEO Analytics
 <div id="aiGuideStep3" class="wizard-step" style="display:none">
 <h3>Почти готово</h3>
 <label for="aiGuideFacts">Что точно известно о товаре? (необязательно)</label>
-<textarea id="aiGuideFacts" maxlength="500" style="min-height:110px" placeholder="Например: натуральный хлопок, 2 кармана, размеры 42–50. Если нет данных — оставь пустым."></textarea>
+<textarea id="aiGuideFacts" maxlength="240" style="min-height:110px" placeholder="Например: натуральный хлопок, 2 кармана, размеры 42–50. Если нет данных — оставь пустым."></textarea>
 <p class="muted" style="font-size:12px">Неизвестные характеристики не будем придумывать.</p>
 <label for="aiGuideExtra">Что ещё важно? (необязательно)</label>
-<textarea id="aiGuideExtra" maxlength="350" style="min-height:90px" placeholder="Например: не закрывай товар текстом, хочу более дорогой стиль"></textarea>
+<textarea id="aiGuideExtra" maxlength="180" style="min-height:90px" placeholder="Например: не закрывай товар текстом, хочу более дорогой стиль"></textarea>
 <div class="guide-summary">
 <strong>Как мы поняли задачу</strong>
 <p id="aiGuideSummary" style="white-space:pre-wrap;margin:8px 0 0"></p>
@@ -1447,6 +1447,7 @@ let aiGuideStep=1;
 let aiGuideMode="help";
 function seriesGuideStep(step){
  aiGuideStep=step;
+ if(step===1)$("aiSeriesOutput").style.display="none";
  [1,2,3].forEach(n=>$("aiGuideStep"+n).style.display=n===step?"block":"none");
  $("aiGuideProgress").textContent=step+" / 3";
  $("aiGuideProgressBar").style.width=(step/3*100)+"%";
@@ -1537,11 +1538,13 @@ function showAiSeriesPlan(result){
   :"⚠️ Перед публикацией проверь товарные характеристики и содержание.";
  const root=$("aiSeriesSlides");root.replaceChildren();
  result.slides.forEach((slide,i)=>{
-  const card=document.createElement("div");card.className="card";
-  card.style.cssText="margin:12px 0;background:#102017";
+  const card=document.createElement("details");card.className="card";
+  card.style.cssText="margin:10px 0;background:#102017";
+  card.open=i===0;
   card.dataset.seriesIndex=String(i);card.dataset.role=slide.role;
-  const h=document.createElement("h3");
-  h.textContent="Слайд "+(i+1)+" · "+(seriesRoles[slide.role]||"Инфографика");
+  const h=document.createElement("summary");
+  h.style.cssText="cursor:pointer;font-weight:700;padding:4px 0";
+  h.textContent="Слайд "+(i+1)+" · "+(seriesRoles[slide.role]||"Инфографика")+" — "+slide.title;
   const titleLabel=document.createElement("label");
   titleLabel.textContent="Заголовок";
   const title=document.createElement("input");
