@@ -521,9 +521,9 @@ SEO Analytics
 <option value="on_model">Одежда на модели — виртуальная примерка, возможны отличия</option>
 </select>
 
-<label for="aiPrompt">5. Пожелания только к визуальному стилю</label>
-<textarea id="aiPrompt" placeholder="Например: премиальная fashion-съёмка, мягкий студийный свет, розово-бежевый фон, крупный товар"></textarea>
-<p class="muted"><small>Фотографию создаёт нейросеть, а текст SellerKit наносит отдельно. Чтобы исправить опечатки и составить текст без ТЗ, используй AI-помощника в разделе тестирования ниже.</small></p>
+<label for="aiPrompt">5. Пожелания к фону и атмосфере (необязательно)</label>
+<textarea id="aiPrompt" placeholder="Например: тёплая спальня, мягкий свет, лампа на тумбочке. Если нет пожеланий — оставь пустым."></textarea>
+<p class="muted"><small>При отсутствии пожеланий SellerKit предложит подходящий стиль съёмки. Новое фото создаёт VseGPT за отдельную плату; надписи и иконки добавляются в приложении.</small></p>
 <label for="aiDesignStyle">6. Какой стиль карточки тебе нравится?</label>
 <select id="aiDesignStyle" onchange="adminChooseAiStyle()">
 <option value="auto" selected>✨ Подбери сам под мой товар</option>
@@ -536,12 +536,12 @@ SEO Analytics
 <details id="aiDesignFineTune" style="border:1px solid #365544;border-radius:12px;padding:11px;margin:10px 0">
 <summary style="cursor:pointer;font-weight:600">⚙️ Точная настройка (необязательно)</summary>
 <label for="aiDesignMode">Способ оформления</label>
-<select id="aiDesignMode" onchange="adminDesignModeChanged()">
+<select id="aiDesignMode" onchange="adminDesignModeChanged();adminApplySelectedDesign()">
 <option value="infographic" selected>Инфографика: преимущества и иконки</option>
 <option value="photo">Только надписи на фотографии</option>
 </select>
 <label for="aiDesignPreset">Конкретный макет</label>
-<select id="aiDesignPreset"><option value="auto">Подобрать под товар</option></select>
+<select id="aiDesignPreset" onchange="adminApplySelectedDesign()"><option value="auto">Подобрать под товар</option></select>
 <p class="muted" style="font-size:12px">Для опытных пользователей: доступны 15 схем инфографики и 30 фото-стилей. Выбирать вручную необязательно.</p>
 </details>
 <p class="muted" id="aiCopyLocalStatus" role="status" aria-live="polite" style="font-size:12px"></p>
@@ -1080,7 +1080,7 @@ SEO Analytics
 </div>
 </div>
 
-<script src="./infographic.js?v=20261115-1"></script>
+<script src="./infographic.js?v=20261115-2"></script>
 <script>
 "use strict";
 
@@ -3026,6 +3026,38 @@ function adminNextDesignPreset(){
  }
  preset.value="layout-"+((adminCurrentAiLayout()+1)%30);
 }
+function adminApplySelectedDesign(){
+ if(aiPilotRawImage){
+  adminRepaintAiPilot(false);
+ }else if(aiSampleRawImage){
+  adminRenderAiCard(aiSampleRawImage,true).catch(e=>{
+   const status=$("aiSampleDesignStatus");
+   if(status)status.textContent="Не удалось сменить оформление: "+String(e?.message||e);
+  });
+ }
+}
+function adminResolvedVisualPrompt(){
+ const category=window.SellerKitInfographic?.category($("aiTitle")?.value||"")||"general";
+ const base={
+  lighting:"Элегантная предметная фотосъёмка светильника в уютном интерьере; мягкий свет, естественные тени, товар в центре.",
+  fashion:"Профессиональная fashion-фотосъёмка одежды; верная форма изделия, натуральные ткани, мягкое освещение.",
+  footwear:"Динамичная студийная съёмка обуви; крупный реальный товар, натуральный свет, аккуратная композиция.",
+  tech:"Премиальная предметная фотосъёмка электроники; аккуратная техника, контрастный фон, современное освещение.",
+  beauty:"Элегантная предметная косметическая фотосъёмка; фактуры и мягкий свет, чистый фон.",
+  accessories:"Коммерческая предметная съёмка аксессуара; подчеркнуть форму и детали без их изменения.",
+  general:"Профессиональная коммерческая фотосъёмка реального товара; крупный товар, мягкие тени, подходящий фон."
+ }[category];
+ const style=adminSuggestedStyle();
+ const specifics={
+  auto:"",
+  premium:"Сдержанный премиальный арт-дирекшн, дорогие натуральные фактуры, мягкие тени.",
+  clean:"Минималистичная рекламная композиция, свет и воздух, минимум реквизита.",
+  bright:"Выразительная динамичная композиция и гармоничный контраст по цветам самого товара.",
+  tech:"Технологичный визуальный стиль фотографии, ясный свет, хорошо читаемая форма товара."
+ }[style]||"";
+ // Prevent long prompts and keep the user's description as the priority.
+ return [($("aiPrompt")?.value||"").trim()||base,specifics].filter(Boolean).join(" ").slice(0,1200);
+}
 function adminChooseAiStyle(){
  // This changes local overlays only, never calls Yandex Cloud or VseGPT.
  if($("aiDesignMode").value!=="infographic"){
@@ -3275,7 +3307,7 @@ async function adminRunAiPilot(){
  if(aiTestRunning)return;
  const status=$("aiTestStatus"),button=$("aiTestRunButton");
  const file=$("aiPhoto").files?.[0];
- const prompt=$("aiPrompt").value.trim();
+ const prompt=adminResolvedVisualPrompt();
  try{
   adminAiCopy();
   adminPreflightInfographic();
