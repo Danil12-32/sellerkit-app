@@ -3044,15 +3044,37 @@ async function adminPreviewAiWithoutCharge(){
   status.textContent="✅ Бесплатный макет исходной фотографии готов отдельно. AI-результат не заменён.";
  }catch(error){status.textContent=String(error?.message||"Не удалось собрать макет.");}
 }
-async function adminRepaintAiPilot(){
- const status=$("aiTestStatus");
- if(!aiPilotRawImage){status.textContent="Сначала сделай предпросмотр или запусти AI.";return;}
+let aiPilotRepainting=false;
+async function adminRepaintAiPilot(nextDesign=false){
+ const status=$("aiDesignResultStatus")||$("aiTestStatus");
+ if(aiPilotRepainting)return;
+ if(!aiPilotRawImage){
+  status.textContent="Сначала создай AI-фотографию или открой готовую из раздела «История». За редизайн платить не нужно.";
+  return;
+ }
+ const preset=$("aiDesignPreset"),previous=preset.value;
+ const button=$("aiNextDesign");
+ aiPilotRepainting=true;
+ if(button)button.disabled=true;
  try{
+  // A repeated click cycles all 30 variations instead of redrawing the same preset.
+  const index=adminCurrentAiLayout();
+  if(nextDesign)preset.value="layout-"+((index+1)%30);
+  else if(preset.value==="auto"||!/^layout-/.test(preset.value))
+   preset.value="layout-"+index;
+  status.textContent="Перерисовываем текст и композицию без нового AI-запроса…";
   await adminRenderAiCard(aiPilotRawImage);
-  let saved="Изменения сохранены в истории.";
-  try{await aiHistorySave(false);}catch(e){saved="⚠️ Не удалось сохранить в историю: "+String(e?.message||e)+". Сохрани JPG в Telegram.";}
-  status.textContent="✅ Текст и дизайн обновлены бесплатно. Новых запросов в VseGPT не было. "+saved;
- }catch(error){status.textContent=String(error?.message||"Не удалось обновить надписи.");}
+  let note="Результат готов — 0 ₽, VseGPT не вызывался.";
+  try{await aiHistorySave(false);}
+  catch(e){note+=" Не удалось записать историю: "+String(e?.message||e)+". Сохрани JPG вручную.";}
+  status.textContent=note+" Макет "+(adminCurrentAiLayout()+1)+"/30. Нажми «Другой дизайн», чтобы сравнить.";
+ }catch(error){
+  preset.value=previous;
+  status.textContent="Не удалось поменять оформление: "+String(error?.message||error);
+ }finally{
+  aiPilotRepainting=false;
+  if(button)button.disabled=false;
+ }
 }
 async function adminRunAiPilot(){
  if(aiTestRunning)return;
