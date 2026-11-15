@@ -1914,15 +1914,15 @@ async function seriesMakeCard(photoData,slide,index){
    cap(value,x+27,yy,w-30,6,w<255?25:28,color,600);
   });
  };
- const factsGrid=(x,y,w,h)=>{
+ const factsGrid=(x,y,w,h,color=ink)=>{
   const count=Math.min(facts.length,3);
   if(!count)return;
   const cell=w/count;
-  facts.slice(0,count).forEach((text,i)=>{
+  facts.slice(0,count).forEach((value,i)=>{
    const xx=x+cell*i;
    if(i>0)fill(soft,xx,y+15,2,h-30);
    fill(accent,xx+24,y+22,45,4);
-   cap(text,xx+24,y+56,cell-45,5,27,ink,600);
+   cap(value,xx+24,y+56,cell-45,5,27,color,600);
   });
  };
  fill(paper,0,0,W,H);
@@ -1947,19 +1947,21 @@ async function seriesMakeCard(photoData,slide,index){
    break;
   }
   case "feature-left":{
-   fill(ink,0,0,340,H);
-   picture(340,0,560,H,pale);
-   line(36,64,100);
-   title(34,114,276,6,39,"#ffffff");
-   factsList(35,455,277,3,192,"#ffffff");
+   picture(0,0,900,906,pale);
+   fill(accent,0,0,11,906);
+   fill(ink,0,906,900,294);
+   line(43,931,97);
+   title(42,966,812,2,43,"#ffffff");
+   factsGrid(15,1054,870,138,"#ffffff");
    break;
   }
   case "feature-right":{
-   picture(0,0,560,H,pale);
-   fill(ink,560,0,340,H);
-   line(598,61,105);
-   title(595,109,272,6,39,"#ffffff");
-   factsList(596,463,270,3,186,"#ffffff");
+   fill(ink,0,0,900,145);
+   line(43,24,95);
+   title(42,57,811,2,44,"#ffffff");
+   picture(0,145,900,821,pale);
+   fill(paper,0,966,900,234);
+   factsGrid(14,978,872,208,ink);
    break;
   }
   case "detail-focus":{
@@ -1989,12 +1991,11 @@ async function seriesMakeCard(photoData,slide,index){
    break;
   }
   case "spec-rail":{
-   picture(0,0,624,1200,pale);
-   fill(paper,624,0,276,1200);
-   fill(accent,624,0,7,1200);
-   line(655,52,70);
-   title(652,98,215,7,33);
-   factsList(654,461,209,3,218,ink);
+   picture(0,0,900,878,pale);
+   fill(accent,0,878,900,7);
+   fill(paper,0,885,900,315);
+   title(44,912,813,2,42);
+   factsGrid(14,1008,873,182,ink);
    break;
   }
   case "split-story":{
@@ -2035,12 +2036,11 @@ async function seriesMakeCard(photoData,slide,index){
    break;
   }
   case "final-summary":{
-   fill(paper,0,0,900,170);
-   line(43,43,102);
-   title(40,54,815,2,43);
-   fill(ink,0,170,292,1030);
-   picture(292,170,608,1030,pale);
-   factsList(29,295,238,3,248,"#ffffff");
+   picture(0,0,900,897,pale);
+   fill(ink,0,897,900,303);
+   line(44,925,100);
+   title(43,966,814,2,44,"#ffffff");
+   factsGrid(13,1051,871,140,"#ffffff");
    break;
   }
   case "arc-accent":{
@@ -2086,9 +2086,12 @@ async function seriesMakeCard(photoData,slide,index){
    break;
   }
   case "vertical-headline":{
-   fill(ink,0,0,260,1200);picture(260,0,640,1200,pale);
-   line(31,47,100);title(28,95,204,8,35,"#ffffff");
-   factsList(31,640,195,3,175,"#ffffff");
+   fill(ink,0,0,900,152);
+   line(43,20,91);
+   title(42,53,810,2,45,"#ffffff");
+   picture(0,152,900,829,pale);
+   fill(paper,0,981,900,219);
+   factsGrid(13,1003,872,189,ink);
    break;
   }
   case "two-crops":{
@@ -2121,7 +2124,7 @@ async function seriesMakeCard(photoData,slide,index){
    for(let x=0;x<900;x+=90){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,176);ctx.stroke();}
    line(43,22,92);title(42,58,809,2,45,"#ffffff");
    picture(24,178,852,842,pale);
-   factsGrid(14,1045,870,142);
+   factsGrid(14,1045,870,142,"#ffffff");
    break;
   }
   case "icon-trio":{
@@ -2131,11 +2134,12 @@ async function seriesMakeCard(photoData,slide,index){
    break;
   }
   case "portrait-column":{
-   fill(paper,0,0,900,1200);picture(0,175,637,1025,pale);
-   fill(ink,637,175,263,1025);
-   fill(accent,637,175,7,1025);
-   fill(paper,0,0,900,175);line(42,26,88);title(40,62,814,2,44);
-   factsList(659,314,213,3,222,"#ffffff");
+   fill(paper,0,0,900,154);
+   line(43,24,99);
+   title(42,63,813,2,43);
+   picture(0,154,900,822,pale);
+   fill(ink,0,976,900,224);
+   factsGrid(13,989,874,199,"#ffffff");
    break;
   }
   case "photo-grid":{
@@ -2163,14 +2167,12 @@ async function seriesMakeCard(photoData,slide,index){
    break;
   }
   case "spec-cards":{
-   picture(0,0,560,1200,pale);fill(paper,560,0,340,1200);
-   fill(soft,560,0,8,1200);line(590,49,92);
-   title(586,93,281,7,36);
-   facts.slice(0,3).forEach((value,i)=>{
-    const y=445+i*219;
-    fill(pale,586,y,282,184);fill(accent,586,y,6,184);
-    cap(value,605,y+35,244,6,26,ink,600);
-   });
+   picture(0,0,900,875,pale);
+   fill(soft,0,875,900,7);
+   fill(paper,0,882,900,318);
+   line(45,899,95);
+   title(43,940,812,2,43);
+   factsGrid(12,1031,873,154,ink);
    break;
   }
   case "bottom-wave":{
