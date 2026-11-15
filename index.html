@@ -741,6 +741,29 @@ SEO Analytics
 <h3>🎨 Комплект целиком</h3>
 <p class="muted" style="font-size:13px">Посмотри разные макеты бесплатно — до оплаты фотографий. В бесплатном режиме исходное фото одно.</p>
 <button class="secondary wide" id="aiSeriesFreePreviewBtn" onclick="seriesCreateFreePreviews()">👁️ Посмотреть все макеты бесплатно</button>
+<div id="aiSeriesRerollControls" style="display:none;margin:15px 0;border-top:1px solid #34503c;padding-top:13px">
+<strong>Не понравились отдельные карточки?</strong>
+<p class="muted" style="font-size:13px">Отметь их ниже или напиши номера. Изменим только оформление, без расходов на VseGPT.</p>
+<label for="aiSeriesRerollText">Например: «Поменяй 3, 4 и 5»</label>
+<input id="aiSeriesRerollText" maxlength="100" placeholder="Поменяй 3, 4, 5">
+<button class="secondary wide" style="margin-top:9px" onclick="seriesRerollSelected()">🔄 Другие макеты для выбранных (0 ₽)</button>
+<div id="aiSeriesRefine" style="display:none;margin-top:12px;padding:12px;background:#142b1c;border-radius:12px">
+<strong>Давай уточним стиль</strong>
+<p class="muted" style="font-size:12px">Несколько вариантов не подошли. Выбери стиль и количество надписей.</p>
+<label for="aiSeriesRefineStyle">Какой стиль нужен?</label>
+<select id="aiSeriesRefineStyle">
+<option value="auto">Подбери сам</option><option value="нежный розовый">Нежный</option>
+<option value="премиум">Премиум</option><option value="спортивный">Спортивный</option>
+<option value="яркий">Яркий</option><option value="минимализм">Минимализм</option>
+</select>
+<label for="aiSeriesRefineDensity">Сколько текста?</label>
+<select id="aiSeriesRefineDensity">
+<option value="minimal">Только главное (1 преимущество)</option>
+<option value="normal" selected>Умеренно (до 3 преимуществ)</option>
+</select>
+<button class="wide" onclick="seriesApplyRefinement()">Применить стиль к выбранным</button>
+</div>
+</div>
 <div id="aiSeriesPaidOwner" style="display:none;margin-top:14px;border-top:1px solid #34503c;padding-top:12px">
 <p class="muted" style="font-size:13px"><strong>Тест владельца:</strong> создаём разные фотографии для всех слайдов. Каждый запрос списывается с VseGPT. Не запускай до проверки бесплатных макетов.</p>
 <label for="aiSeriesImageModel">Нейросеть комплекта</label>
@@ -1815,7 +1838,7 @@ async function seriesMakeCard(photoData,slide,index){
  const ctx=canvas.getContext("2d");if(!ctx)throw Error("Не работает canvas.");
  const W=900,H=1200;
  const layout=seriesTemplateFor(slide,index);
- const style=(($("aiGuideStyle")?.value||"")+" "+($("aiGuideProduct")?.value||"")).toLowerCase();
+ const style=((seriesRefineStyle==="auto"?($("aiGuideStyle")?.value||""):seriesRefineStyle)+" "+($("aiGuideProduct")?.value||"")).toLowerCase();
  const palette=/нежн|розов|худи|плать|юбк|женск/.test(style)?
   {ink:"#352936",accent:"#e48fb0",paper:"#fff8fa",soft:"#f4d8e3",pale:"#f9ebf1"}:
   /спорт|кроссов|кед|ярк/.test(style)?
@@ -1824,7 +1847,7 @@ async function seriesMakeCard(photoData,slide,index){
   {ink:"#322e2b",accent:"#b99270",paper:"#fdfaf5",soft:"#e8d9c9",pale:"#f6f0e8"}:
   {ink:"#193830",accent:"#4d9b7c",paper:"#f9fcfa",soft:"#d5eae0",pale:"#eff7f2"};
  const {ink,accent,paper,soft,pale}=palette;
- const facts=(Array.isArray(slide.claims)?slide.claims:[]).map(x=>String(x).trim()).filter(Boolean).slice(0,3);
+ const facts=(Array.isArray(slide.claims)?slide.claims:[]).map(x=>String(x).trim()).filter(Boolean).slice(0,seriesRefineDensity==="minimal"?1:3);
  const fill=(color,x,y,w,h)=>{ctx.fillStyle=color;ctx.fillRect(x,y,w,h);};
  const title=(x,y,w,max=2,size=56,color=ink)=>seriesWrite(ctx,slide.title||"Товар",x,y,w,max,size,26,color,800);
  const cap=(text,x,y,w,max=2,size=26,color=ink,weight=600)=>
@@ -2142,11 +2165,25 @@ function seriesRefreshGallery(){
   section.className="card";section.style.cssText="margin:10px 0;background:#11231a;padding:12px";
   const label=document.createElement("strong");
   label.textContent="Слайд "+item.index+" · "+(item.paid?"AI-фотография":"Бесплатный макет");
+  const selectLabel=document.createElement("label");
+  selectLabel.style.cssText="display:flex;align-items:center;gap:8px;font-size:13px;margin:9px 0";
+  const selected=document.createElement("input");selected.type="checkbox";
+  selected.dataset.rerollNumber=String(item.index);selected.style.cssText="width:18px;height:18px;flex:none";
+  selectLabel.append(selected,document.createTextNode("Изменить этот слайд"));
   const img=document.createElement("img");
   const url=URL.createObjectURL(item.cardBlob);seriesGalleryUrls.push(url);
   img.src=url;img.alt=item.title||"Карточка";
   img.style.cssText="display:block;width:100%;margin:9px 0;border-radius:12px";
-  section.append(label,img);
+  section.append(label,selectLabel,img);
+  const rerollBtn=document.createElement("button");
+  rerollBtn.className="secondary";rerollBtn.style.cssText="margin:8px 5px 0 0;font-size:13px";
+  rerollBtn.textContent="🔄 Другой макет (0 ₽)";
+  rerollBtn.onclick=()=>seriesRenderSelected([item.index],true);
+  const applyBtn=document.createElement("button");
+  applyBtn.className="secondary";applyBtn.style.cssText="margin:8px 5px 0 0;font-size:13px";
+  applyBtn.textContent="✏️ Применить правки (0 ₽)";
+  applyBtn.onclick=()=>seriesRenderSelected([item.index],false);
+  section.append(rerollBtn,applyBtn);
   if(item.paid){
    const save=document.createElement("a");
    save.href=url;save.download="SellerKit-slide-"+item.index+".jpg";
@@ -2166,10 +2203,14 @@ function seriesRefreshGallery(){
   root.append(section);
  }
  $("aiSeriesBundleSaveActions").style.display=items.some(x=>x.paid)?"block":"none";
+ $("aiSeriesRerollControls").style.display=items.length?"block":"none";
 }
 async function seriesCreateFreePreviews(){
  const btn=$("aiSeriesFreePreviewBtn"),status=$("aiSeriesBundleStatus");
  if(seriesBundleBusy)return;
+ if(seriesBundleItems.some(x=>x.paid)){
+  status.textContent="Платные фото уже готовы. Изменяй отдельные макеты бесплатно, не запускай предпросмотр заново.";return;
+ }
  const slides=aiSeriesEdits();
  const file=$("aiSeriesFile").files?.[0];
  if(!file){status.textContent="Для просмотра макетов загрузи фото товара на первом шаге.";return;}
@@ -2179,11 +2220,12 @@ async function seriesCreateFreePreviews(){
  seriesBundleBusy=true;btn.disabled=true;
  try{
   const photo=await adminPrepareJpeg(file);
+  const rawBlob=await fetch(photo).then(r=>r.blob());
   const drafts=[];
   for(let i=0;i<slides.length;i++){
    status.textContent="Готовим бесплатный макет "+(i+1)+" из "+slides.length+"…";
    const cardBlob=await seriesMakeCard(photo,slides[i],i);
-   drafts.push({index:i+1,title:slides[i].title,cardBlob,paid:false});
+   drafts.push({index:i+1,title:slides[i].title,cardBlob,rawBlob,paid:false});
   }
   seriesBundleItems=drafts;
   seriesRefreshGallery();
@@ -2434,9 +2476,12 @@ function aiSeriesEdits(){
 }
 function showAiSeriesPlan(result){
  aiSeriesPlan=result.slides;
+ seriesLayoutUsed=new Map();
  seriesBundleItems=[];
  $("aiSeriesBundleGallery").replaceChildren();
  $("aiSeriesBundleSaveActions").style.display="none";
+ $("aiSeriesRerollControls").style.display="none";
+ $("aiSeriesRefine").style.display="none";
  $("aiSeriesBundleStatus").textContent="План готов. Посмотри все макеты бесплатно.";
  $("aiSeriesOutput").style.display="block";
  $("aiSeriesConcept").textContent=result.concept||"План карточек";
