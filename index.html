@@ -258,6 +258,18 @@ nav button.active{
  .tile{padding:12px}
  .pack{padding:12px}
 }
+
+/* Минимальный, мобильный сценарий для AI Дизайнера */
+.wizard-progress{height:5px;border-radius:9px;background:#304537;overflow:hidden;margin-bottom:20px}
+.wizard-progress span{display:block;width:33%;height:100%;background:var(--green);border-radius:9px;transition:width .2s}
+.wizard-step h3{font-size:19px;margin:8px 0 15px}
+.choice-group{display:flex;gap:8px;margin:8px 0 17px}
+.choice{flex:1;min-width:0;background:#213427;color:var(--text);border:1px solid #47634e;font-size:14px;padding:12px 8px}
+.choice.selected{border:2px solid var(--green);background:#244b32}
+.wizard-nav{display:flex;gap:10px;margin-top:18px}
+.wizard-nav button:first-child{flex:1}.wizard-nav button:last-child{flex:2}
+.guide-summary{background:#102217;border:1px solid #36543d;border-radius:12px;padding:13px;margin:16px 0;font-size:13px;line-height:1.6}
+
 </style>
 </head>
 <body>
@@ -593,38 +605,102 @@ SEO Analytics
 </div>
 </section>
 
-<!-- AI ДИЗАЙНЕР: ТЕСТ СОСТАВЛЕНИЯ ПЛАНА КОМПЛЕКТА -->
+<!-- AI ДИЗАЙНЕР: короткий путь с вопросами -->
 <section class="page" id="ai-series">
-<button class="back" onclick="openPage('ai')">← В AI Studio</button>
+<button class="back" onclick="openPage('ai')">← Назад</button>
 <div class="card">
-<h2>🧠 AI Дизайнер · Комплекты</h2>
-<p>Напиши своими словами, какие карточки товара нужны. AI составит сценарий для 1, 5 или 8 разных слайдов: главная, преимущества, детали, использование и другие задачи.</p>
-<div class="notice"><strong>Тестовый режим.</strong> Пока создаём и редактируем только план комплекта. Автоматическая генерация всех слайдов, оплата токенами и сохранение набора на сервере ещё не подключены.</div>
-<label for="aiSeriesCount">Количество карточек</label>
+<div class="topline" style="justify-content:space-between;margin-bottom:13px">
+<h2 style="margin:0">Создать карточки</h2>
+<span class="tag" id="aiGuideProgress">1 / 3</span>
+</div>
+<div class="wizard-progress"><span id="aiGuideProgressBar"></span></div>
+
+<div id="aiGuideStep1" class="wizard-step">
+<h3>Какой у тебя товар?</h3>
+<label for="aiGuideProduct">Название товара</label>
+<input id="aiGuideProduct" maxlength="90" placeholder="Например: сумка женская">
+<label for="aiSeriesFile">Фотография (если есть)</label>
+<input id="aiSeriesFile" type="file" accept="image/jpeg,image/png,image/webp">
+<p class="muted" style="font-size:13px">Нет фото? Мы всё равно поможем продумать карточки. Точный визуал создадим после добавления фото.</p>
+<button class="wide" onclick="seriesGuideNext()">Продолжить</button>
+</div>
+
+<div id="aiGuideStep2" class="wizard-step" style="display:none">
+<h3>Давай уточним пожелания</h3>
+<label>Готовое ТЗ есть?</label>
+<div class="choice-group">
+<button type="button" id="aiGuideHelpBtn" class="choice selected" onclick="seriesGuideSetMode('help')">Нет, подскажите</button>
+<button type="button" id="aiGuideReadyBtn" class="choice" onclick="seriesGuideSetMode('ready')">Да, есть ТЗ</button>
+</div>
+<label for="aiSeriesCount">Сколько карточек нужно?</label>
 <select id="aiSeriesCount">
-<option value="1">1 — главная карточка</option>
+<option value="1">1 — главная</option>
 <option value="5" selected>5 — главная + 4 инфографики</option>
 <option value="8">8 — полный комплект</option>
 </select>
-<label for="aiSeriesFile">Фотография товара (необязательно)</label>
-<input id="aiSeriesFile" type="file" accept="image/jpeg,image/png,image/webp">
-<label for="aiSeriesBrief">Что нужно сделать?</label>
-<textarea id="aiSeriesBrief" maxlength="1600" style="min-height:150px" placeholder="Например: 5 карточек для голубых кроссовок. Главная — яркая, товар крупно. Остальные: детали, подошва, разные ракурсы, повседневные образы. Стиль премиум, без перегруза текстом."></textarea>
-<p class="muted"><small>Готовое ТЗ необязательно. Неизвестные свойства товара AI должен вынести на проверку, а не придумывать как факты.</small></p>
-<div id="aiSeriesOwnerTools" style="display:none">
-<button class="wide" id="aiSeriesGenerateBtn" onclick="adminGenerateSeriesPlan(false)">🧠 Составить план комплекта (AI-запрос)</button>
-<p class="muted"><small>Отдельный платный текстовый запрос к Qwen через VseGPT. Изображения не генерируются и деньги за изображения не списываются.</small></p>
+<div id="aiGuideReadyFields" style="display:none">
+<label for="aiGuideReadyBrief">Вставь своё ТЗ</label>
+<textarea id="aiGuideReadyBrief" maxlength="1400" placeholder="Например: первая карточка с крупным товаром, вторая — преимущества, третья — детали..." style="min-height:145px"></textarea>
 </div>
-<p id="aiSeriesStatus" class="muted" role="status" aria-live="polite">AI-планировщик пока доступен только разработчику.</p>
+<div id="aiGuideHelpFields">
+<label for="aiGuideStyle">Какой стиль тебе нравится?</label>
+<select id="aiGuideStyle">
+<option value="Подбери подходящий стиль сам" selected>Подбери сам</option>
+<option value="Минимализм: свет, воздух, крупный товар, минимум текста">Минимализм</option>
+<option value="Премиум: дорогая рекламная фотосъёмка, сдержанные цвета">Премиум</option>
+<option value="Яркий: выразительный цвет и динамичная композиция">Яркий</option>
+<option value="Нежный: мягкие цвета и естественное освещение">Нежный</option>
+<option value="Спортивный: энергичная композиция и контраст">Спортивный</option>
+</select>
+<label for="aiGuideScene">Как показать товар?</label>
+<select id="aiGuideScene">
+<option value="Предложи лучшие ракурсы и способы показать товар" selected>Подбери сам</option>
+<option value="Предметная фотосъёмка, студийный фон">На студийном фоне</option>
+<option value="Товар в подходящем интерьере или реальной обстановке">В интерьере / использовании</option>
+<option value="Одежда на взрослой модели, сохраняй крой и расцветку">Одежда на модели</option>
+<option value="Съёмка деталей и крупных планов">Крупные планы деталей</option>
+</select>
+</div>
+<div class="wizard-nav">
+<button class="secondary" onclick="seriesGuideStep(1)">Назад</button>
+<button onclick="seriesGuideNext()">Продолжить</button>
+</div>
+</div>
+
+<div id="aiGuideStep3" class="wizard-step" style="display:none">
+<h3>Почти готово</h3>
+<label for="aiGuideFacts">Что точно известно о товаре? (необязательно)</label>
+<textarea id="aiGuideFacts" maxlength="500" style="min-height:110px" placeholder="Например: натуральный хлопок, 2 кармана, размеры 42–50. Если нет данных — оставь пустым."></textarea>
+<p class="muted" style="font-size:12px">Неизвестные характеристики не будем придумывать.</p>
+<label for="aiGuideExtra">Что ещё важно? (необязательно)</label>
+<textarea id="aiGuideExtra" maxlength="350" style="min-height:90px" placeholder="Например: не закрывай товар текстом, хочу более дорогой стиль"></textarea>
+<div class="guide-summary">
+<strong>Как мы поняли задачу</strong>
+<p id="aiGuideSummary" style="white-space:pre-wrap;margin:8px 0 0"></p>
+</div>
+<div class="wizard-nav">
+<button class="secondary" onclick="seriesGuideStep(2)">Назад</button>
+<button onclick="seriesGuidePrepare()">Проверить задание</button>
+</div>
+<div id="aiGuidePlanActions" style="display:none">
+<p class="muted" style="font-size:13px">Пока это пробный режим. Сначала составим план разных слайдов. Автоматическая генерация всего комплекта и оплата ещё не подключены.</p>
+<div id="aiSeriesOwnerTools" style="display:none">
+<button class="wide" id="aiSeriesGenerateBtn" onclick="adminGenerateSeriesPlan(false)">Составить план с AI</button>
+<p class="muted" style="font-size:12px">Текстовый запрос Qwen платный по тарифу VseGPT. Изображения не генерируются.</p>
+</div>
+<p id="aiSeriesStatus" class="muted" role="status" aria-live="polite">Создание AI-плана пока доступно только разработчику.</p>
+</div>
+</div>
+
 <div id="aiSeriesOutput" style="display:none">
-<h3>Предложенная структура комплекта</h3>
+<h3>План карточек</h3>
 <p id="aiSeriesConcept" class="muted"></p>
 <p id="aiSeriesWarnings" class="muted"></p>
 <div id="aiSeriesSlides"></div>
 <div id="aiSeriesOwnerFeedback" style="display:none">
-<label for="aiSeriesFeedback">Что изменить в плане?</label>
-<textarea id="aiSeriesFeedback" maxlength="700" style="min-height:105px" placeholder="Например: 3-й слайд про подошву, 5-й — крупный план деталей; убери лишний текст, поменяй композицию"></textarea>
-<button class="secondary wide" id="aiSeriesReviseBtn" onclick="adminGenerateSeriesPlan(true)">💬 Переделать план по моим пожеланиям (AI-запрос)</button>
+<label for="aiSeriesFeedback">Что изменить? Напиши своими словами</label>
+<textarea id="aiSeriesFeedback" maxlength="700" style="min-height:100px" placeholder="Сделай третий слайд про детали, добавь больше воздуха, не используй белые блоки"></textarea>
+<button class="secondary wide" id="aiSeriesReviseBtn" onclick="adminGenerateSeriesPlan(true)">Переделать план по моим пожеланиям</button>
 </div>
 </div>
 </div>
@@ -1366,6 +1442,73 @@ function adminApplyAiCopy(){
  }
 }
 
+
+let aiGuideStep=1;
+let aiGuideMode="help";
+function seriesGuideStep(step){
+ aiGuideStep=step;
+ [1,2,3].forEach(n=>$("aiGuideStep"+n).style.display=n===step?"block":"none");
+ $("aiGuideProgress").textContent=step+" / 3";
+ $("aiGuideProgressBar").style.width=(step/3*100)+"%";
+ if(step===3)seriesGuideShowSummary();
+ $("aiGuidePlanActions").style.display="none";
+}
+function seriesGuideSetMode(mode){
+ aiGuideMode=mode==="ready"?"ready":"help";
+ $("aiGuideHelpBtn").classList.toggle("selected",aiGuideMode==="help");
+ $("aiGuideReadyBtn").classList.toggle("selected",aiGuideMode==="ready");
+ $("aiGuideReadyFields").style.display=aiGuideMode==="ready"?"block":"none";
+ $("aiGuideHelpFields").style.display=aiGuideMode==="help"?"block":"none";
+}
+function seriesGuideNext(){
+ const product=$("aiGuideProduct").value.trim();
+ if(aiGuideStep===1&&!product){
+  $("aiGuideProduct").focus();
+  $("aiGuideProduct").setCustomValidity("Напиши, какой у тебя товар.");
+  $("aiGuideProduct").reportValidity();
+  $("aiGuideProduct").setCustomValidity("");
+  return;
+ }
+ if(aiGuideStep===2&&aiGuideMode==="ready"&&$("aiGuideReadyBrief").value.trim().length<8){
+  $("aiGuideReadyBrief").focus();
+  $("aiGuideReadyBrief").setCustomValidity("Вставь ТЗ или выбери «Нет, подскажите».");
+  $("aiGuideReadyBrief").reportValidity();
+  $("aiGuideReadyBrief").setCustomValidity("");
+  return;
+ }
+ if(aiGuideStep<3)seriesGuideStep(aiGuideStep+1);
+}
+function seriesGuideDraft(){
+ const product=$("aiGuideProduct").value.trim();
+ const count=Number($("aiSeriesCount").value);
+ const extra=$("aiGuideExtra").value.trim();
+ const facts=$("aiGuideFacts").value.trim();
+ const lines=[
+  "Товар: "+product,
+  "Нужны "+count+" разных слайдов: 1 главная карточка"+(count>1?", остальные — раскрывают разные аспекты товара.":""),
+  aiGuideMode==="ready"?"ТЗ заказчика: "+$("aiGuideReadyBrief").value.trim():
+   "Стиль: "+$("aiGuideStyle").value+". Съёмка: "+$("aiGuideScene").value+".",
+  facts?"Подтверждённые пользователем сведения (для публикации дополнительно проверить): "+facts:
+   "Подтверждённых характеристик пока нет: не придумывай фактов о товаре.",
+  extra?"Пожелания: "+extra:"",
+  "Разработай РАЗНЫЕ композиции и информационные задачи для каждого слайда, но одну визуальную систему. Не копируй повторяющийся шаблон."
+ ].filter(Boolean);
+ return lines.join("\n");
+}
+function seriesGuideShowSummary(){
+ $("aiGuideSummary").textContent=seriesGuideDraft();
+}
+function seriesGuidePrepare(){
+ const draft=seriesGuideDraft();
+ if(draft.length<15)return;
+ $("aiGuideSummary").textContent=draft;
+ $("aiGuidePlanActions").style.display="block";
+ $("aiSeriesOutput").style.display="none";
+ $("aiSeriesFeedback").value="";
+ aiSeriesPlan=[];
+ $("aiGuidePlanActions").scrollIntoView({block:"nearest",behavior:"smooth"});
+}
+
 // Experimental art-direction workflow: Qwen plans a SERIES, image generation stays separate.
 let aiSeriesPlan=[];
 let aiSeriesBusy=false;
@@ -1445,7 +1588,7 @@ async function adminGenerateSeriesPlan(revise){
  if(aiSeriesBusy)return;
  const status=$("aiSeriesStatus");
  const button=$(revise?"aiSeriesReviseBtn":"aiSeriesGenerateBtn");
- const brief=$("aiSeriesBrief").value.trim();
+ const brief=seriesGuideDraft();
  const count=Number($("aiSeriesCount").value);
  const feedback=revise?$("aiSeriesFeedback").value.trim():"";
  if(brief.length<8){status.textContent="Опиши товар и желаемые карточки хотя бы одним предложением.";return;}
