@@ -2,21 +2,21 @@
 (function(root){
 "use strict";
 const NAMES=[
-"Hero Center · товар по центру",
-"Info Left · иконки слева",
-"Info Right · иконки справа",
-"Icon Column · технологичная колонка",
-"Clean Marketplace · светлый",
-"Premium Dark · объём и контраст",
-"Tech Dashboard · как у гаджетов",
-"Lifestyle · атмосфера",
-"Use Case · сценарии использования",
-"Detail Zoom · детали исходника",
-"Specs · подтверждённые размеры",
-"Benefits Orbit · преимущества вокруг",
-"Badge Hero · акцентные значки",
-"Split Editorial · двойная зона",
-"Flagship · флагманская карточка"
+"Крупный товар по центру",
+"Иконки и подписи слева",
+"Иконки и подписи справа",
+"Технологичная колонка",
+"Чистый минимализм",
+"Тёмный премиум",
+"Технологичная инфографика",
+"Товар в интерьере",
+"Варианты использования",
+"Детали и особенности товара",
+"Подтверждённые размеры",
+"Преимущества вокруг товара",
+"Акцентные значки",
+"Журнальная композиция",
+"Флагманская инфографика"
 ];
 const TEMPLATES=Object.freeze(NAMES.map((name,i)=>Object.freeze({id:"infog-"+i,name})));
 const fixes=[
@@ -203,13 +203,16 @@ function draw(ctx,img,{index=0,title,claims=[]}={}){
   case 7: top();shade(0,884,900,316,"rgba(14,14,19,0)","rgba(14,14,19,.88)");grid(32,974,836,215,data.claims,2);break;
   case 8: top();bottom(860);break;
   case 9:
-   top();panel(0,941,900,259,.78);
-   data.claims.slice(0,2).forEach((v,i)=>{
-    const xx=38+i*436;ctx.save();ctx.beginPath();ctx.arc(xx+45,1013,42,0,Math.PI*2);ctx.clip();
-    ctx.drawImage(img,iw*.24,ih*.26,iw*.43,ih*.43,xx,970,90,90);ctx.restore();
-    text(ctx,v,xx+112,985,300,85,{size:26,min:13});
-   });
-   if(data.claims.length>2){shade(0,760,900,180,"rgba(4,10,17,.1)","rgba(4,10,17,.72)");grid(32,790,836,148,data.claims.slice(2),2);}
+   // Details must refer to real user-supplied facts, not duplicate circular photos
+   // pretending to be independent close-up shots.
+   shade(0,0,505,1200,"rgba(5,13,22,.9)","rgba(5,13,22,0)",true);
+   headline(41,72,816,157,58);
+   column(40,330,330,475,data.claims.slice(0,2),45);
+   if(data.claims.length>2){
+    shade(0,887,900,313,"rgba(5,13,22,0)","rgba(5,13,22,.9)");
+    grid(43,971,814,210,data.claims.slice(2),2);
+   }
+   ctx.fillStyle=accent;ctx.fillRect(41,822,107,5);
    break;
   case 10: top();bottom(851);break;
   case 11:
