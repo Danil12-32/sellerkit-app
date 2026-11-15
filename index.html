@@ -604,9 +604,10 @@ SEO Analytics
 <p id="aiTestStatus" class="muted" role="status" aria-live="polite">Генерация ещё не запускалась.</p>
 
 <div id="aiSampleOutput" style="display:none">
-<h3>👁️ Исходная фотография с надписями (без AI)</h3>
-<img id="aiSampleImage" alt="Бесплатный макет исходной фотографии" style="width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b">
-<p class="muted"><small>Платная AI-карточка остаётся отдельно ниже.</small></p>
+<h3>👁️ Черновое оформление исходного фото (без AI)</h3>
+<img id="aiSampleImage" alt="Бесплатный черновик на исходной фотографии" style="width:100%;max-width:550px;border-radius:12px;margin-top:12px;border:1px solid #42624b">
+<button class="secondary wide" style="margin-top:9px" id="aiSampleNextDesign" onclick="adminCycleAiSample()">🎨 Другой черновой дизайн — 0 ₽</button>
+<p class="muted" id="aiSampleDesignStatus" role="status" aria-live="polite"><small>Это только пример расположения текста. Новую AI-фотографию он не создаёт.</small></p>
 </div>
 <div id="aiTestOutput" style="display:none">
 <h3>✨ Результат AI-генерации</h3>
@@ -1300,6 +1301,7 @@ async function adminRequest(action,telegramId){
 
 let aiTestRunning=false;
 let aiPilotRawImage="";
+let aiSampleRawImage="";
 let aiPilotFile=null;
 let aiPilotDataUrl="";
 let aiPilotObjectUrl="";
@@ -3040,9 +3042,23 @@ async function adminPreviewAiWithoutCharge(){
   if(!file)throw new Error("Сначала выбери фото товара.");
   status.textContent="Создаём бесплатный предварительный макет…";
   const jpeg=await adminPrepareJpeg(file);
+  aiSampleRawImage=jpeg;
   await adminRenderAiCard(jpeg,true);
   status.textContent="✅ Бесплатный макет исходной фотографии готов отдельно. AI-результат не заменён.";
  }catch(error){status.textContent=String(error?.message||"Не удалось собрать макет.");}
+}
+async function adminCycleAiSample(){
+ const status=$("aiSampleDesignStatus"),button=$("aiSampleNextDesign");
+ if(!aiSampleRawImage){status.textContent="Сначала создай бесплатный черновик.";return;}
+ if(button.disabled)return;
+ const preset=$("aiDesignPreset"),previous=preset.value;
+ button.disabled=true;
+ try{
+  preset.value="layout-"+((adminCurrentAiLayout()+1)%30);
+  await adminRenderAiCard(aiSampleRawImage,true);
+  status.textContent="Черновик "+(adminCurrentAiLayout()+1)+"/30. Изменён только текстовый дизайн, стоимость 0 ₽.";
+ }catch(e){preset.value=previous;status.textContent="Ошибка черновика: "+String(e?.message||e);}
+ finally{button.disabled=false;}
 }
 let aiPilotRepainting=false;
 async function adminRepaintAiPilot(nextDesign=false){
