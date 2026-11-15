@@ -2458,6 +2458,15 @@ function seriesVisualMode(slide){
   /на (взрослой )?модел[ьи]|на человеке/i.test(String(slide?.visual||""));
  return seriesCategory()==="fashion"&&wantsModel?"on_model":"studio";
 }
+function seriesTypographyIssue(slides){
+ for(const [i,slide] of slides.entries()){
+  if(String(slide?.title||"").length>65)return "Слайд "+(i+1)+": заголовок слишком длинный. Сократи до 65 символов.";
+  for(const claim of Array.isArray(slide?.claims)?slide.claims:[]){
+   if(String(claim).length>80)return "Слайд "+(i+1)+": характеристика длиннее 80 символов. Сократи текст перед генерацией.";
+  }
+ }
+ return "";
+}
 async function seriesRegenerateOne(number){
  const status=$("aiSeriesBundleStatus");
  const item=seriesBundleItems.find(x=>x.index===number&&x.paid);
@@ -2475,6 +2484,8 @@ async function seriesRegenerateOne(number){
  const button=$("aiSeriesPaidRunBtn");button.disabled=true;
  try{
   const slide=aiSeriesEdits()[number-1];
+  const textIssue=seriesTypographyIssue([slide]);
+  if(textIssue){status.textContent=textIssue+" Запрос VseGPT не отправлен.";return;}
   const imageData=await adminPrepareJpeg(file);
   const prompt=("Новая версия для слайда "+number+". "+
     slide.visual+". Учти пожелания пользователя, другой красивый коммерческий ракурс. "+
@@ -2518,6 +2529,8 @@ async function seriesGeneratePaidBundle(){
  const {estimate,limit,count}=seriesCostPreview();
  const model=$("aiSeriesImageModel").value,unit=SERIES_COSTS[model];
  const slides=aiSeriesEdits(),file=$("aiSeriesFile").files?.[0];
+ const textIssue=seriesTypographyIssue(slides);
+ if(textIssue){status.textContent=textIssue+" Генерация не запущена, деньги не списаны.";return;}
  if(!file||!slides.length||slides.length!==count){status.textContent="Сначала создай план и прикрепи фото.";return;}
  if(!$("aiSeriesClaimsVerified").checked){
   status.textContent="Сначала проверь утверждения и поставь отметку о проверке характеристик.";return;
@@ -2655,7 +2668,7 @@ function aiSeriesEdits(){
 }
 // A size/measurement graphic is misleading when the seller provided no dimensions.
 function seriesProtectMissingMeasurements(slides){
- const facts=String($("aiGuideFacts")?.value||"")+" "+String($("aiGuideReadyBrief")?.value||"");
+ const facts=["aiGuideFacts","aiGuideReadyBrief","aiGuideExtra"].map(id=>String($(id)?.value||"")).join(" ");
  const hasMeasurements=/\b\d+(?:[.,]\d+)?\s*(?:мм|см|м|дюйм|inch|кг|г)\b/i.test(facts)||
   /(?:размер(?:ы)?|объ[её]м|высот[аы]|ширин[аы]|длин[аы])\s*[:—-]?\s*\d/i.test(facts);
  if(hasMeasurements)return slides;
@@ -2793,7 +2806,7 @@ async function adminGenerateSeriesPlan(revise){
   if(!Array.isArray(data.slides)||data.slides.length!==count)
    throw new Error("Сервер вернул неполный набор карточек.");
   showAiSeriesPlan(data);
-  seriesSaveCachedPlan(data);
+  seriesSaveCachedPlan({...data,slides:aiSeriesEdits()});
   status.textContent="✅ План на "+count+" слайдов готов. Это только структура, без генерации картинок. Можно изменить любой слайд вручную или отправить пожелания Qwen.";
  }catch(e){
   const message=String(e?.message||"Ошибка создания плана.");
