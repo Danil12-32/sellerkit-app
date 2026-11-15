@@ -720,6 +720,10 @@ SEO Analytics
 <label for="aiSeriesMaxBudget">Лимит по расчётной стоимости (₽)</label>
 <input id="aiSeriesMaxBudget" inputmode="decimal" type="number" min="1" max="250" value="100">
 <p class="muted" id="aiSeriesPriceEstimate" aria-live="polite"></p>
+<label style="display:flex;gap:9px;align-items:center;font-size:13px;margin:12px 0">
+<input id="aiSeriesClaimsVerified" type="checkbox" style="width:auto;flex:none">
+<span>Я проверил(а) характеристики товара и понимаю расходы на генерации.</span>
+</label>
 <button class="wide" id="aiSeriesPaidRunBtn" onclick="seriesGeneratePaidBundle()">Сгенерировать весь комплект (платно)</button>
 </div>
 <p class="muted" id="aiSeriesBundleStatus" role="status" aria-live="polite"></p>
@@ -1527,6 +1531,7 @@ function seriesGuideShowSummary(){
  $("aiGuideSummary").textContent=seriesGuideDraft();
 }
 function seriesGuidePrepare(){
+ $("aiSeriesClaimsVerified").checked=false;
  const draft=seriesGuideDraft();
  if(draft.length<15)return;
  if(draft.length>1600){
@@ -1912,6 +1917,9 @@ async function seriesGeneratePaidBundle(){
  const model=$("aiSeriesImageModel").value,unit=SERIES_COSTS[model];
  const slides=aiSeriesEdits(),file=$("aiSeriesFile").files?.[0];
  if(!file||!slides.length||slides.length!==count){status.textContent="Сначала создай план и прикрепи фото.";return;}
+ if(!$("aiSeriesClaimsVerified").checked){
+  status.textContent="Сначала проверь утверждения и поставь отметку о проверке характеристик.";return;
+ }
  if(seriesBundleItems.filter(Boolean).length!==count||seriesBundleItems.some(x=>x.paid)){
   status.textContent="Сначала нажми «Посмотреть все макеты бесплатно», проверь весь комплект и только потом запускай платный тест.";return;
  }
@@ -3357,6 +3365,15 @@ openRequestedPage();
 $("aiSeriesImageModel").addEventListener("change",seriesCostPreview);
 $("aiSeriesMaxBudget").addEventListener("input",seriesCostPreview);
 $("aiSeriesCount").addEventListener("change",seriesCostPreview);
+let seriesEditCacheTimer=null;
+$("aiSeriesSlides").addEventListener("input",()=>{
+ clearTimeout(seriesEditCacheTimer);
+ seriesEditCacheTimer=setTimeout(()=>{
+  if(aiSeriesPlan.length)seriesSaveCachedPlan({
+   slides:aiSeriesEdits(),concept:$("aiSeriesConcept").textContent
+  });
+ },400);
+});
 seriesCostPreview();
 
 </script>
