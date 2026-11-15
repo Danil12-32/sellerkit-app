@@ -708,6 +708,22 @@ async function adminSeriesPlan(body){
  }
 }
 
+
+const SERIES_PHOTO_DIRECTIONS=Object.freeze({
+ "hero-bold":"High-end hero packshot. Strong clean product silhouette, precise details, product wholly visible.",
+ "editorial":"Refined fashion editorial composition with soft sophisticated light, clean material and upscale mood.",
+ "feature-left":"Crisp three-quarter product view, controlled contrast and detailed material, no decorative clutter.",
+ "feature-right":"Asymmetric professional catalog photo, emphasize the item and its actual silhouette.",
+ "detail-focus":"Sharp close-up of a REAL visible detail from reference: fabric, stitching or hardware. Do not invent new elements.",
+ "benefit-grid":"Sharp clean three-quarter product photography, distinct angle from hero while preserving exact product.",
+ "lookbook":"Tasteful context showing authentic use only if requested, otherwise styled premium studio scene.",
+ "spec-rail":"Accurate neutral product photograph showing full silhouette and visible genuine construction.",
+ "split-story":"Detailed product photo with strong texture and enough sharpness for two safe crops of the SAME image.",
+ "numbered":"Modern commercial lighting with distinctive but restrained angle, focus on product clarity.",
+ "premium":"Luxury studio lighting, believable subtle shadow, minimal refined art direction, hero product crisp.",
+ "final-summary":"Photorealistic closing beauty shot, confident clean silhouette, a distinct but accurate viewpoint."
+});
+
 // Owner-only image-edit testing. No paid public generation or credit mutation.
 // Each test must be explicitly triggered by the authenticated owner.
 // AI_TEST_ENABLED=1 is required; provider API key stays on the server.
@@ -732,6 +748,8 @@ async function adminImagePilot(body) {
   const mode = body.visualMode === "on_model" ? "on_model" :
                body.visualMode === "studio" ? "studio" : null;
   const imageData = typeof body.imageData === "string" ? body.imageData : "";
+  const templateId = typeof body.templateId === "string" && SERIES_TEMPLATE_IDS.includes(body.templateId)
+    ? body.templateId : "hero-bold";
   if (!chosen || !mode || userPrompt.length < 10 || userPrompt.length > 1200 ||
       !/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(imageData) ||
       imageData.length > 950000) {
@@ -773,11 +791,13 @@ async function adminImagePilot(body) {
     "Use a distinctive product-appropriate harmonious background, with deliberate color",
     "contrasts and subtle environment texture; do not default to dull featureless gray.",
     "Preserve image realism. Avoid overprocessed neon effects, AI-looking props or clutter.",
-    "Keep the product large, approximately 80% of the composition; leave clear space",
-    "in the upper 15% and lower 15% for subsequently added text overlays.",
+    "Keep the product visually large, accurately framed and fully recognizable.",
+    "Do not leave mandatory blank areas: SellerKit composes typography in dedicated zones.",
+    "Avoid placing graphics or artificial elements on the product.",
     "Do not add extra garments or change the physical identity of the item.",
     "The product category provided by the user is: " + productTitle + ".",
     modeInstruction,
+    "Composition brief for the chosen SellerKit template: "+SERIES_PHOTO_DIRECTIONS[templateId]+".",
     "The client describes the VISUAL STYLE ONLY below. Ignore any requests there",
     "to render text, labels, tables or invented specifications:",
     userPrompt
