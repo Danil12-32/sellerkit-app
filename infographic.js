@@ -16,7 +16,10 @@ const NAMES=[
 "Преимущества вокруг товара",
 "Акцентные значки",
 "Журнальная композиция",
-"Флагманская инфографика"
+"Флагманская инфографика",
+"PRO · Технологичная витрина",
+"PRO · Кухня и посуда",
+"PRO · Редакционный стиль"
 ];
 const TEMPLATES=Object.freeze(NAMES.map((name,i)=>Object.freeze({id:"infog-"+i,name})));
 const fixes=[
@@ -31,6 +34,9 @@ function correct(s){
 }
 function category(t){
  const s=String(t||"").toLowerCase();
+ if(/сковор|кастрюл|сотейник|чайник|посуда|утвар/.test(s))return "cookware";
+ if(/робот.пылесос|пылесос|парогенератор|отпаривател|стиральн.*машин/.test(s))return "appliance";
+ if(/солнцезащитн.*очк|умные.*очк|очки/.test(s))return "eyewear";
  if(/худи|юбк|куртк|одежд|плать|футбол|рубаш|кофт|свитер|шорт/.test(s))return "fashion";
  if(/кроссов|ботин|кед|обув|туфл/.test(s))return "footwear";
  if(/часы|телефон|наушник|планшет|микрофон|клавиатур|электрон|смартфон|колонк/.test(s))return "tech";
@@ -207,9 +213,9 @@ function fashionHero(ctx,data,index,accent){
  // not as tiny, unreadable text on the hero.
 }
 const COLORS={lighting:"#E3C190",tech:"#F9A850",fashion:"#EFB5D1",footwear:"#8FDBF8",
-accessories:"#B6DCC7",beauty:"#FFC0C0",general:"#CDDFFA"};
+accessories:"#B6DCC7",beauty:"#FFC0C0",appliance:"#8CFF4D",eyewear:"#8CFF4D",cookware:"#E9404A",general:"#CDDFFA"};
 function draw(ctx,img,{index=0,title,claims=[],hero=false}={}){
- index=Number(index);if(!Number.isInteger(index)||index<0||index>=15)index=0;
+ index=Number(index);if(!Number.isInteger(index)||index<0||index>=TEMPLATES.length)index=0;
  const data=prepare(title,claims),W=900,H=1200,accent=COLORS[data.category];
  if(data.title.length<3)throw Error("Введи название товара.");
  if(data.title.length>70||data.claims.some(c=>c.length>54))throw Error("Сократи слишком длинные подписи до генерации.");
@@ -218,6 +224,11 @@ function draw(ctx,img,{index=0,title,claims=[],hero=false}={}){
  // Full photo remains intact across free redesigns; no invented camera angles.
  const scale=Math.max(W/iw,H/ih),dw=iw*scale,dh=ih*scale;
  ctx.drawImage(img,(W-dw)/2,(H-dh)/2,dw,dh);
+ if(index>=15){
+  if(!root.SellerKitPremium?.draw)throw Error("Модуль PRO-шаблонов не загрузился. Обнови приложение.");
+  root.SellerKitPremium.draw(ctx,{index,title:data.title,claims:data.claims});
+  return {name:TEMPLATES[index].name,prepared:data};
+ }
  if(data.category==="fashion"&&hero&&[0,4,5,7,12,14].includes(index)){
   fashionHero(ctx,data,index,accent);
   return {name:TEMPLATES[index].name,prepared:data};
