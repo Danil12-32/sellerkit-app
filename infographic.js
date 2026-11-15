@@ -171,11 +171,13 @@ function fashionSticker(ctx,value,x,y,w,h,accent,variant=0){
 }
 function fashionHero(ctx,data,index,accent){
  const title=fashionLabel(data.title);
- const g=ctx.createLinearGradient(0,0,0,385);
- g.addColorStop(0,"rgba(249,238,233,.96)");
- g.addColorStop(.42,"rgba(249,238,233,.60)");
+ // Keep the model's face visible. Brighten only the left headline zone,
+ // instead of washing out the entire top of the fashion photograph.
+ const g=ctx.createLinearGradient(0,0,735,0);
+ g.addColorStop(0,"rgba(249,238,233,.89)");
+ g.addColorStop(.45,"rgba(249,238,233,.42)");
  g.addColorStop(1,"rgba(249,238,233,0)");
- ctx.fillStyle=g;ctx.fillRect(0,0,900,385);
+ ctx.fillStyle=g;ctx.fillRect(0,0,735,326);
  // Big category typography as in a designed marketplace cover.
  const isMinimal=index===4, isDark=index===5, isTech=index===14;
  const headingColor=isDark?"#342621":"#2B2423";
