@@ -668,9 +668,17 @@ SEO Analytics
 <option value="sport">Спорт</option>
 <option value="automotive">Автотовары</option>
 <option value="food">Еда / напитки</option>
+<option value="pets">Для питомцев</option>
+<option value="grooming">Расчёски и уход</option>
+<option value="mats">Коврики и покрытия</option>
+<option value="organizers">Органайзеры и хранение</option>
+<option value="stationery">Канцелярия</option>
+<option value="garden">Сад и дача</option>
+<option value="kids">Детские товары</option>
+<option value="tools">Инструменты</option>
 <option value="universal">Другое</option>
 </select>
-<p class="muted" style="font-size:12px">SellerKit автоматически выбирает один из 16 сценариев. Это не новая платная модель.</p>
+<p class="muted" style="font-size:12px">SellerKit автоматически выбирает один из 24 сценариев. Это не новая платная модель.</p>
 </details>
 <div id="aiGuideReadyFields" style="display:none">
 <label for="aiGuideReadyBrief">Вставь своё ТЗ</label>
@@ -1654,7 +1662,7 @@ function seriesBuildFreeDemo(){
 }
 
 // Persist text plans locally so an app restart does not require another paid Qwen call.
-const SERIES_PLAN_KEY="sellerkit-series-last-plan-v2";
+const SERIES_PLAN_KEY="sellerkit-series-last-plan-v1";
 function seriesSaveCachedPlan(result){
  try{
   localStorage.setItem(SERIES_PLAN_KEY,JSON.stringify({
@@ -1715,6 +1723,14 @@ const SERIES_CATEGORY_LAYOUTS=Object.freeze({
  sport:["diagonal-cut","hero-bold","tech-grid","feature-right","detail-focus","benefit-grid","numbered"],
  automotive:["spec-cards","feature-left","detail-focus","tech-grid","cover-frame","numbered","two-crops"],
  food:["premium","cover-frame","soft-pastel","fabric-macro","hero-bold","editorial","bottom-wave"],
+ pets:["editorial","feature-left","detail-focus","icon-trio","photo-grid","airy-minimal","bottom-wave"],
+ grooming:["photo-inset","detail-focus","premium","arc-accent","icon-trio","fabric-macro","soft-pastel"],
+ mats:["hero-bold","split-story","fabric-macro","spec-cards","detail-focus","airy-minimal","cover-frame"],
+ organizers:["spec-cards","feature-right","photo-grid","detail-focus","cover-frame","icon-trio","benefit-grid"],
+ stationery:["editorial","airy-minimal","photo-grid","feature-right","premium","cover-frame"],
+ garden:["lookbook","feature-right","detail-focus","airy-minimal","benefit-grid","photo-inset"],
+ kids:["soft-pastel","arc-accent","photo-inset","icon-trio","lookbook","benefit-grid"],
+ tools:["tech-grid","spec-cards","feature-left","detail-focus","numbered","split-story","premium-border"],
  universal:["hero-bold","editorial","cover-frame","photo-inset","benefit-grid","premium","arc-accent","final-summary"]
 });
 function seriesCategory(){
@@ -1734,7 +1750,15 @@ function seriesCategory(){
  if(/плед|подушк|постельн|ковр|полотенц/.test(name))return "home_textile";
  if(/игруш|кукл|машинк|конструктор|пазл/.test(name))return "toys";
  if(/гантел|коврик.*спорт|спортинвентар|фитнес/.test(name))return "sport";
- if(/авто|органайзер|автомобил|держатель/.test(name))return "automotive";
+ if(/авто|автомобил|держатель/.test(name))return "automotive";
+ if(/кошк|собак|питом|животн|когтеточ|поводок/.test(name))return "pets";
+ if(/чесалк|расческ|расч[её]ск|щетк.*волос/.test(name))return "grooming";
+ if(/коврик|дорожк|йога.?мат/.test(name))return "mats";
+ if(/органайзер|хранение|хранен/.test(name))return "organizers";
+ if(/тетрад|блокнот|карандаш|пенал|канцеляр/.test(name))return "stationery";
+ if(/секатор|лейка|садов|дачн/.test(name))return "garden";
+ if(/коляск|подгузник|детск.*товар/.test(name))return "kids";
+ if(/дрель|шуруповерт|шуруповёрт|отвертк|инструмент/.test(name))return "tools";
  if(/кофе|чай|шоколад|конфет|печенье/.test(name))return "food";
  return "universal";
 }
