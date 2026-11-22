@@ -278,7 +278,7 @@ nav button.active{
 .designSign{isolation:isolate;position:relative;overflow:hidden;display:grid;align-content:center;gap:3px;min-height:110px;border-radius:18px;padding:16px 22px;color:white;text-decoration:none;background:radial-gradient(ellipse at 90% 125%,#fb9974 0%,transparent 44%),radial-gradient(ellipse at 75% 5%,#9566f6 0%,transparent 55%),linear-gradient(115deg,#22203a,#574083 65%,#77a5ce)}
 .designSign::after{content:"";position:absolute;z-index:-1;inset:-80% -18% -65% 55%;transform:rotate(32deg);background:repeating-radial-gradient(ellipse at 40% 50%,transparent 0 10px,#ffffff59 11px 12px,transparent 13px 23px)}
 .designSign span{font-size:14px;letter-spacing:.06em;color:#eadfff}.designSign strong{font-size:clamp(23px,5vw,34px)}
-</style><style>.extraCosts summary{padding:13px;border:1px solid #478c68;border-radius:10px;background:#173327;color:#a8f0bf;font-weight:600}#logDetail,#expenses{color:#f0ae9e}</style><style>.costPanel{margin:20px 0;padding:15px;border-radius:16px;background:#172c24;border:1px solid #426852}.costPanel h3{margin:0 0 5px}.costPanel .grid{margin-top:12px}.costPanel label{padding:7px;margin:0;color:#d2e7da}.costPanel input{display:block;margin-top:6px}.costPanel label:focus-within{color:#91efac}.saveProduct{flex:1;font-weight:700;min-height:46px}</style></head>
+</style><style>.extraCosts summary{padding:13px;border:1px solid #478c68;border-radius:10px;background:#173327;color:#a8f0bf;font-weight:600}#logDetail,#expenses{color:#f0ae9e}</style><style>.costPanel{margin:20px 0;padding:15px;border-radius:16px;background:#172c24;border:1px solid #426852}.costPanel h3{margin:0 0 5px}.costPanel .grid{margin-top:12px}.costPanel label{padding:7px;margin:0;color:#d2e7da}.costPanel input{display:block;margin-top:6px}.costPanel label:focus-within{color:#91efac}.saveProduct{flex:1;font-weight:700;min-height:46px}</style><style>.ratesLink{width:100%;text-align:left;background:linear-gradient(110deg,#8ff2b7,#7bdabf);padding:16px 19px;color:#103c29;box-shadow:0 0 18px #63d69330;font-weight:750}.ratesLink b{float:right}.ratesLink small{display:block;color:#24533f;font-weight:500}.rateScroll{overflow:auto;margin:14px 0}.rateScroll table{width:100%;border-collapse:collapse;font-size:13px}.rateScroll th,.rateScroll td{padding:9px 6px;border-bottom:1px solid #345046;text-align:left}.rateScroll caption{text-align:left;color:#9de1b9;margin:8px 0}</style></head>
 <body>
 <main>
 
@@ -295,7 +295,7 @@ nav button.active{
 <section class="page" id="calc">
 <div class="card">
 <h2>📊 Юнит-экономика</h2>
-<details><summary>Тарифы WB и ориентиры расчёта</summary><p>Пример из предоставленной таблицы. Для рабочего расчёта укажи свою ставку по категории и складу.</p><p>Одежда и обувь · WB 24.5% · выкуп 35%</p><p>Красота и уход · WB 22% · выкуп 70%</p><p>Электроника и гаджеты · WB 17% · выкуп 78%</p><p>Дом и кухня · WB 21.5% · выкуп 62%</p><p>Детские товары · WB 20% · выкуп 58%</p><p>Спорт и туризм · WB 21% · выкуп 55%</p><p>Автотовары · WB 18% · выкуп 80%</p><p>Зоотовары · WB 20% · выкуп 75%</p><p>Канцелярия и хобби · WB 21% · выкуп 72%</p><p>S · до 1 л · отправка 55 ₽ · возврат 50 ₽ · хранение 3 ₽/мес.</p><p>M · свыше 1 до 5 л · отправка 95 ₽ · возврат 50 ₽ · хранение 8 ₽/мес.</p><p>L · свыше 5 до 25 л · отправка 165 ₽ · возврат 65 ₽ · хранение 20 ₽/мес.</p><p>XL · свыше 25 л · отправка 320 ₽ · возврат 90 ₽ · хранение 48 ₽/мес.</p><button id="applyRates" type="button">Подставить пример для выбранной категории</button></details>
+<button class="ratesLink" onclick="openPage('rateGuide')">Тарифы площадок <b>→</b><small>Комиссия, выкуп и доставка</small></button>
 <label>Название товара · необязательно<input id="productName" type="text"  value=""></label><div class="grid"><label>Категория<select id="category"><option>Одежда и обувь</option><option>Красота и уход</option><option>Электроника и гаджеты</option><option>Дом и кухня</option><option>Детские товары</option><option>Спорт и туризм</option><option>Автотовары</option><option>Зоотовары</option><option>Канцелярия и хобби</option></select></label><label>Площадка<select id="market"><option>Wildberries</option><option>Ozon</option><option>Авито</option><option>Яндекс Маркет</option></select></label><label>Размер посылки<select id="size"><option>S · до 1 л</option><option>M · свыше 1 до 5 л</option><option>L · свыше 5 до 25 л</option><option>XL · свыше 25 л</option></select></label><label>Схема работы<select id="scheme"><option>FBO / FBY</option><option>FBS</option><option>DBS / доставка продавца</option><option>Другая</option></select></label></div><h3>Основные данные</h3><div class="grid"><label>Цена продажи, ₽<input id="price" type="number" min="0" step="any" value=""></label><label>Закуп за единицу, ₽<input id="cost" type="number" min="0" step="any" value=""></label><label>Комиссия, %<input id="commission" type="number" min="0" step="any" value=""></label><label>Выкуп, %<input id="buyout" type="number" min="0" step="any" value="100"></label><label>Отправка заказа, ₽<input id="logistics" type="number" min="0" step="any" value=""></label><label>Обратная доставка, ₽<input id="reverse" type="number" min="0" step="any" value="0"></label><label>Продажи из партии, шт.<input id="quantity" type="number" min="0" step="any" value="1"></label></div><section class="costPanel"><h3>Дополнительные расходы</h3><small>Заполни только свои расходы. Пустое поле считается за 0.</small><div class="grid"><label>Эквайринг, %<input id="acquiring" type="number" min="0" step="any" value="0"></label><label>Обработка на продажу, ₽<input id="handling" type="number" min="0" step="any" value="0"></label><label>Упаковка на продажу, ₽<input id="packaging" type="number" min="0" step="any" value="0"></label><label>Хранение в месяц, ₽<input id="storage" type="number" min="0" step="any" value="0"></label><label>Месяцев хранения<input id="months" type="number" min="0" step="any" value="1"></label><label>Доставка до склада на единицу, ₽<input id="delivery" type="number" min="0" step="any" value="0"></label><label>Прочие потери от возвратов на продажу, ₽<input id="returns" type="number" min="0" step="any" value="0"></label><label>Реклама, %<input id="ads" type="number" min="0" step="any" value="0"></label><label>Налог с выручки, %<input id="tax" type="number" min="0" step="any" value="0"></label><label>Прочие расходы на единицу, ₽<input id="other" type="number" min="0" step="any" value="0"></label></div></section><p id="logDetail"></p><div class="actions">
 <button class="saveProduct" onclick="saveCalc()">Сохранить расчёт товара</button>
 <button class="secondary" onclick="resetCalc()">Сбросить</button>
@@ -326,7 +326,7 @@ nav button.active{
 </div>
 </section>
 
-<!-- SEO -->
+<section class="page" id="rateGuide"><button class="back" onclick="openPage('calc')">← К расчёту</button><div class="card"><h2>Тарифы площадок</h2><p>Примеры для предварительного расчёта. Точную комиссию возьми из своего кабинета. Выкуп — доля оплаченных и полученных заказов продавца.</p><div class="rateScroll"><table><caption>Комиссия, % · пример</caption><tr><th>Категория</th><th>WB</th><th>Ozon</th><th>Авито</th><th>Яндекс</th></tr><tr><th>Одежда и обувь</th><td>24.5</td><td>24</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Красота и уход</th><td>22</td><td>19</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Электроника и гаджеты</th><td>17</td><td>15</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Дом и кухня</th><td>21.5</td><td>18</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Детские товары</th><td>20</td><td>17</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Спорт и туризм</th><td>21</td><td>18</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Автотовары</th><td>18</td><td>15</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Зоотовары</th><td>20</td><td>17</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Канцелярия и хобби</th><td>21</td><td>18</td><td>свой тариф</td><td>свой тариф</td></tr></table></div><h3>Выкуп</h3><p>Считай отдельно для каждой площадки: выкупы ÷ завершённые заказы × 100. Например, 82 из 100 — это 82%.</p><div class="rateScroll"><table><caption>Пример расходов на посылку, ₽</caption><tr><th>Объём</th><th>Отправка</th><th>Возврат</th><th>Хранение / мес.</th></tr><tr><th>до 1 л</th><td>55</td><td>50</td><td>3</td></tr><tr><th>1–5 л</th><td>95</td><td>50</td><td>8</td></tr><tr><th>5–25 л</th><td>165</td><td>65</td><td>20</td></tr><tr><th>свыше 25 л</th><td>320</td><td>90</td><td>48</td></tr></table></div><button id="applyRates">Подставить пример комиссии и логистики</button></div></section><!-- SEO -->
 <section class="page" id="seo">
 <div class="card">
 <h2>🔎 Поисковые запросы WB</h2>
@@ -775,8 +775,7 @@ nav button.active{
 <button class="secondary" style="margin-top:12px" id="refreshBalanceBtn" onclick="loadTelegramBalance(true)">🔄 Обновить баланс</button>
 <button class="secondary" style="margin-top:10px;display:none" id="profileServerCheckBtn" onclick="checkProfileServer()">🔌 Проверить сервер и баланс</button>
 <p class="muted" id="profileServerCheckStatus" role="status" aria-live="polite"></p>
-<button class="secondary wide" disabled>
-Тарифы · оплата пока недоступна
+<button class="secondary wide" onclick="openPage('plans')">Посмотреть подписки →
 </button>
 </div>
 
@@ -847,14 +846,14 @@ nav button.active{
 </section>
 
 <!-- БОНУСЫ -->
-<section class="page" id="bonuses">
+<section class="page" id="plans"><button class="back" onclick="openPage('profile')">← В профиль</button><div class="card"><h2>Подписки</h2><p>Предварительные условия. Продажи ещё не открыты.</p><p>Пробный доступ · 5 дней · 3 генерации</p><p>Неделя · 350 ₽ · 30 генераций</p><p>Месяц · 990 ₽ · 120 генераций</p></div></section><section class="page" id="bonuses">
 <button class="back" onclick="openPage('profile')">← В профиль</button>
 <div class="card">
 <h2>🎁 Бонусы</h2>
 <p>Бонусная программа пока не запущена.</p>
 
 <div class="notice">
-🎁 Начисление бонусов за приглашения временно отключено. Правила появятся после подключения защищённого баланса токенов и оплаты.
+Планируемый бонус: приглашённому другу — 7 дополнительных дней после первой оплаты. Одна награда на Telegram ID. Лимит генераций сохраняется.
 </div>
 
 <p>Бонусный баланс: <b>0</b> <small>(пока не подключён)</small></p>
@@ -4317,8 +4316,15 @@ $("makeText").onclick=async()=>{
  if(payload.length>16000){status.textContent="Сократи текст переписки.";return}
  $("makeText").disabled=true;status.textContent="Готовим ответ…";
  try{
- const res=await fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({action:"seller_text",initData,tool:currentForm[0],input:payload})});
- const data=await res.json().catch(()=>({}));if(version!==requestVersion)return;
+ const send=()=>fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({action:"seller_text",initData,tool:currentForm[0],input:payload})});
+ let res=await send(), data=await res.json().catch(()=>({}));
+ if(res.status===429 && data.error==="PROVIDER_HTTP_429" && (data.retryAfter??4)<=10){
+ status.textContent="Провайдер ограничил частоту. Повторяем один раз…";
+ await new Promise(resolve=>setTimeout(resolve,1000*Math.max(3,data.retryAfter??4)));
+ if(version!==requestVersion)return;
+ res=await send();data=await res.json().catch(()=>({}));
+ }
+ if(version!==requestVersion)return;
  if(!res.ok||typeof data.answer!=="string")throw Error("HTTP "+res.status+(typeof data.error==="string"?" · "+data.error:""));
  resultBlocks($("toolAnswer"),data.answer);status.textContent="Готово";
  try{localStorage.setItem(historyKey,JSON.stringify([{title:currentForm[1]+" · "+input.slice(0,45),answer:data.answer},...historyItems()].slice(0,30)));renderTextHistory()}catch{status.textContent="Готово. История устройства недоступна."}
@@ -4344,7 +4350,7 @@ function drawPins(){const list=$("pinList"),choices=$("pinChoices");list.replace
 }renderEconomy();
 $("applyRates").onclick=()=>{const cat=$("category").selectedIndex,size=$("size").selectedIndex,market=$("market").value;
 if(!["Wildberries","Ozon"].includes(market)){alert("Для этой площадки введи собственные тарифы.");return}
-$("commission").value=(market==="Wildberries"?[24.5,22,17,21.5,20,21,18,20,21]:[24,19,15,18,17,18,15,17,18])[cat];$("buyout").value=[35,70,78,62,58,55,80,75,72][cat];$("logistics").value=[55,95,165,320][size];$("reverse").value=[50,50,65,90][size];$("storage").value=[3,8,20,48][size];calculate()};</script><script>const slides=[["offers","Собери пять офферов для товара","Подобрать предложение","✦","#7ae2a3"],["seo","Узнай, как покупатели ищут твой товар","Найти запросы WB","⌕","#92c6f0"],["audit","Посмотри на карточку глазами покупателя","Разобрать карточку","◇","#bea8ee"],["ad","Преврати факты о товаре в объявление","Собрать объявление","✎","#f2be8c"],["trainer","Отработай сложный разговор с покупателем","Начать тренировку","◌","#f3a4b7"],["ideas","Найди идеи для следующей закупки","Подобрать товар","✧","#8edcce"]];let slideIndex=0;function showSlide(index){slideIndex=(index+slides.length)%slides.length;const [key,title,cta,icon,color]=slides[slideIndex];$("featureTitle").textContent=title;$("featureAction").textContent=cta+" →";$("featureIcon").textContent=icon;$("carousel").style.setProperty("--slide",color);$("featureSlide").onclick=()=>key==="seo"?openPage("seo"):startTool(key);Array.from($("slideDots").children).forEach((b,i)=>b.setAttribute("aria-current",String(i===slideIndex)))}for(const [i,slide] of slides.entries()){const b=document.createElement("button");b.setAttribute("aria-label",slide[1]);b.onclick=()=>showSlide(i);$("slideDots").append(b)}showSlide(0);
+$("commission").value=(market==="Wildberries"?[24.5,22,17,21.5,20,21,18,20,21]:[24,19,15,18,17,18,15,17,18])[cat];$("logistics").value=[55,95,165,320][size];$("reverse").value=[50,50,65,90][size];$("storage").value=[3,8,20,48][size];calculate();openPage("calc")};</script><script>const slides=[["offers","Собери пять офферов для товара","Подобрать предложение","✦","#7ae2a3"],["seo","Узнай, как покупатели ищут твой товар","Найти запросы WB","⌕","#92c6f0"],["audit","Посмотри на карточку глазами покупателя","Разобрать карточку","◇","#bea8ee"],["ad","Преврати факты о товаре в объявление","Собрать объявление","✎","#f2be8c"],["trainer","Отработай сложный разговор с покупателем","Начать тренировку","◌","#f3a4b7"],["ideas","Найди идеи для следующей закупки","Подобрать товар","✧","#8edcce"]];let slideIndex=0;function showSlide(index){slideIndex=(index+slides.length)%slides.length;const [key,title,cta,icon,color]=slides[slideIndex];$("featureTitle").textContent=title;$("featureAction").textContent=cta+" →";$("featureIcon").textContent=icon;$("carousel").style.setProperty("--slide",color);$("featureSlide").onclick=()=>key==="seo"?openPage("seo"):startTool(key);Array.from($("slideDots").children).forEach((b,i)=>b.setAttribute("aria-current",String(i===slideIndex)))}for(const [i,slide] of slides.entries()){const b=document.createElement("button");b.setAttribute("aria-label",slide[1]);b.onclick=()=>showSlide(i);$("slideDots").append(b)}showSlide(0);
 let touchX=null,swiped=false;const strip=$("carousel");strip.addEventListener("touchstart",e=>{touchX=e.touches[0].clientX;swiped=false},{passive:true});strip.addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-touchX;if(touchX!==null&&Math.abs(dx)>40){swiped=true;showSlide(slideIndex+(dx<0?1:-1))}touchX=null},{passive:true});strip.addEventListener("click",e=>{if(swiped){e.stopPropagation();swiped=false}},true);
 setInterval(()=>{if(!document.hidden&&$("home").classList.contains("active")&&!strip.matches(":hover,:focus-within")&&touchX===null&&!matchMedia("(prefers-reduced-motion: reduce)").matches)showSlide(slideIndex+1)},6000);</script></body>
 </html>
