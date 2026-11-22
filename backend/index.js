@@ -251,12 +251,24 @@ async function saveReport(telegramUser, category, description, reportId) {
 }
 
 // Telegram push is best-effort. Storing the ticket in YDB is the source of truth.
-let skipTelegramPushUntil = 0;
+async function notifySupport(text) {
+  const token=process.env.TELEGRAM_BOT_TOKEN;
+  const chat=process.env.SELLERKIT_ALERT_CHAT_ID || process.env.SELLERKIT_SUPPORT_CHAT_ID;
+  if (!token || !chat) return "Укажи TELEGRAM_BOT_TOKEN и числовой ID чата для уведомлений.";
+  try {
+    const res=await fetch("https://api.telegram.org/bot"+token+"/sendMessage", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({chat_id:chat,text}),signal:AbortSignal.timeout(6500)
+    });
+    const data=await res.json();
+    if (res.ok && data.ok) return "";
+    if (res.status===403) return "Бот заблокирован получателем. Открой бота с нужного аккаунта и нажми Старт.";
+    if (res.status===400) return "Telegram отклонил запрос. Проверь числовой ID получателя и нажми Старт в боте с этого аккаунта.";
+    if (res.status===401) return "Telegram отклонил токен бота.";
+    return "Telegram вернул HTTP "+res.status+".";
+  } catch { return "Сервер не дождался ответа Telegram. Повтори проверку."; }
+}
 async function pushReportToTelegram(telegramUser, category, description, reportId, name, username) {
-  if (Date.now() < skipTelegramPushUntil) return false;
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.SELLERKIT_SUPPORT_CHAT_ID;
-  if (!token || !chatId) return false;
   const message = [
     "🐞 Новое обращение SellerKit #" + reportId.slice(0, 8),
     "Раздел: " + (BUG_CATEGORIES[category] || category),
@@ -269,23 +281,9 @@ async function pushReportToTelegram(telegramUser, category, description, reportI
     "Полная копия обращения сохранена в YDB и доступна в SellerKit → Обращения."
   ].join("\n");
 
-  try {
-    const result = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: message }),
-      signal: AbortSignal.timeout(2200)
-    });
-    const parsed = await result.json().catch(() => ({}));
-    if (result.ok && parsed?.ok === true) return true;
-    console.error("Support Telegram push rejected:", result.status);
-    if (result.status >= 500 || result.status === 429) skipTelegramPushUntil = Date.now() + 60000;
-    return false;
-  } catch (error) {
-    console.error("Support Telegram push timed out / unavailable:", error?.name || "unknown");
-    skipTelegramPushUntil = Date.now() + 5 * 60000;
-    return false;
-  }
+  const reason=await notifySupport(message);
+  if (reason) console.warn("Support delivery:",reason);
+  return !reason;
 }
 
 async function sendSupportReport(telegramUser, body) {
@@ -1007,7 +1005,7 @@ export async function handler(event) {
       return response(200,{received:true},origin);
     } catch { return response(503,{error:"PAYMENT_CONFIRMATION_PENDING"},origin); }
   }
-  if (!body || !["checkout","access","confirm_manual","seller_text", "me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
+  if (!body || !["test_support_push","checkout","access","confirm_manual","seller_text", "me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -1025,12 +1023,17 @@ export async function handler(event) {
     return response(401, { error: "INVALID_TELEGRAM_AUTH", build: SERVER_BUILD }, origin);
   }
 
+  if (body.action==="test_support_push") {
+    if (!ownerAuthorized(telegramUser)) return response(403,{error:"FORBIDDEN"},origin);
+    const reason=await notifySupport("🔔 SellerKit · проверка уведомлений об обращениях.");
+    return response(200,{message:reason || "Тестовое сообщение доставлено в Telegram."},origin);
+  }
   if (["checkout","access","confirm_manual"].includes(body.action)) {
     if (body.action==="confirm_manual" && !ownerAuthorized(telegramUser)) return response(403,{error:"FORBIDDEN"},origin);
     try {
       const sql = await ydbQuery();
       const id = String(telegramUser.id);
-      const result = body.action==="access" ? await billing.balance(sql,id)
+      const result = body.action==="access" ? {...await billing.balance(sql,id), plusAvailable:true}
         : body.action==="confirm_manual" ? await billing.settle(sql,body.orderId,null)
         : await billing.checkout(sql,id,body.planId,body.method);
       return response(200,result,origin);
