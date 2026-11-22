@@ -46,8 +46,8 @@ export async function settle(sql,id,receipt) {
     const key = "user:"+o.userId;
     const previous = await read(tx,key);
     const now = Date.now();
-    const term = confirmedTerm(o.planId,previous?.until || 0,now);
-    const credits = (previous?.until>now ? previous.credits : 0) + plan.credits;
+    const term = confirmedTerm(o.planId,previous?.trial ? 0 : previous?.until || 0,now);
+    const credits = (!previous?.trial && previous?.until>now ? previous.credits : 0) + plan.credits;
     await write(tx,key,{until:term.until,credits});
     const paid = {...o,paid:true,message:term.message,notified:false};
     await write(tx,id,paid);
@@ -71,8 +71,8 @@ export async function balance(sql,id) {
 export async function reserve(sql,id) {
   return sql.begin(async tx => {
     const key = "user:"+id;
-    const account = await read(tx,key);
-    if (!account || account.until<=Date.now() || account.credits<=0) return false;
+    const account = await read(tx,key) || {until:Date.now()+5*86400000,credits:15,trial:true};
+    if ( account.until<=Date.now() || account.credits<=0) return false;
     await write(tx,key,{...account,credits:account.credits-1});
     return true;
   });
