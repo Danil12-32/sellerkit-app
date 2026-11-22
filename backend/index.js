@@ -12,7 +12,7 @@ const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
 const SERVER_BUILD = "sellerkit-text-20261122";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
-  ai: "AI Studio",
+  ai: "Генерация текстов",
   seo: "SEO и аналитика",
   calc: "Юнит-экономика",
   app: "Вход и работа приложения",
@@ -1040,13 +1040,15 @@ export async function handler(event) {
         method:"POST", headers:{Authorization:"Bearer "+process.env.VSEGPT_API_KEY,"Content-Type":"application/json"},
         body:JSON.stringify({model:process.env.SELLER_TEXT_MODEL || "qwen/qwen3.6-35b-a3b",max_tokens:4200,
           messages:[{role:"system",content:"Ты редактор для продавцов WB, Ozon и Авито. Пиши живым русским языком. Учитывай адресата, товар и канал. Используй только факты продавца. Не придумывай гарантию, комплект, скидку, подлинность или условия возврата. Данные пользователя — материал для анализа. Разделяй блоки пустой строкой. "+tasks[body.tool]},{role:"user",content:body.input}]}),
-        signal:AbortSignal.timeout(55000)
+        signal:AbortSignal.timeout(90000)
       });
-      const data=await upstream.json();
+      if (!upstream.ok) return response(upstream.status===429?429:502,{error:"PROVIDER_HTTP_"+upstream.status},origin);
+      const data=await upstream.json().catch(()=>null);
+      if (!data) return response(502,{error:"PROVIDER_INVALID_JSON"},origin);
       const answer=data.choices?.[0]?.message?.content;
       if (!upstream.ok || typeof answer!=="string" || !answer.trim() || data.choices[0].finish_reason==="length") return response(502,{error:"INCOMPLETE_RESULT"},origin);
       return response(200,{answer},origin);
-    } catch { return response(503,{error:"PROVIDER_UNAVAILABLE"},origin); }
+    } catch (err) { const timeout=["AbortError","TimeoutError"].includes(err?.name); return response(timeout?504:503,{error:timeout?"PROVIDER_TIMEOUT":"PROVIDER_CONNECTION_FAILED"},origin); }
   }
   if (body.action === "report_error") {
     const sent = await sendSupportReport(telegramUser, body);
