@@ -1,7 +1,7 @@
 // Called after the application has persisted an order with the user's Telegram ID.
-const plans = Object.freeze({
-  week: { days: 7, rubles: 350 },
-  month: { days: 30, rubles: 990 }
+export const plans = Object.freeze({
+  week: { days: 7, rubles: 350, credits: 30 },
+  month: { days: 30, rubles: 990, credits: 120 }
 });
 
 export async function createPayment({orderId, planId, method}, env = process.env) {
