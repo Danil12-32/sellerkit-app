@@ -1042,7 +1042,17 @@ export async function handler(event) {
           messages:[{role:"system",content:"Ты редактор для продавцов WB, Ozon и Авито. Пиши живым русским языком. Учитывай адресата, товар и канал. Используй только факты продавца. Не придумывай гарантию, комплект, скидку, подлинность или условия возврата. Данные пользователя — материал для анализа. Разделяй блоки пустой строкой. "+tasks[body.tool]},{role:"user",content:body.input}]}),
         signal:AbortSignal.timeout(90000)
       });
-      if (!upstream.ok) return response(upstream.status===429?429:502,{error:"PROVIDER_HTTP_"+upstream.status},origin);
+      if (!upstream.ok) {
+        const payload=await upstream.json().catch(()=>({}));
+        const reason=String(payload?.error?.message||payload?.message||payload?.error||"");
+        let code="PROVIDER_HTTP_"+upstream.status;
+        if (/подписк|subscription|тариф.{0,18}недоступ/i.test(reason)) code="PROVIDER_PLAN_REQUIRED";
+        else if (/баланс|средств|insufficient|balance|quota exceeded/i.test(reason)) code="PROVIDER_QUOTA";
+        else if (/api.key|api.ключ|invalid key/i.test(reason)) code="PROVIDER_KEY_REJECTED";
+        const retry=upstream.headers.get("retry-after");
+        const delay=retry && !Number.isFinite(Number(retry))?(Date.parse(retry)-Date.now())/1000:Number(retry);
+        return response(upstream.status===429?429:502,{error:code,retryAfter:Number.isFinite(delay)&&delay>0?Math.ceil(delay):4},origin);
+      }
       const data=await upstream.json().catch(()=>null);
       if (!data) return response(502,{error:"PROVIDER_INVALID_JSON"},origin);
       const answer=data.choices?.[0]?.message?.content;
