@@ -1,3 +1,4 @@
+import * as billing from "./billing.mjs";
 import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 import { Driver } from "@ydbjs/core";
 import { query } from "@ydbjs/query";
@@ -998,7 +999,15 @@ export async function handler(event) {
   } catch {
     return response(400, { error: "INVALID_JSON" }, origin);
   }
-  if (!body || !["seller_text", "me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
+  if (body?.status && !body.action) {
+    if (!billing.authentic(event.headers)) return response(403,{error:"UNAUTHORIZED"},origin);
+    if (body.status!=="CONFIRMED") return response(200,{received:true},origin);
+    try {
+      await billing.settle(await ydbQuery(),body.payload,body);
+      return response(200,{received:true},origin);
+    } catch { return response(503,{error:"PAYMENT_CONFIRMATION_PENDING"},origin); }
+  }
+  if (!body || !["checkout","access","confirm_manual","seller_text", "me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -1016,8 +1025,22 @@ export async function handler(event) {
     return response(401, { error: "INVALID_TELEGRAM_AUTH", build: SERVER_BUILD }, origin);
   }
 
+  if (["checkout","access","confirm_manual"].includes(body.action)) {
+    if (body.action==="confirm_manual" && !ownerAuthorized(telegramUser)) return response(403,{error:"FORBIDDEN"},origin);
+    try {
+      const sql = await ydbQuery();
+      const id = String(telegramUser.id);
+      const result = body.action==="access" ? await billing.balance(sql,id)
+        : body.action==="confirm_manual" ? await billing.settle(sql,body.orderId,null)
+        : await billing.checkout(sql,id,body.planId,body.method);
+      return response(200,result,origin);
+    } catch(e) {
+      const reason=["UNKNOWN_ORDER","INVALID_ORDER","PAYMENT_MISMATCH","MERCHANT_NOT_CONFIGURED","NOTIFICATION_PENDING"].includes(e.message)?e.message:"PAYMENT_SERVICE_UNAVAILABLE";
+      return response(503,{error:reason},origin);
+    }
+  }
   if (body.action === "seller_text") {
-    if (!ownerAuthorized(telegramUser)) return response(403, {error:"PILOT_ONLY"}, origin);
+
     const tasks = {
       offers:"Дай пять офферов: от боли, результата, цифры, возражения и сценария. Используй аудиторию, цену, тон и выгоду продавца. Покажи слабую и улучшенную версию, объясни изменения и предложи два варианта для теста.", ideas:"Предложи пять гипотез для закупки в рамках бюджета, покупателя, риск, способ проверки спроса и данные до закупки. Не придумывай частоты и продажи.",
   "reply": "Дай короткий, средний и развёрнутый варианты для отправки, для каждого отдельно укажи когда применять. Затем объясни почему это работает и чего писать нельзя с примерами именно из этой ситуации. При сравнении цен сохрани обе суммы, запроси аналог, если отличия неизвестны.",
@@ -1035,7 +1058,13 @@ export async function handler(event) {
 };
     if (!Object.hasOwn(tasks,body.tool) || typeof body.input !== "string" || !body.input.trim() || body.input.length > 16000) return response(400,{error:"INVALID_INPUT"},origin);
     if (!process.env.VSEGPT_API_KEY) return response(503,{error:"PROVIDER_NOT_CONFIGURED"},origin);
+    let reserved=false;
+    let delivered=false;
     try {
+      if (!ownerAuthorized(telegramUser)) {
+        reserved=await billing.reserve(await ydbQuery(),String(telegramUser.id));
+        if (!reserved) return response(402,{error:"ACCESS_EXHAUSTED"},origin);
+      }
       const upstream = await fetch("https://api.vsegpt.ru/v1/chat/completions", {
         method:"POST", headers:{Authorization:"Bearer "+process.env.VSEGPT_API_KEY,"Content-Type":"application/json"},
         body:JSON.stringify({model:process.env.SELLER_TEXT_MODEL || "qwen/qwen3.6-35b-a3b",max_tokens:4200,
@@ -1057,8 +1086,10 @@ export async function handler(event) {
       if (!data) return response(502,{error:"PROVIDER_INVALID_JSON"},origin);
       const answer=data.choices?.[0]?.message?.content;
       if (!upstream.ok || typeof answer!=="string" || !answer.trim() || data.choices[0].finish_reason==="length") return response(502,{error:"INCOMPLETE_RESULT"},origin);
+      delivered=true;
       return response(200,{answer},origin);
     } catch (err) { const timeout=["AbortError","TimeoutError"].includes(err?.name); return response(timeout?504:503,{error:timeout?"PROVIDER_TIMEOUT":"PROVIDER_CONNECTION_FAILED"},origin); }
+    finally { if (reserved && !delivered) await billing.refund(await ydbQuery(),String(telegramUser.id)); }
   }
   if (body.action === "report_error") {
     const sent = await sendSupportReport(telegramUser, body);
