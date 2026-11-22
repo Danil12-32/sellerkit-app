@@ -846,7 +846,16 @@ nav button.active{
 </section>
 
 <!-- БОНУСЫ -->
-<section class="page" id="plans"><button class="back" onclick="openPage('profile')">← В профиль</button><div class="card"><h2>Подписки</h2><p>Предварительные условия. Продажи ещё не открыты.</p><p>Пробный доступ · 5 дней · 15 генераций на весь период. Без ежедневного пополнения.</p><p>Неделя · 350 ₽ · 30 генераций</p><p>Месяц · 990 ₽ · 120 генераций</p></div></section><section class="page" id="bonuses">
+<section class="page" id="plans">
+<button class="back" onclick="openPage('profile')">← В профиль</button>
+<div class="card"><h2>Подписка SellerKit</h2><p id="billingAccess" aria-live="polite"></p>
+<p>Пробный доступ · 15 генераций на 5 дней с первой генерации.</p>
+<label>Выбери тариф<select id="billingPlan"><option value="week">7 дней · 350 ₽ · 30 генераций</option><option value="month">30 дней · 990 ₽ · 120 генераций</option></select></label>
+<p>Разовая оплата. При продлении оставшиеся дни и генерации сохраняются до конца нового срока.</p>
+<button class="wide" onclick="buyPlan('sbp')">Оплатить по СБП</button>
+<button class="secondary wide" onclick="buyPlan('card')">Оплатить картой</button>
+<button class="secondary wide" onclick="buyPlan('manager')">Оплатить через менеджера</button>
+<p id="billingStatus" role="status"></p></div></section><section class="page" id="bonuses">
 <button class="back" onclick="openPage('profile')">← В профиль</button>
 <div class="card">
 <h2>🎁 Бонусы</h2>
@@ -921,7 +930,7 @@ nav button.active{
 </section>
 
 <!-- АДМИН-ЦЕНТР -->
-<section class="page" id="admin-users">
+<section class="page" id="admin-users"><div class="card"><label>Номер заказа у менеджера<input id="manualOrder"></label><button onclick="approveOrder()">Подтвердить полученный перевод</button><p id="manualStatus" role="status"></p></div>
 <button class="back" onclick="openPage('profile')">← В профиль</button>
 <div class="card">
 <h2>🛡️ Админ-центр</h2>
@@ -1011,6 +1020,7 @@ function toggleAiAdvanced(show){
  element.style.display=(show===true||element.style.display==="none")?"block":"none";
 }
 function openPage(id){
+ if(id==='plans') refreshAccess();
  if(["ai","ai-series"].includes(id))id="functions";
  const page=$(id);
  if(!page)return;
@@ -4330,7 +4340,7 @@ $("makeText").onclick=async()=>{
  resultBlocks($("toolAnswer"),data.answer);status.textContent="Готово";
  try{localStorage.setItem(historyKey,JSON.stringify([{title:currentForm[1]+" · "+input.slice(0,45),answer:data.answer},...historyItems()].slice(0,30)));renderTextHistory()}catch{status.textContent="Готово. История устройства недоступна."}
  if(trainer){turnLog=[...log,{role:"Клиент",text:data.answer}];$("toolInput").value="";$("toolLabel").textContent="Твой ответ клиенту";$("toolInput").placeholder="Напиши, как ответил бы в реальной переписке.";$("makeText").textContent="Отправить реплику"}
- }catch(e){if(version===requestVersion)status.textContent=e.message==="PILOT_ONLY"?"Идёт закрытая проверка текстовых функций.":"Генерация недоступна · "+String(e.message).slice(0,80)}
+ }catch(e){if(version===requestVersion)status.textContent=String(e.message).includes("ACCESS_EXHAUSTED")?"Доступ закончился. Открой Профиль → Подписки.":e.message==="PILOT_ONLY"?"Идёт закрытая проверка текстовых функций.":"Генерация недоступна · "+String(e.message).slice(0,80)}
  finally{if(version===requestVersion)$("makeText").disabled=trainer&&turnLog.length>=12}
 };
 function quickResult(){const i=$("quickType").selectedIndex; $("qa").textContent=["Исходная цена, ₽","Чистая прибыль, ₽","Расходы на рекламу, ₽"][i];$("qb").textContent=["Скидка, %","Вложения, ₽","Выручка, ₽"][i];const a=$("q1").valueAsNumber,b=$("q2").valueAsNumber;$("qr").textContent=!Number.isFinite(a+b)?"Введите оба значения.":(i!==1&&a<0)||(i===0?(b<0||b>100):b<=0)?"Проверь значения.":(i===0?a*(1-b/100):100*a/b).toLocaleString("ru-RU",{maximumFractionDigits:2})+(i===0?" ₽":" %")}
@@ -4353,5 +4363,31 @@ $("applyRates").onclick=()=>{const cat=$("category").selectedIndex,size=$("size"
 if(!["Wildberries","Ozon"].includes(market)){alert("Для этой площадки введи собственные тарифы.");return}
 $("commission").value=(market==="Wildberries"?[24.5,22,17,21.5,20,21,18,20,21]:[24,19,15,18,17,18,15,17,18])[cat];$("buyout").value=[35,70,78,62,58,55,80,75,72][cat];$("logistics").value=[55,95,165,320][size];$("reverse").value=[50,50,65,90][size];$("storage").value=[3,8,20,48][size];calculate();openPage("calc")};</script><script>const slides=[["offers","Собери пять офферов для товара","Подобрать предложение","✦","#7ae2a3"],["seo","Узнай, как покупатели ищут твой товар","Найти запросы WB","⌕","#92c6f0"],["audit","Посмотри на карточку глазами покупателя","Разобрать карточку","◇","#bea8ee"],["ad","Преврати факты о товаре в объявление","Собрать объявление","✎","#f2be8c"],["trainer","Отработай сложный разговор с покупателем","Начать тренировку","◌","#f3a4b7"],["ideas","Найди идеи для следующей закупки","Подобрать товар","✧","#8edcce"]];let slideIndex=0;function showSlide(index){slideIndex=(index+slides.length)%slides.length;const [key,title,cta,icon,color]=slides[slideIndex];$("featureTitle").textContent=title;$("featureAction").textContent=cta+" →";$("featureIcon").textContent=icon;$("carousel").style.setProperty("--slide",color);$("featureSlide").onclick=()=>key==="seo"?openPage("seo"):startTool(key);Array.from($("slideDots").children).forEach((b,i)=>b.setAttribute("aria-current",String(i===slideIndex)))}for(const [i,slide] of slides.entries()){const b=document.createElement("button");b.setAttribute("aria-label",slide[1]);b.onclick=()=>showSlide(i);$("slideDots").append(b)}showSlide(0);
 let touchX=null,swiped=false;const strip=$("carousel");strip.addEventListener("touchstart",e=>{touchX=e.touches[0].clientX;swiped=false},{passive:true});strip.addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-touchX;if(touchX!==null&&Math.abs(dx)>40){swiped=true;showSlide(slideIndex+(dx<0?1:-1))}touchX=null},{passive:true});strip.addEventListener("click",e=>{if(swiped){e.stopPropagation();swiped=false}},true);
-setInterval(()=>{if(!document.hidden&&$("home").classList.contains("active")&&!strip.matches(":hover,:focus-within")&&touchX===null&&!matchMedia("(prefers-reduced-motion: reduce)").matches)showSlide(slideIndex+1)},6000);</script></body>
+setInterval(()=>{if(!document.hidden&&$("home").classList.contains("active")&&!strip.matches(":hover,:focus-within")&&touchX===null&&!matchMedia("(prefers-reduced-motion: reduce)").matches)showSlide(slideIndex+1)},6000);</script><script>
+async function billingRequest(action,fields={}) {
+ const initData=window.Telegram?.WebApp?.initData;
+ if (!initData) throw Error("Открой SellerKit из Telegram.");
+ const res=await fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({action,initData,...fields}),signal:AbortSignal.timeout(25000)});
+ const data=await res.json();
+ if (!res.ok) throw Error(({MERCHANT_NOT_CONFIGURED:"Онлайн-оплата пока не подключена. Можно написать менеджеру.",UNKNOWN_ORDER:"Заказ не найден.",PAYMENT_MISMATCH:"Проверь способ оплаты заказа.",NOTIFICATION_PENDING:"Подписка записана. Повтори подтверждение для отправки сообщения."})[data.error] || "Не удалось связаться с сервером оплаты.");
+ return data;
+}
+async function refreshAccess(){
+ const el=document.getElementById("billingAccess");
+ try {const a=await billingRequest("access");el.textContent=a.until>Date.now()?(a.trial?"Пробный доступ":"Подписка")+" до "+new Date(a.until).toLocaleDateString("ru-RU")+" · Осталось генераций: "+a.credits:a.until?"Срок доступа закончился.":"Пробный доступ ещё не использован.";}catch(e){el.textContent=e.message;}
+}
+async function buyPlan(method){
+ const buttons=document.querySelectorAll("#plans button:not(.back)");
+ const status=document.getElementById("billingStatus");
+ buttons.forEach(b=>b.disabled=true);status.textContent="Готовим заказ…";
+ try {const data=await billingRequest("checkout",{method,planId:document.getElementById("billingPlan").value});
+ const link=document.createElement("a");link.href=data.url;link.textContent=method==="manager"?"Открыть чат с менеджером":"Открыть счёт";status.replaceChildren(link);
+ if(method==="manager") Telegram.WebApp.openTelegramLink(data.url);else Telegram.WebApp.openLink(data.url);
+ }catch(e){status.textContent=e.message;}finally{buttons.forEach(b=>b.disabled=false);}
+}
+async function approveOrder(){
+ const el=document.getElementById("manualStatus");
+ try {el.textContent=(await billingRequest("confirm_manual",{orderId:document.getElementById("manualOrder").value.trim()})).message;}catch(e){el.textContent=e.message;}
+}
+</script></body>
 </html>
