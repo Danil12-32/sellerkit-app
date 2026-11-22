@@ -278,7 +278,7 @@ nav button.active{
 .designSign{isolation:isolate;position:relative;overflow:hidden;display:grid;align-content:center;gap:3px;min-height:110px;border-radius:18px;padding:16px 22px;color:white;text-decoration:none;background:radial-gradient(ellipse at 90% 125%,#fb9974 0%,transparent 44%),radial-gradient(ellipse at 75% 5%,#9566f6 0%,transparent 55%),linear-gradient(115deg,#22203a,#574083 65%,#77a5ce)}
 .designSign::after{content:"";position:absolute;z-index:-1;inset:-80% -18% -65% 55%;transform:rotate(32deg);background:repeating-radial-gradient(ellipse at 40% 50%,transparent 0 10px,#ffffff59 11px 12px,transparent 13px 23px)}
 .designSign span{font-size:14px;letter-spacing:.06em;color:#eadfff}.designSign strong{font-size:clamp(23px,5vw,34px)}
-</style></head>
+</style><style>.extraCosts summary{padding:13px;border:1px solid #478c68;border-radius:10px;background:#173327;color:#a8f0bf;font-weight:600}#logDetail,#expenses{color:#f0ae9e}</style></head>
 <body>
 <main>
 
@@ -296,7 +296,7 @@ nav button.active{
 <div class="card">
 <h2>📊 Юнит-экономика</h2>
 <details><summary>Тарифы WB и ориентиры расчёта</summary><p>Пример из предоставленной таблицы. Для рабочего расчёта укажи свою ставку по категории и складу.</p><p>Одежда и обувь · WB 24.5% · выкуп 35%</p><p>Красота и уход · WB 22% · выкуп 70%</p><p>Электроника и гаджеты · WB 17% · выкуп 78%</p><p>Дом и кухня · WB 21.5% · выкуп 62%</p><p>Детские товары · WB 20% · выкуп 58%</p><p>Спорт и туризм · WB 21% · выкуп 55%</p><p>Автотовары · WB 18% · выкуп 80%</p><p>Зоотовары · WB 20% · выкуп 75%</p><p>Канцелярия и хобби · WB 21% · выкуп 72%</p><p>S · до 1 л · отправка 55 ₽ · возврат 50 ₽ · хранение 3 ₽/мес.</p><p>M · свыше 1 до 5 л · отправка 95 ₽ · возврат 50 ₽ · хранение 8 ₽/мес.</p><p>L · свыше 5 до 25 л · отправка 165 ₽ · возврат 65 ₽ · хранение 20 ₽/мес.</p><p>XL · свыше 25 л · отправка 320 ₽ · возврат 90 ₽ · хранение 48 ₽/мес.</p><button id="applyRates" type="button">Подставить пример для выбранной категории</button></details>
-<label>Название товара · необязательно<input id="productName" type="text"  value=""></label><div class="grid"><label>Категория<select id="category"><option>Одежда и обувь</option><option>Красота и уход</option><option>Электроника и гаджеты</option><option>Дом и кухня</option><option>Детские товары</option><option>Спорт и туризм</option><option>Автотовары</option><option>Зоотовары</option><option>Канцелярия и хобби</option></select></label><label>Площадка<select id="market"><option>Wildberries</option><option>Ozon</option><option>Авито</option><option>Яндекс Маркет</option></select></label><label>Размер посылки<select id="size"><option>S · до 1 л</option><option>M · свыше 1 до 5 л</option><option>L · свыше 5 до 25 л</option><option>XL · свыше 25 л</option></select></label><label>Схема работы<select id="scheme"><option>FBO / FBY</option><option>FBS</option><option>DBS / доставка продавца</option><option>Другая</option></select></label></div><h3>Основные данные</h3><div class="grid"><label>Цена продажи, ₽<input id="price" type="number" min="0" step="any" value=""></label><label>Закуп за единицу, ₽<input id="cost" type="number" min="0" step="any" value=""></label><label>Комиссия, %<input id="commission" type="number" min="0" step="any" value=""></label><label>Выкуп, %<input id="buyout" type="number" min="0" step="any" value="100"></label><label>Отправка заказа, ₽<input id="logistics" type="number" min="0" step="any" value=""></label><label>Обратная доставка, ₽<input id="reverse" type="number" min="0" step="any" value="0"></label><label>Продажи из партии, шт.<input id="quantity" type="number" min="0" step="any" value="1"></label></div><details><summary>Дополнительные расходы · необязательно</summary><div class="grid"><label>Эквайринг, %<input id="acquiring" type="number" min="0" step="any" value="0"></label><label>Обработка на продажу, ₽<input id="handling" type="number" min="0" step="any" value="0"></label><label>Упаковка на продажу, ₽<input id="packaging" type="number" min="0" step="any" value="0"></label><label>Хранение в месяц, ₽<input id="storage" type="number" min="0" step="any" value="0"></label><label>Месяцев хранения<input id="months" type="number" min="0" step="any" value="1"></label><label>Доставка до склада на единицу, ₽<input id="delivery" type="number" min="0" step="any" value="0"></label><label>Прочие потери от возвратов на продажу, ₽<input id="returns" type="number" min="0" step="any" value="0"></label><label>Реклама, %<input id="ads" type="number" min="0" step="any" value="0"></label><label>Налог с выручки, %<input id="tax" type="number" min="0" step="any" value="0"></label><label>Прочие расходы на единицу, ₽<input id="other" type="number" min="0" step="any" value="0"></label></div></details><p id="logDetail"></p><div class="actions">
+<label>Название товара · необязательно<input id="productName" type="text"  value=""></label><div class="grid"><label>Категория<select id="category"><option>Одежда и обувь</option><option>Красота и уход</option><option>Электроника и гаджеты</option><option>Дом и кухня</option><option>Детские товары</option><option>Спорт и туризм</option><option>Автотовары</option><option>Зоотовары</option><option>Канцелярия и хобби</option></select></label><label>Площадка<select id="market"><option>Wildberries</option><option>Ozon</option><option>Авито</option><option>Яндекс Маркет</option></select></label><label>Размер посылки<select id="size"><option>S · до 1 л</option><option>M · свыше 1 до 5 л</option><option>L · свыше 5 до 25 л</option><option>XL · свыше 25 л</option></select></label><label>Схема работы<select id="scheme"><option>FBO / FBY</option><option>FBS</option><option>DBS / доставка продавца</option><option>Другая</option></select></label></div><h3>Основные данные</h3><div class="grid"><label>Цена продажи, ₽<input id="price" type="number" min="0" step="any" value=""></label><label>Закуп за единицу, ₽<input id="cost" type="number" min="0" step="any" value=""></label><label>Комиссия, %<input id="commission" type="number" min="0" step="any" value=""></label><label>Выкуп, %<input id="buyout" type="number" min="0" step="any" value="100"></label><label>Отправка заказа, ₽<input id="logistics" type="number" min="0" step="any" value=""></label><label>Обратная доставка, ₽<input id="reverse" type="number" min="0" step="any" value="0"></label><label>Продажи из партии, шт.<input id="quantity" type="number" min="0" step="any" value="1"></label></div><details class="extraCosts"><summary>Добавить расходы · необязательно</summary><div class="grid"><label>Эквайринг, %<input id="acquiring" type="number" min="0" step="any" value="0"></label><label>Обработка на продажу, ₽<input id="handling" type="number" min="0" step="any" value="0"></label><label>Упаковка на продажу, ₽<input id="packaging" type="number" min="0" step="any" value="0"></label><label>Хранение в месяц, ₽<input id="storage" type="number" min="0" step="any" value="0"></label><label>Месяцев хранения<input id="months" type="number" min="0" step="any" value="1"></label><label>Доставка до склада на единицу, ₽<input id="delivery" type="number" min="0" step="any" value="0"></label><label>Прочие потери от возвратов на продажу, ₽<input id="returns" type="number" min="0" step="any" value="0"></label><label>Реклама, %<input id="ads" type="number" min="0" step="any" value="0"></label><label>Налог с выручки, %<input id="tax" type="number" min="0" step="any" value="0"></label><label>Прочие расходы на единицу, ₽<input id="other" type="number" min="0" step="any" value="0"></label></div></details><p id="logDetail"></p><div class="actions">
 <button onclick="saveCalc()">Сохранить</button>
 <button class="secondary" onclick="resetCalc()">Сбросить</button>
 </div>
@@ -900,11 +900,11 @@ nav button.active{
 <button class="back" onclick="openPage('profile')">← В профиль</button>
 <div class="card">
 <h2>🐞 Нашли ошибку?</h2>
-<p>Выбери, где появилась проблема. Сначала попробуем решить её без обращения к разработчику.</p>
+<p>Опиши, что произошло. Автор увидит обращение и при необходимости свяжется с тобой в Telegram.</p>
 <label for="bugCategory">Где возникла ошибка?</label>
 <select id="bugCategory" onchange="updateBugAdvice()">
 <option value="balance">💰 Баланс и оплата</option>
-<option value="ai">✨ AI Studio</option>
+<option value="ai">Генерация текстов</option>
 <option value="seo">🔎 SEO и аналитика</option>
 <option value="calc">📊 Юнит-экономика</option>
 <option value="app">📱 Вход и работа приложения</option>
@@ -913,12 +913,7 @@ nav button.active{
 <div class="notice" id="bugAdvice" role="status">
 Нажми «Обновить баланс» в профиле. Если не помогло, полностью закрой Mini App и открой его через Telegram заново.
 </div>
-<p><b>Помогло решить проблему?</b></p>
-<div class="actions">
-<button type="button" onclick="bugSolved()">✅ Да, помогло</button>
-<button type="button" class="secondary" onclick="contact('error')">Нет, не помогло · написать автору</button>
-</div>
-<div id="bugReportForm" hidden>
+<div id="bugReportForm">
 <label for="bugDescription">Опиши, что именно произошло</label>
 <textarea id="bugDescription" maxlength="1800" oninput="bugReportId=null" placeholder="Что нажал(а), какой результат ожидал(а) и что появилось вместо него? Сообщение ошибки можно скопировать сюда."></textarea>
 <small>Не отправляйте пароли, токены, коды подтверждения или платёжные данные.</small>
@@ -1024,6 +1019,7 @@ function openPage(id){
  if(["ai","ai-series"].includes(id))id="functions";
  const page=$(id);
  if(!page)return;
+ if(id==="bug")$("bugReportForm").hidden=false;
  if(id==="profile" && typeof loadTelegramBalance==="function")loadTelegramBalance();
  document.querySelectorAll(".page").forEach(p=>{
   p.classList.toggle("active",p.id===id);
@@ -1052,7 +1048,7 @@ function contact(kind){
 let bugReportId=null;
 const BUG_ADVICE = {
  balance:"Если баланс не обновляется: открой «Профиль» → «Обновить баланс». Если ошибка осталась, закрой SellerKit целиком и открой заново через Telegram. Если списались деньги, не повторяй оплату — сообщи об этом разработчику.",
- ai:"Если не получается создать изображение: проверь подключение к интернету и обязательные поля. Если кнопка создания недоступна, отправь сообщение о проблеме с названием действия, которое хотел(а) выполнить.",
+ ai:"При ошибке генерации укажи название инструмента и код под кнопкой. Если ответ задержался, дождись завершения запроса.",
  seo:"Попробуй короткую поисковую фразу и поставь минимальную частотность 0. Учитывай период загруженной базы: запросов вне неё может не быть. Если поиск работает неверно, отправь пример фразы.",
  calc:"Проверь цену, себестоимость, комиссию и расходы. Для прибыли за штуку количество продаж ничего не меняет — оно влияет на общий результат. Укажи, какие цифры ввёл(а), если расчёт кажется неверным.",
  app:"Полностью закрой мини-приложение и открой SellerKit из Telegram ещё раз. Проверь интернет и обнови Telegram. Если ошибка остаётся, опиши, после какой кнопки она возникла.",
@@ -1061,7 +1057,7 @@ const BUG_ADVICE = {
 function updateBugAdvice(){
  const category=$("bugCategory").value;
  $("bugAdvice").textContent=BUG_ADVICE[category]||BUG_ADVICE.other;
- $("bugReportForm").hidden=true;
+ $("bugReportForm").hidden=false;
  bugReportId=null;
  $("bugStatus").textContent="";
 }
@@ -3643,7 +3639,7 @@ function calculate(){
  const cost=num("cost");
  const shipments=100/num("buyout");
  const transport=shipments*num("logistics")+(shipments-1)*num("reverse");
- $("logDetail").textContent="На продажу: "+shipments.toFixed(2)+" отправления · логистика с возвратами "+money(transport);
+ $("logDetail").textContent="На продажу: "+shipments.toFixed(2)+" отправления · расход на логистику с возвратами −"+money(transport);
  const fixed=cost+transport+num("handling")+
   num("packaging")+num("storage")*num("months")+num("delivery")+
   num("returns")+num("other");
@@ -3664,7 +3660,8 @@ function calculate(){
  $("margin").textContent=Number.isFinite(margin)?margin.toFixed(1)+"%":"—";
  $("roi").textContent=Number.isFinite(roi)?roi.toFixed(1)+"%":"—";
  $("breakEven").textContent=money(breakEven);
- $("expenses").textContent=money(expenses);
+ $("expenses").textContent="−"+money(expenses);
+ for(const id of ["margin","roi"])$(id).className=profit<0?"bad":profit>0?"good":"";
  $("planQuantity").textContent=number(quantity);
  $("totalRevenue").textContent=money(revenue);
  $("totalExpenses").textContent=money(totalExpenses);
