@@ -9,7 +9,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-art-director-14";
+const SERVER_BUILD = "sellerkit-text-20261122";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "AI Studio",
@@ -41,8 +41,8 @@ function response(statusCode, payload, origin = "") {
     "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
     "Access-Control-Allow-Headers": "Content-Type"
   };
-  if (origin === FRONTEND_ORIGIN) {
-    headers["Access-Control-Allow-Origin"] = FRONTEND_ORIGIN;
+  if ([FRONTEND_ORIGIN, "https://sellerkit-studio-private.aheadclock1.chatgpt.site"].includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
     headers["Vary"] = "Origin";
   }
   return { statusCode, headers, body: JSON.stringify(payload) };
@@ -1019,6 +1019,7 @@ export async function handler(event) {
   if (body.action === "seller_text") {
     if (!ownerAuthorized(telegramUser)) return response(403, {error:"PILOT_ONLY"}, origin);
     const tasks = {
+      offers:"Дай пять офферов: от боли, результата, цифры, возражения и сценария. Используй аудиторию, цену, тон и выгоду продавца. Покажи слабую и улучшенную версию, объясни изменения и предложи два варианта для теста.", ideas:"Предложи пять гипотез для закупки в рамках бюджета, покупателя, риск, способ проверки спроса и данные до закупки. Не придумывай частоты и продажи.",
   "reply": "Дай короткий, средний и развёрнутый варианты для отправки, для каждого отдельно укажи когда применять. Затем объясни почему это работает и чего писать нельзя с примерами именно из этой ситуации. При сравнении цен сохрани обе суммы, запроси аналог, если отличия неизвестны.",
   "reels": "Пять разных крючков. Покадровый сценарий от нуля ровно до выбранной длительности без пропусков: время, план камеры, действие, короткая реплика и надпись. Два альтернативных финала с целью и метрикой, советы по съёмке именно этого товара и проверка фактов перед публикацией.",
   "plan": "По каждому дню дай тему, формат, конкретный сюжет и призыв. Чередуй демонстрации, вопросы, пользу и продажи.",
