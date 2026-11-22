@@ -287,12 +287,7 @@ nav button.active{
 <h2>Твой рабочий кабинет</h2>
 <p>Все инструменты для работы с карточками товаров в одном месте.</p>
 
-<div class="notice">
-<h3>✨ AI Studio</h3>
-<p>Создание инфографики по фотографии товара прямо в приложении.</p>
-<button onclick="openPage('ai')">Открыть AI Studio</button>
-<button class="secondary" style="margin-top:9px" onclick="openPage('ai-series')">🧠 AI Дизайнер · Комплекты 1–8</button>
-</div>
+<div class="notice"><h3>Инструменты продавца</h3><p>Ответы покупателям, сценарии для съёмки и тексты для карточек.</p><button onclick="openPage('functions')">Выбрать функцию</button></div>
 
 <div class="grid">
 <button class="tile" onclick="openPage('calc')">
@@ -330,6 +325,10 @@ SEO Analytics
 </div>
 </section>
 
+<section class="page" id="functions"><div class="card"><h2>Функции</h2><div class="grid"><button class="tile" onclick="openPage('seo')">Поисковые запросы WB</button><button class="tile" onclick="openPage('utp')">Конструктор УТП</button><button class="tile" onclick="openPage('quick')">Скидки, ROI и ДРР</button><button class="tile" onclick="openPage('textHistory')">История текстов</button><button class="tile" onclick="startTool('reply')">Ответы клиентам</button><button class="tile" onclick="startTool('reels')">Сценарий Reels</button><button class="tile" onclick="startTool('plan')">Контент-план</button><button class="tile" onclick="startTool('utpAI')">Генератор УТП</button><button class="tile" onclick="startTool('review')">Ответ на отзыв</button><button class="tile" onclick="startTool('analysis')">Анализ отзывов</button><button class="tile" onclick="startTool('dialog')">Разбор переписки</button><button class="tile" onclick="startTool('audit')">Разбор карточки</button><button class="tile" onclick="startTool('competitors')">Анализ конкурентов</button><button class="tile" onclick="startTool('ad')">Объявление</button><button class="tile" onclick="startTool('seoText')">SEO-описание</button><button class="tile" onclick="startTool('trainer')">Тренажёр возражений</button></div></div></section>
+<section class="page" id="quick"><div class="card"><h2>Быстрый расчёт</h2><select id="quickType"><option>Цена после скидки</option><option>ROI</option><option>ДРР</option></select><label id="qa"></label><input id="q1" type="number" step="any"><label id="qb"></label><input id="q2" type="number" step="any"><p id="qr" aria-live="polite"></p></div></section>
+<section class="page" id="textForm"><div class="card"><button class="back" onclick="openPage('functions')">← Функции</button><h2 id="toolTitle"></h2><label for="toolInput" id="toolLabel"></label><textarea id="toolInput" maxlength="7000"></textarea><div id="toolOptions"></div><label for="toolContext">Контекст продавца</label><textarea id="toolContext" maxlength="2000" placeholder="Площадка, покупатель, проверенные отличия или условия"></textarea><button id="makeText">Сгенерировать</button><p role="status" id="textStatus"></p><div id="toolAnswer"></div></div></section>
+<section class="page" id="textHistory"><div class="card"><h2>История на этом устройстве</h2><div id="savedTexts"></div></div></section>
 <!-- КАЛЬКУЛЯТОР -->
 <section class="page" id="calc">
 <div class="card">
@@ -1055,13 +1054,7 @@ SEO Analytics
 </main>
 
 <!-- НИЖНЕЕ МЕНЮ -->
-<nav>
-<button data-page="home" class="active" onclick="openPage('home')">🏠<br>Главная</button>
-<button data-page="calc" onclick="openPage('calc')">📊<br>Расчёт</button>
-<button data-page="seo" onclick="openPage('seo')">🔎<br>SEO</button>
-<button data-page="ai" onclick="openPage('ai')">✨<br>AI Studio</button>
-<button data-page="profile" onclick="openPage('profile')">👤<br>Профиль</button>
-</nav>
+<nav style="grid-template-columns:repeat(4,1fr)"><button data-page="home" onclick="openPage('home')" class="active">Главная</button><button data-page="functions" onclick="openPage('functions')" >Функции</button><button data-page="calc" onclick="openPage('calc')" >Расчёт</button><button data-page="profile" onclick="openPage('profile')" >Профиль</button></nav>
 
 <!-- ОКНО ВЫБОРА ПАКЕТА -->
 <div class="modal-overlay" id="packModal">
@@ -1103,6 +1096,7 @@ function toggleAiAdvanced(show){
  element.style.display=(show===true||element.style.display==="none")?"block":"none";
 }
 function openPage(id){
+ if(["ai","ai-series"].includes(id))id="functions";
  const page=$(id);
  if(!page)return;
  if(id==="profile" && typeof loadTelegramBalance==="function")loadTelegramBalance();
@@ -4365,5 +4359,49 @@ $("aiSeriesSlides").addEventListener("input",()=>{
 seriesCostPreview();
 
 </script>
-</body>
+<script>const sellerForms=[["reply","Ответы клиентам","Сообщение клиента","Ситуация|Возражение|Жалоба|Вежливый отказ|Вопрос|Торг","Тон|Нейтральный|Тёплый|Строгий"],["reels","Сценарий Reels","Товар и его особенности","Формат|Распаковка|До и после|Три ошибки|Проблема и решение|Подборка","Длительность|30 секунд|15 секунд|60 секунд"],["plan","Контент-план","Ниша, аудитория и цель","Период|Неделя|Месяц","Канал|Telegram|VK|Короткие видео"],["utpAI","Генератор УТП","Товар, аудитория и подтверждённые характеристики","",""],["review","Ответ на отзыв","Текст отзыва","",""],["analysis","Анализ отзывов","Вставь отзывы, отделяя их пустой строкой","",""],["dialog","Разбор переписки","Диалог с подписями участников","",""],["audit","Разбор карточки","Описание, заголовок и данные о слайдах","",""],["competitors","Анализ конкурентов","Свой товар и предложения конкурентов","",""],["ad","Объявление","Товар, площадка, факты и лимит заголовка","",""],["seoText","SEO-описание","Товар, свойства и ключевые запросы","",""],["trainer","Тренажёр возражений","Товар и условия продавца","Собеседник|Оптовик|Розничный покупатель|Недовольный клиент",""]];
+let currentForm, turnLog=[], requestVersion=0;
+function startTool(key){
+ currentForm=sellerForms.find(row=>row[0]===key);turnLog=[];requestVersion++;
+ $("makeText").disabled=false;$("makeText").textContent="Сгенерировать";$("toolInput").value="";$("toolContext").value="";
+ $("toolTitle").textContent=currentForm[1];$("toolLabel").textContent=currentForm[2];$("toolAnswer").replaceChildren();$("textStatus").textContent="";
+ $("toolOptions").replaceChildren();
+ for(const option of currentForm.slice(3).filter(Boolean)){
+  const [title,...choices]=option.split("|"),label=document.createElement("label"),select=document.createElement("select");
+  label.textContent=title;choices.forEach(x=>select.add(new Option(x,x)));label.append(select);$("toolOptions").append(label);
+ }
+ openPage("textForm");
+}
+function resultBlocks(parent,value){
+ parent.replaceChildren();
+ for(const part of value.split(/\n\s*\n/).filter(Boolean)){
+  const box=document.createElement("div"),p=document.createElement("p"),copy=document.createElement("button");
+  p.style.whiteSpace="pre-wrap";p.textContent=part;copy.className="secondary";copy.textContent="Копировать";
+  copy.onclick=async()=>{try{await navigator.clipboard.writeText(part);copy.textContent="Скопировано"}catch{copy.textContent="Выдели текст для копирования"}};
+  box.append(p,copy);parent.append(box);
+ }
+}
+const historyKey="sellerkit-text-"+(window.Telegram?.WebApp?.initDataUnsafe?.user?.id||"guest");
+function historyItems(){try{return JSON.parse(localStorage.getItem(historyKey)||"[]")}catch{return []}}
+function renderTextHistory(){const el=$("savedTexts");el.replaceChildren();for(const item of historyItems()){const d=document.createElement("details"),t=document.createElement("summary"),box=document.createElement("div");t.textContent=item.title;resultBlocks(box,item.answer);d.append(t,box);el.append(d)}if(!el.children.length)el.textContent="Пока нет сохранённых текстов."}
+renderTextHistory();
+$("makeText").onclick=async()=>{
+ const initData=window.Telegram?.WebApp?.initData, input=$("toolInput").value.trim(), status=$("textStatus");
+ if(!input||!initData){status.textContent=input?"Открой приложение из Telegram.":"Заполни основное поле.";return}
+ const version=requestVersion, trainer=currentForm[0]==="trainer",log=[...turnLog,{role:turnLog.length?"Продавец":"Условия",text:input}];
+ const payload=JSON.stringify({данные:trainer?log:input,контекст:$("toolContext").value,настройки:Array.from($("toolOptions").querySelectorAll("select"),s=>s.value)});
+ if(payload.length>16000){status.textContent="Сократи текст переписки.";return}
+ $("makeText").disabled=true;status.textContent="Готовим ответ…";
+ try{
+ const res=await fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"seller_text",initData,tool:currentForm[0],input:payload})});
+ const data=await res.json();if(version!==requestVersion)return;
+ if(!res.ok||typeof data.answer!=="string")throw Error(data.error||"ERROR");
+ resultBlocks($("toolAnswer"),data.answer);status.textContent="Готово";
+ try{localStorage.setItem(historyKey,JSON.stringify([{title:currentForm[1]+" · "+input.slice(0,45),answer:data.answer},...historyItems()].slice(0,30)));renderTextHistory()}catch{status.textContent="Готово. История устройства недоступна."}
+ if(trainer){turnLog=[...log,{role:"Клиент",text:data.answer}];$("toolInput").value="";$("toolLabel").textContent="Твой ответ клиенту";$("makeText").textContent="Отправить реплику"}
+ }catch(e){if(version===requestVersion)status.textContent=e.message==="PILOT_ONLY"?"Идёт закрытая проверка текстовых функций.":"Генерация недоступна. Введённый текст сохранён в форме."}
+ finally{if(version===requestVersion)$("makeText").disabled=trainer&&turnLog.length>=12}
+};
+function quickResult(){const i=$("quickType").selectedIndex; $("qa").textContent=["Исходная цена, ₽","Чистая прибыль, ₽","Расходы на рекламу, ₽"][i];$("qb").textContent=["Скидка, %","Вложения, ₽","Выручка, ₽"][i];const a=$("q1").valueAsNumber,b=$("q2").valueAsNumber;$("qr").textContent=!Number.isFinite(a+b)?"Введите оба значения.":(i!==1&&a<0)||(i===0?(b<0||b>100):b<=0)?"Проверь значения.":(i===0?a*(1-b/100):100*a/b).toLocaleString("ru-RU",{maximumFractionDigits:2})+(i===0?" ₽":" %")}
+for(const id of ["quickType","q1","q2"])$(id).addEventListener("input",quickResult);quickResult();</script></body>
 </html>

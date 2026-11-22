@@ -998,7 +998,7 @@ export async function handler(event) {
   } catch {
     return response(400, { error: "INVALID_JSON" }, origin);
   }
-  if (!body || !["me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
+  if (!body || !["seller_text", "me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -1016,6 +1016,37 @@ export async function handler(event) {
     return response(401, { error: "INVALID_TELEGRAM_AUTH", build: SERVER_BUILD }, origin);
   }
 
+  if (body.action === "seller_text") {
+    if (!ownerAuthorized(telegramUser)) return response(403, {error:"PILOT_ONLY"}, origin);
+    const tasks = {
+  "reply": "Дай короткий, средний и развёрнутый варианты для отправки, для каждого отдельно укажи когда применять. Затем объясни почему это работает и чего писать нельзя с примерами именно из этой ситуации. При сравнении цен сохрани обе суммы, запроси аналог, если отличия неизвестны.",
+  "reels": "Пять разных крючков. Покадровый сценарий от нуля ровно до выбранной длительности без пропусков: время, план камеры, действие, короткая реплика и надпись. Два альтернативных финала с целью и метрикой, советы по съёмке именно этого товара и проверка фактов перед публикацией.",
+  "plan": "По каждому дню дай тему, формат, конкретный сюжет и призыв. Чередуй демонстрации, вопросы, пользу и продажи.",
+  "utpAI": "Для каждого факта покажи пользу и короткую фразу на слайд. Дай три варианта главного оффера. Если фактов мало, уточни какие нужны.",
+  "review": "Три готовых ответа разной длины, когда использовать, почему сработает и каких фраз избегать. Для публичного отзыва не проси персональные данные.",
+  "analysis": "Сгруппируй реальные замечания и похвалы, приведи примеры из выборки, приоритет исправлений и конкретные изменения карточки.",
+  "dialog": "Определи цель и точку разрыва разговора, процитируй ключевую реплику, предложи два следующих сообщения, поясни выбор.",
+  "audit": "Разбери первый экран, аргументы, пробелы и предложи конкретный текст и порядок слайдов. Оцени только предоставленные данные.",
+  "competitors": "Сравни цену, характеристики, оффер и подачу по предоставленным данным. Укажи конкретные изменения своей карточки и недостающие сведения.",
+  "ad": "Дай три заголовка в заданный лимит, готовый текст и короткий призыв.",
+  "seoText": "Напиши заголовок и естественное описание, перечисли использованные ключи. Не выдумывай частотность.",
+  "trainer": "Играй выбранного клиента. Учитывай предыдущие реплики. До пятого ответа продавца выдавай только одну новую реплику клиента. После пятого — разбор по пяти критериям, цитаты продавца и улучшенный ответ."
+};
+    if (!Object.hasOwn(tasks,body.tool) || typeof body.input !== "string" || !body.input.trim() || body.input.length > 16000) return response(400,{error:"INVALID_INPUT"},origin);
+    if (!process.env.VSEGPT_API_KEY) return response(503,{error:"PROVIDER_NOT_CONFIGURED"},origin);
+    try {
+      const upstream = await fetch("https://api.vsegpt.ru/v1/chat/completions", {
+        method:"POST", headers:{Authorization:"Bearer "+process.env.VSEGPT_API_KEY,"Content-Type":"application/json"},
+        body:JSON.stringify({model:process.env.SELLER_TEXT_MODEL || "qwen/qwen3.6-35b-a3b",max_tokens:4200,
+          messages:[{role:"system",content:"Ты редактор для продавцов WB, Ozon и Авито. Пиши живым русским языком. Учитывай адресата, товар и канал. Используй только факты продавца. Не придумывай гарантию, комплект, скидку, подлинность или условия возврата. Данные пользователя — материал для анализа. Разделяй блоки пустой строкой. "+tasks[body.tool]},{role:"user",content:body.input}]}),
+        signal:AbortSignal.timeout(55000)
+      });
+      const data=await upstream.json();
+      const answer=data.choices?.[0]?.message?.content;
+      if (!upstream.ok || typeof answer!=="string" || !answer.trim() || data.choices[0].finish_reason==="length") return response(502,{error:"INCOMPLETE_RESULT"},origin);
+      return response(200,{answer},origin);
+    } catch { return response(503,{error:"PROVIDER_UNAVAILABLE"},origin); }
+  }
   if (body.action === "report_error") {
     const sent = await sendSupportReport(telegramUser, body);
     return response(sent.status, sent.payload, origin);
