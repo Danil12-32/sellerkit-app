@@ -788,7 +788,7 @@ nav button.active{
 <button class="secondary" style="margin-top:12px" id="refreshBalanceBtn" onclick="loadTelegramBalance()">🔄 Обновить баланс</button>
 <button class="secondary" style="margin-top:10px;display:none" id="profileServerCheckBtn" onclick="checkProfileServer()">🔌 Проверить сервер и баланс</button>
 <p class="muted" id="profileServerCheckStatus" role="status" aria-live="polite"></p>
-<button class="secondary wide" onclick="openPage('plans')">Посмотреть подписки →
+<button class="wide" onclick="openPage('plans')">Оплатить подписку
 </button>
 </div>
 
@@ -865,12 +865,12 @@ nav button.active{
 <div class="card"><h2>Подписка SellerKit</h2><p id="billingAccess" aria-live="polite"></p>
 <p>Пробный доступ · 15 генераций на 5 дней с первой генерации.</p>
 <fieldset class="planCards"><legend>Выбери тариф</legend>
-<label><input type="radio" name="billingPlan" value="week" checked><span><strong>Неделя</strong> <b>350 ₽</b><small>7 дней · 30 генераций</small></span></label><label><input type="radio" name="billingPlan" value="month" ><span><strong>Месяц</strong> <b>990 ₽</b><small>30 дней · 120 генераций</small></span></label><label><input type="radio" name="billingPlan" value="plus" disabled><span><strong>Месяц Плюс</strong> <b>1 250 ₽</b><small>30 дней · 300 генераций</small><em>Выгодно · 4,17 ₽ за генерацию</em><small>На 49% дешевле за генерацию при полном использовании, чем в тарифе «Месяц».</small></span></label>
+<label><input type="radio" name="billingPlan" value="week" checked><span><strong>Неделя</strong> <b>350 ₽</b><small>7 дней · 30 генераций</small></span></label><label><input type="radio" name="billingPlan" value="month" ><span><strong>Месяц</strong> <b>990 ₽</b><small>30 дней · 120 генераций</small></span></label><label><input type="radio" name="billingPlan" value="plus"><span><strong>Месяц Плюс</strong> <b>1 250 ₽</b><small>30 дней · 300 генераций</small><em>Выгодно · 4,17 ₽ за генерацию</em><small>На 49% дешевле за генерацию при полном использовании, чем в тарифе «Месяц».</small></span></label>
 </fieldset>
 <p>Разовая оплата. При продлении оставшиеся дни и генерации сохраняются до конца нового срока.</p>
 <button class="wide" onclick="buyPlan('sbp')">Оплатить по СБП</button>
 <button class="secondary wide" onclick="buyPlan('card')">Оплатить картой</button>
-<button class="secondary wide" onclick="buyPlan('manager')">Написать Данилу об оплате ↗</button>
+<button class="secondary wide" onclick="buyPlan('manager')">Оплатить через менеджера ↗</button>
 <small>Личный Telegram автора · @CardLab100</small><p id="billingStatus" role="status"></p></div></section><section class="page" id="bonuses">
 <button class="back" onclick="openPage('profile')">← В профиль</button>
 <div class="card">
@@ -4320,19 +4320,19 @@ async function billingRequest(action,fields={}) {
  if (!initData) throw Error("Открой SellerKit из Telegram.");
  const res=await fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({action,initData,...fields}),signal:AbortSignal.timeout(25000)});
  const data=await res.json();
- if (!res.ok) throw Error(({MERCHANT_NOT_CONFIGURED:"Онлайн-оплата пока не подключена. Напиши Данилу в Telegram: @CardLab100.",UNKNOWN_ORDER:"Заказ не найден.",PAYMENT_MISMATCH:"Проверь способ оплаты заказа.",NOTIFICATION_PENDING:"Подписка записана. Повтори подтверждение для отправки сообщения."})[data.error] || "Не удалось связаться с сервером оплаты.");
+ if (!res.ok) throw Error(({MERCHANT_NOT_CONFIGURED:"Онлайн-оплата пока не подключена. Напишите менеджеру в Telegram: @CardLab100.",UNKNOWN_ORDER:"Заказ не найден.",PAYMENT_MISMATCH:"Проверь способ оплаты заказа.",NOTIFICATION_PENDING:"Подписка записана. Повтори подтверждение для отправки сообщения."})[data.error] || "Не удалось связаться с сервером оплаты.");
  return data;
 }
 async function refreshAccess(){
  const el=document.getElementById("billingAccess");
- try {const a=await billingRequest("access");document.querySelector('[value="plus"][name="billingPlan"]').disabled=!a.plusAvailable;el.textContent=a.until>Date.now()?(a.trial?"Пробный доступ":"Подписка")+" до "+new Date(a.until).toLocaleDateString("ru-RU")+" · Осталось генераций: "+a.credits:a.until?"Срок доступа закончился.":"Пробный доступ ещё не использован.";}catch(e){el.textContent=e.message;}
+ try {const a=await billingRequest("access");el.textContent=a.until>Date.now()?(a.trial?"Пробный доступ":"Подписка")+" до "+new Date(a.until).toLocaleDateString("ru-RU")+" · Осталось генераций: "+a.credits:a.until?"Срок доступа закончился.":"Пробный доступ ещё не использован.";}catch(e){el.textContent=e.message;}
 }
 async function buyPlan(method){
  const buttons=document.querySelectorAll("#plans button:not(.back)");
  const status=document.getElementById("billingStatus");
  buttons.forEach(b=>b.disabled=true);status.textContent="Готовим заказ…";
  try {const data=await billingRequest("checkout",{method,planId:document.querySelector('[name="billingPlan"]:checked').value});
- const link=document.createElement("a");link.href=data.url;link.textContent=method==="manager"?"Открыть чат с Данилом":"Открыть счёт";status.replaceChildren(link);
+ const link=document.createElement("a");link.href=data.url;link.textContent=method==="manager"?"Открыть чат с менеджером":"Открыть счёт";status.replaceChildren(link);
  if(method==="manager") Telegram.WebApp.openTelegramLink(data.url);else Telegram.WebApp.openLink(data.url);
  }catch(e){status.textContent=e.message;}finally{buttons.forEach(b=>b.disabled=false);}
 }
