@@ -383,6 +383,29 @@ function mapAdminUser(row) {
   };
 }
 
+async function readTelegramChatProfile(telegramId) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return {};
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/getChat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: telegramId }),
+      signal: AbortSignal.timeout(2500)
+    });
+    if (!response.ok) return {};
+    const { ok, result } = await response.json();
+    if (!ok || result?.type !== "private" || String(result.id) !== telegramId) return {};
+    return {
+      firstName: result.first_name,
+      lastName: result.last_name,
+      username: result.username
+    };
+  } catch {
+    return {};
+  }
+}
+
 async function adminUserLookup(rawId) {
   if (typeof rawId !== "string" || !/^[1-9][0-9]{4,15}$/.test(rawId) ||
       BigInt(rawId) > BigInt(Number.MAX_SAFE_INTEGER)) {
@@ -397,7 +420,9 @@ async function adminUserLookup(rawId) {
     `.parameter("id", new Int64(BigInt(rawId)));
     if (!Array.isArray(rows)) throw new Error("BAD_RESULT");
     if (!rows.length) return { status: 404, payload: { error: "USER_NOT_FOUND" } };
-    return { status: 200, payload: { success: true, user: mapAdminUser(rows[0]) } };
+    const user = mapAdminUser(rows[0]);
+    const telegramProfile = await readTelegramChatProfile(user.telegramId);
+    return { status: 200, payload: { success: true, user: { ...user, ...telegramProfile } } };
   } catch (error) {
     console.error("Admin user lookup:", classifyYdbError(error, "ADMIN_LOOKUP_FAILED"));
     return { status: 503, payload: { error: "ADMIN_DB_UNAVAILABLE" } };
