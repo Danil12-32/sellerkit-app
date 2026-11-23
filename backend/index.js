@@ -10,7 +10,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-text-20261122";
+const SERVER_BUILD = "sellerkit-admin-profiles-20261124";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -439,8 +439,17 @@ async function adminRecentUsers() {
       LIMIT 25;
     `;
     if (!Array.isArray(rows)) throw new Error("BAD_RESULT");
-    return { status: 200,
-      payload: { success: true, users: rows.map(mapAdminUser) } };
+    const accounts = rows.map(mapAdminUser);
+    const users = [];
+    // Bound concurrent Bot API calls while preserving the registration order.
+    for (let offset = 0; offset < accounts.length; offset += 8) {
+      const batch = accounts.slice(offset, offset + 8);
+      users.push(...await Promise.all(batch.map(async (account) => ({
+        ...account,
+        ...await readTelegramChatProfile(account.telegramId)
+      }))));
+    }
+    return { status: 200, payload: { success: true, users } };
   } catch (error) {
     console.error("Admin user list:", classifyYdbError(error, "ADMIN_LIST_FAILED"));
     return { status: 503, payload: { error: "ADMIN_DB_UNAVAILABLE" } };
