@@ -10,7 +10,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-text-20261122";
+const SERVER_BUILD = "sellerkit-profile-storage-20261124";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -369,6 +369,48 @@ function ownerAuthorized(telegramUser) {
   );
 }
 
+async function saveTelegramProfile(sql, user) {
+  const name = [user.first_name, user.last_name]
+    .filter((part) => typeof part === "string").join(" ").trim().slice(0, 256);
+  const username = typeof user.username === "string" ? user.username.slice(0, 32) : "";
+  try {
+    await sql`
+      DECLARE $id AS Int64;
+      DECLARE $name AS Utf8;
+      DECLARE $username AS Utf8;
+      UPSERT INTO telegram_profiles (telegram_id, display_name, username)
+      VALUES ($id, $name, $username);
+    `
+      .parameter("id", new Int64(BigInt(user.id)))
+      .parameter("name", new Text(name))
+      .parameter("username", new Text(username));
+  } catch (error) {
+    console.warn("Telegram profile write:", classifyYdbError(error, "PROFILE_WRITE_FAILED"));
+  }
+}
+
+async function addStoredTelegramProfiles(sql, users, lookupId) {
+  if (!users.length) return users;
+  try {
+    const [profiles] = lookupId ? await sql`
+      DECLARE $id AS Int64;
+      SELECT telegram_id, display_name, username FROM telegram_profiles WHERE telegram_id = $id;
+    `.parameter("id", new Int64(BigInt(lookupId))) : await sql`
+      SELECT p.telegram_id AS telegram_id, p.display_name AS display_name, p.username AS username
+      FROM (SELECT telegram_id FROM users ORDER BY created_at DESC LIMIT 25) AS recent
+      INNER JOIN telegram_profiles AS p ON recent.telegram_id = p.telegram_id;
+    `;
+    const byId = new Map(profiles.map((profile) => [String(profile.telegram_id), profile]));
+    return users.map((user) => {
+      const profile = byId.get(user.telegramId);
+      return profile ? { ...user, displayName: profile.display_name, username: profile.username } : user;
+    });
+  } catch (error) {
+    console.warn("Telegram profile read:", classifyYdbError(error, "PROFILE_READ_FAILED"));
+    return users;
+  }
+}
+
 function mapAdminUser(row) {
   const balance = Number(row.balance);
   if (!Number.isSafeInteger(balance) || balance < 0)
@@ -397,7 +439,8 @@ async function adminUserLookup(rawId) {
     `.parameter("id", new Int64(BigInt(rawId)));
     if (!Array.isArray(rows)) throw new Error("BAD_RESULT");
     if (!rows.length) return { status: 404, payload: { error: "USER_NOT_FOUND" } };
-    return { status: 200, payload: { success: true, user: mapAdminUser(rows[0]) } };
+    const [user] = await addStoredTelegramProfiles(sql, [mapAdminUser(rows[0])], rawId);
+    return { status: 200, payload: { success: true, user } };
   } catch (error) {
     console.error("Admin user lookup:", classifyYdbError(error, "ADMIN_LOOKUP_FAILED"));
     return { status: 503, payload: { error: "ADMIN_DB_UNAVAILABLE" } };
@@ -415,7 +458,7 @@ async function adminRecentUsers() {
     `;
     if (!Array.isArray(rows)) throw new Error("BAD_RESULT");
     return { status: 200,
-      payload: { success: true, users: rows.map(mapAdminUser) } };
+      payload: { success: true, users: await addStoredTelegramProfiles(sql, rows.map(mapAdminUser)) } };
   } catch (error) {
     console.error("Admin user list:", classifyYdbError(error, "ADMIN_LIST_FAILED"));
     return { status: 503, payload: { error: "ADMIN_DB_UNAVAILABLE" } };
@@ -1036,6 +1079,7 @@ export async function handler(event) {
       const result = body.action==="access" ? {...await billing.balance(sql,id), plusAvailable:true}
         : body.action==="confirm_manual" ? await billing.settle(sql,body.orderId,null)
         : await billing.checkout(sql,id,body.planId,body.method);
+      if (body.action === "access") await saveTelegramProfile(sql, telegramUser);
       return response(200,result,origin);
     } catch(e) {
       const reason=["UNKNOWN_ORDER","INVALID_ORDER","PAYMENT_MISMATCH","MERCHANT_NOT_CONFIGURED","NOTIFICATION_PENDING"].includes(e.message)?e.message:"PAYMENT_SERVICE_UNAVAILABLE";
@@ -1128,6 +1172,7 @@ export async function handler(event) {
 
   try {
     const user = await profile(telegramUser.id);
+    await saveTelegramProfile(await ydbQuery(), telegramUser);
     return response(200, { success: true, ...user }, origin);
   } catch (error) {
     console.error("SellerKit API /me failed:", error?.message || "internal error");
