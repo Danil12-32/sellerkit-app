@@ -47,7 +47,8 @@ export async function settle(sql,id,receipt) {
     const previous = await read(tx,key);
     const now = Date.now();
     const term = confirmedTerm(o.planId,previous?.trial ? 0 : previous?.until || 0,now);
-    const credits = (!previous?.trial && previous?.until>now ? previous.credits : 0) + plan.credits;
+    const remaining = previous ? (previous.until > now ? previous.credits : 0) : 15;
+    const credits = remaining + plan.credits;
     await write(tx,key,{until:term.until,credits});
     const paid = {...o,paid:true,message:term.message,notified:false};
     await write(tx,id,paid);
