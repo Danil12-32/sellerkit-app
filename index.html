@@ -777,15 +777,15 @@ nav button.active{
 </div>
 
 <div class="balance" style="margin-top:20px">
-<span class="muted">💰 Мой баланс</span>
+<span class="muted">Осталось генераций</span>
 <strong>
 <span id="generationBalance">—</span>
-<span style="font-size:15px;font-weight:400">токенов</span>
+
 </strong>
 <small id="balanceStatus">
 Проверяем баланс через Telegram…
 </small>
-<button class="secondary" style="margin-top:12px" id="refreshBalanceBtn" onclick="loadTelegramBalance(true)">🔄 Обновить баланс</button>
+<button class="secondary" style="margin-top:12px" id="refreshBalanceBtn" onclick="loadTelegramBalance()">🔄 Обновить баланс</button>
 <button class="secondary" style="margin-top:10px;display:none" id="profileServerCheckBtn" onclick="checkProfileServer()">🔌 Проверить сервер и баланс</button>
 <p class="muted" id="profileServerCheckStatus" role="status" aria-live="polite"></p>
 <button class="secondary wide" onclick="openPage('plans')">Посмотреть подписки →
@@ -4131,7 +4131,6 @@ try{
  */
 const SELLERKIT_API_URL="https://functions.yandexcloud.net/d4ec2glf456p8vr34fvu";
 let balanceRequest=null;
-let balanceCheckedAt=0;
 
 async function checkProfileServer(){
  const btn=$("profileServerCheckBtn"),status=$("profileServerCheckStatus");
@@ -4170,9 +4169,6 @@ async function checkProfileServer(){
   }
   const data=await balanceResponse.json().catch(()=>null);
   if(balanceResponse.ok&&data?.success===true&&Number.isSafeInteger(data.balance)){
-   $("generationBalance").textContent=number(data.balance);
-   $("balanceStatus").textContent="Баланс подтверждён сервером SellerKit.";
-   balanceCheckedAt=Date.now();
    status.textContent="✅ Сервер работает (версия "+build+"). Баланс подтверждён: "+data.balance+" токенов в текущей схеме учёта.";
   }else{
    status.textContent="❌ GET работает (версия "+build+"), но запрос баланса вернул HTTP "+balanceResponse.status+
@@ -4185,86 +4181,24 @@ async function checkProfileServer(){
    "❌ Ошибка проверки: "+String(err?.message||err);
  }finally{clearTimeout(timer);btn.disabled=false;}
 }
-async function loadTelegramBalance(force=false){
- const tg=window.Telegram?.WebApp;
+async function loadTelegramBalance(){
  const status=$("balanceStatus");
  const display=$("generationBalance");
  const button=$("refreshBalanceBtn");
- if(!tg?.initData){
-  display.textContent="—";
-  status.textContent="Для просмотра баланса открой SellerKit внутри Telegram.";
-  return;
- }
  if(balanceRequest)return balanceRequest;
- if(!force && balanceCheckedAt && Date.now()-balanceCheckedAt<30000)return;
- status.textContent="Проверяем баланс…";
  button.disabled=true;
- const controller=new AbortController();
- const timeout=setTimeout(()=>controller.abort(),12000);
  balanceRequest=(async()=>{
   try{
-   const response=await fetch(SELLERKIT_API_URL,{
-    method:"POST",
-    headers:{"Content-Type":"text/plain;charset=UTF-8"},
-    body:JSON.stringify({action:"me",initData:tg.initData}),
-    signal:controller.signal,
-    cache:"no-store"
-   });
-   let data;
-   try{ data=await response.json(); }
-   catch{ throw new Error("HTTP_"+response.status+"_INVALID_JSON"); }
-   if(!response.ok || data?.success!==true){
-    const serverCode=typeof data?.error==="string" ? data.error : "SERVER_ERROR";
-    const safeStage=typeof data?.stage==="string" ? data.stage : "";
-    throw new Error("HTTP_"+response.status+"_"+serverCode+(safeStage?"_"+safeStage:""));
-   }
-   if(!Number.isSafeInteger(data.balance) || data.balance<0){
-    throw new Error("INVALID_BALANCE");
-   }
-   display.textContent=number(data.balance);
-   status.textContent="Баланс подтверждён сервером SellerKit.";
-   balanceCheckedAt=Date.now();
+   const access=await billingRequest("access");
+   const active=access.until>Date.now();
+   display.textContent=active?number(access.credits):access.until?"0":"—";
+   status.textContent=active
+    ? (access.trial?"Пробный доступ":"Подписка")+" до "+new Date(access.until).toLocaleDateString("ru-RU")
+    : access.until?"Срок доступа закончился.":"15 пробных генераций на 5 дней с первого запроса.";
   }catch(error){
    display.textContent="—";
-   balanceCheckedAt=0;
-   const code=String(error?.message||"UNKNOWN_ERROR");
-   let explanation;
-   if(code==="HTTP_401_INVALID_TELEGRAM_AUTH"){
-    explanation="Ошибка 401: данные Telegram не прошли проверку. Закрой и заново открой Mini App.";
-   }else if(code.startsWith("HTTP_503_DATABASE_UNAVAILABLE")){
-    const stage=code.replace("HTTP_503_DATABASE_UNAVAILABLE_","");
-    const hints={
-     YDB_CONNECTION_FAILED:"Не удалось подключиться к YDB: проверь адрес базы, сервисный аккаунт и его доступ.",
-     YDB_SELECT_FAILED:"Не выполнено чтение таблицы users: проверь структуру таблицы и права чтения.",
-     YDB_INSERT_FAILED:"Не удалось создать пользователя в users: проверь поля таблицы и права записи.",
-     YDB_TRANSACTION_FAILED:"Сбой транзакции YDB: нужна проверка SQL и настроек базы.",
-     YDB_RESULT_FORMAT_FAILED:"YDB вернула ответ в неожиданном формате. Проверим версию библиотеки и запрос.",
-     YDB_BALANCE_FORMAT_FAILED:"YDB вернула некорректное значение баланса. Проверь тип поля balance.",
-     YDB_PING_FAILED:"Даже простой запрос SELECT 1 не выполнен. Проверь подключение YDB и авторизацию сервисного аккаунта.",
-     YDB_AUTH_FAILED:"YDB отклонила авторизацию сервисного аккаунта. Проверим IAM-токен функции.",
-     YDB_ACCESS_DENIED:"YDB отказала в доступе. Нужно проверить роль на самой базе и сервисный аккаунт функции.",
-     YDB_TYPE_MISMATCH:"Тип параметра не совпал с типом поля таблицы. Исправим запрос.",
-     YDB_SCHEMA_NOT_FOUND:"Сервер не нашёл таблицу или поле. Проверим путь к базе.",
-     YDB_NETWORK_FAILED:"Ошибка сети или времени ожидания при подключении к YDB."
-    };
-    explanation="Ошибка 503 ("+(hints[stage] ? stage : "YDB")+"): "+
-     (hints[stage]||"Сервер не смог прочитать баланс из YDB.");
-   }else if(code.startsWith("HTTP_403") || code.startsWith("HTTP_401")){
-    explanation="Сервер не разрешает вызов (код "+code+"). Проверь публичный доступ Cloud Function.";
-   }else if(code==="AbortError"||error?.name==="AbortError"){
-    explanation="Превышено время ожидания сервера (12 секунд). Проверь функцию и YDB.";
-   }else if(error instanceof TypeError){
-    explanation="Ошибка сети или CORS. Проверь «Публичная функция» и доступ к functions.yandexcloud.net.";
-   }else if(code==="INVALID_BALANCE"){
-    explanation="Ошибка ответа: сервер вернул некорректное значение баланса.";
-   }else{
-    explanation="Ошибка получения баланса: "+code.slice(0,90);
-   }
-   const owner=String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id||"")==="1046253780";
-   status.textContent=owner?explanation:"Не удалось обновить баланс. Попробуй позже или напиши в поддержку.";
-   console.warn("SellerKit balance request:",code);
+   status.textContent=error.message;
   }finally{
-   clearTimeout(timeout);
    button.disabled=false;
   }
  })().finally(()=>{balanceRequest=null;});
@@ -4272,7 +4206,7 @@ async function loadTelegramBalance(force=false){
 }
 
 loadDatabase();
-loadTelegramBalance();
+window.addEventListener('DOMContentLoaded',()=>loadTelegramBalance(),{once:true});
 
 /* Прямая ссылка на AI Studio: ?section=ai и Telegram startapp=ai */
 function openRequestedPage(){
@@ -4352,6 +4286,7 @@ $("makeText").onclick=async()=>{
  res=await send();data=await res.json().catch(()=>({}));
  }
  if(version!==requestVersion)return;
+ if(data.error==="ACCESS_EXHAUSTED")throw Error("Лимит генераций исчерпан или срок доступа закончился.");
  if(!res.ok||typeof data.answer!=="string")throw Error("HTTP "+res.status+(typeof data.error==="string"?" · "+data.error:""));
  resultBlocks($("toolAnswer"),data.answer);status.textContent="Готово";
  try{localStorage.setItem(historyKey,JSON.stringify([{title:currentForm[1]+" · "+input.slice(0,45),answer:data.answer},...historyItems()].slice(0,30)));renderTextHistory()}catch{status.textContent="Готово. История устройства недоступна."}
