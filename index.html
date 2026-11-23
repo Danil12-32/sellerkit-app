@@ -1178,8 +1178,28 @@ function renderAdminUser(user){
  const tgUser=window.Telegram?.WebApp?.initDataUnsafe?.user;
  const profile=String(tgUser?.id)===String(user.telegramId)?tgUser:user;
  const name=[profile.firstName||profile.first_name,profile.lastName||profile.last_name].filter(Boolean).join(" ")||profile.name||profile.displayName;
- const username=profile.username?String(profile.username).replace(/^@/,""):"";
- title.textContent=[name,username?"@"+username:""].filter(Boolean).join(" · ")||"Имя недоступно";
+ const username=String(profile.username||"").trim().replace(/^@/,"");
+ const hasUsername=/^[a-zA-Z0-9_]{1,32}$/.test(username);
+ title.textContent=name||(hasUsername?"":"Telegram-профиль");
+ if(hasUsername){
+  const link=document.createElement("a");
+  link.href="https://t.me/"+username;
+  link.textContent="@"+username;
+  link.style.color="var(--green)";
+  link.addEventListener("click",event=>{
+   const telegram=window.Telegram?.WebApp;
+   if(typeof telegram?.openTelegramLink!=="function")return;
+   event.preventDefault();
+   telegram.openTelegramLink(link.href);
+  });
+  title.append(name?" · ":"",link);
+ }
+ if(!name&&!hasUsername){
+  const note=document.createElement("div");
+  note.className="muted";
+  note.textContent="Сервер не передал имя и @username.";
+  card.append(note);
+ }
  const id=document.createElement("div");
  id.textContent="Telegram ID: "+String(user.telegramId);
  const balance=document.createElement("p");
@@ -1192,7 +1212,8 @@ function renderAdminUser(user){
  joined.className="muted";
  joined.textContent=Number.isNaN(date.getTime())?"Дата регистрации недоступна":
   "Дата регистрации: "+date.toLocaleString("ru-RU");
- card.append(title,id,balance,details,joined);
+ card.prepend(title,id);
+ card.append(balance,details,joined);
  return card;
 }
 async function adminRequest(action,telegramId){
@@ -3450,7 +3471,7 @@ async function loadAdminRecentUsers(){
    const card=renderAdminUser(user);
    const link=document.createElement("button");
    link.className="secondary";
-   link.textContent="🔎 Посмотреть профиль";
+   link.textContent="🔎 Данные в SellerKit";
    link.onclick=()=>{
     $("adminTelegramId").value=String(user.telegramId);
     adminFindUser(String(user.telegramId));
