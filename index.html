@@ -4191,10 +4191,10 @@ async function loadTelegramBalance(){
   try{
    const access=await billingRequest("access");
    const active=access.until>Date.now();
-   display.textContent=active?number(access.credits):access.until?"0":"—";
+   display.textContent=active?number(access.credits):access.until?"0":"15";
    status.textContent=active
     ? (access.trial?"Пробный доступ":"Подписка")+" до "+new Date(access.until).toLocaleDateString("ru-RU")
-    : access.until?"Срок доступа закончился.":"15 пробных генераций на 5 дней с первого запроса.";
+    : access.until?"Срок доступа закончился.":"Пробный доступ · 5 дней с первой генерации.";
   }catch(error){
    display.textContent="—";
    status.textContent=error.message;
