@@ -10,7 +10,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-profile-storage-20261124";
+const SERVER_BUILD = "sellerkit-generation-access-20261125";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -425,6 +425,23 @@ function mapAdminUser(row) {
   };
 }
 
+async function addAdminGenerationAccess(sql, user) {
+  if (ownerAuthorized({ id: user.telegramId })) {
+    return { ...user, generationAccess: { kind: "owner" } };
+  }
+  try {
+    const access = await billing.balance(sql, user.telegramId);
+    const kind = !access.until ? "pending"
+      : access.until <= Date.now() ? "expired"
+      : access.trial ? "trial" : "paid";
+    const remaining = kind === "pending" ? 15 : kind === "expired" ? 0 : access.credits;
+    return { ...user, generationAccess: { kind, remaining, until: access.until } };
+  } catch (error) {
+    console.warn("Admin generation access:", classifyYdbError(error, "ADMIN_ACCESS_READ_FAILED"));
+    return user;
+  }
+}
+
 async function adminUserLookup(rawId) {
   if (typeof rawId !== "string" || !/^[1-9][0-9]{4,15}$/.test(rawId) ||
       BigInt(rawId) > BigInt(Number.MAX_SAFE_INTEGER)) {
@@ -440,7 +457,7 @@ async function adminUserLookup(rawId) {
     if (!Array.isArray(rows)) throw new Error("BAD_RESULT");
     if (!rows.length) return { status: 404, payload: { error: "USER_NOT_FOUND" } };
     const [user] = await addStoredTelegramProfiles(sql, [mapAdminUser(rows[0])], rawId);
-    return { status: 200, payload: { success: true, user } };
+    return { status: 200, payload: { success: true, user: await addAdminGenerationAccess(sql, user) } };
   } catch (error) {
     console.error("Admin user lookup:", classifyYdbError(error, "ADMIN_LOOKUP_FAILED"));
     return { status: 503, payload: { error: "ADMIN_DB_UNAVAILABLE" } };
@@ -457,8 +474,13 @@ async function adminRecentUsers() {
       LIMIT 25;
     `;
     if (!Array.isArray(rows)) throw new Error("BAD_RESULT");
-    return { status: 200,
-      payload: { success: true, users: await addStoredTelegramProfiles(sql, rows.map(mapAdminUser)) } };
+    const profiles = await addStoredTelegramProfiles(sql, rows.map(mapAdminUser));
+    const users = [];
+    for (let offset = 0; offset < profiles.length; offset += 8) {
+      const batch = profiles.slice(offset, offset + 8);
+      users.push(...await Promise.all(batch.map((user) => addAdminGenerationAccess(sql, user))));
+    }
+    return { status: 200, payload: { success: true, users } };
   } catch (error) {
     console.error("Admin user list:", classifyYdbError(error, "ADMIN_LIST_FAILED"));
     return { status: 503, payload: { error: "ADMIN_DB_UNAVAILABLE" } };
@@ -1136,7 +1158,16 @@ export async function handler(event) {
       delivered=true;
       return response(200,{answer},origin);
     } catch (err) { const timeout=["AbortError","TimeoutError"].includes(err?.name); return response(timeout?504:503,{error:timeout?"PROVIDER_TIMEOUT":"PROVIDER_CONNECTION_FAILED"},origin); }
-    finally { if (reserved && !delivered) await billing.refund(await ydbQuery(),String(telegramUser.id)); }
+    finally {
+      if (reserved && !delivered) {
+        try {
+          await billing.refund(await ydbQuery(), String(telegramUser.id));
+        } catch (error) {
+          console.error("Generation refund failed:", classifyYdbError(error, "GENERATION_REFUND_FAILED"));
+          return response(503, { error: "GENERATION_REFUND_PENDING" }, origin);
+        }
+      }
+    }
   }
   if (body.action === "report_error") {
     const sent = await sendSupportReport(telegramUser, body);
