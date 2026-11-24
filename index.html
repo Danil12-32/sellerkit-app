@@ -1203,10 +1203,17 @@ function renderAdminUser(user){
  const id=document.createElement("div");
  id.textContent="Telegram ID: "+String(user.telegramId);
  const balance=document.createElement("p");
- balance.textContent="💰 Баланс: "+number(user.balance)+" токенов (до запуска продаж)";
+ const access=user.generationAccess;
+ const expiry=access?.until?new Date(access.until).toLocaleDateString("ru-RU"):"";
+ const remaining=access?.kind==="owner"?"без лимита (владелец)":Number.isSafeInteger(access?.remaining)?number(access.remaining):"недоступно";
+ balance.textContent="Осталось текстовых генераций: "+remaining;
  const details=document.createElement("small");
- details.textContent="Проба: "+(user.trialUsed?"использована":"не использована")
-  +" · Бонус за друга: "+(user.referralRewarded?"выдан":"не выдан");
+ details.textContent=({
+  pending:"Пробный доступ ещё не начался",
+  trial:expiry?"Пробный доступ до "+expiry:"Пробный доступ",
+  paid:expiry?"Подписка до "+expiry:"Подписка",
+  expired:"Срок доступа закончился"
+ })[access?.kind]||"";
  const date=new Date(user.createdAt);
  const joined=document.createElement("p");
  joined.className="muted";
@@ -4308,18 +4315,31 @@ $("makeText").onclick=async()=>{
  const send=()=>fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({action:"seller_text",initData,tool:currentForm[0],input:payload})});
  let res=await send(), data=await res.json().catch(()=>({}));
  if(res.status===429 && data.error==="PROVIDER_HTTP_429" && (data.retryAfter??4)<=10){
- status.textContent="Провайдер ограничил частоту. Повторяем один раз…";
+ status.textContent="Сервис генерации занят. Пробуем ещё раз…";
  await new Promise(resolve=>setTimeout(resolve,1000*Math.max(3,data.retryAfter??4)));
  if(version!==requestVersion)return;
  res=await send();data=await res.json().catch(()=>({}));
  }
  if(version!==requestVersion)return;
- if(data.error==="ACCESS_EXHAUSTED")throw Error("Лимит генераций исчерпан или срок доступа закончился.");
- if(!res.ok||typeof data.answer!=="string")throw Error("HTTP "+res.status+(typeof data.error==="string"?" · "+data.error:""));
+ if(!res.ok||typeof data.answer!=="string"){
+ const message=new Map([
+  ["ACCESS_EXHAUSTED","Генерации закончились или истёк срок доступа. Открой «Профиль» → «Оплатить подписку»."],
+  ["PROVIDER_HTTP_429","Сервис генерации занят. Попробуй ещё раз чуть позже."],
+  ["PROVIDER_QUOTA","Генерация временно недоступна. Попробуй позже."],
+  ["PROVIDER_PLAN_REQUIRED","Генерация временно недоступна. Попробуй позже."],
+  ["PROVIDER_TIMEOUT","Сервис генерации долго не отвечал. Попробуй ещё раз."],
+  ["INVALID_TELEGRAM_AUTH","Сессия устарела. Закрой и снова открой приложение в Telegram."],
+  ["INVALID_INPUT","Проверь заполнение формы и сократи текст, если он слишком длинный."],
+  ["GENERATION_REFUND_PENDING","Не удалось сформировать ответ и подтвердить возврат генерации. Проверь остаток в профиле и сообщи об ошибке."],
+  ["PILOT_ONLY","Идёт закрытая проверка текстовых функций."]
+ ]).get(data.error);
+ status.textContent=message||(res.status===429?"Сервис генерации занят. Попробуй позже.":"Не удалось подготовить ответ. Попробуй ещё раз позже.");
+ return;
+ }
  resultBlocks($("toolAnswer"),data.answer);status.textContent="Готово";
  try{localStorage.setItem(historyKey,JSON.stringify([{title:currentForm[1]+" · "+input.slice(0,45),answer:data.answer},...historyItems()].slice(0,30)));renderTextHistory()}catch{status.textContent="Готово. История устройства недоступна."}
  if(trainer){turnLog=[...log,{role:"Клиент",text:data.answer}];$("toolInput").value="";$("toolLabel").textContent="Твой ответ клиенту";$("toolInput").placeholder="Напиши, как ответил бы в реальной переписке.";$("makeText").textContent="Отправить реплику"}
- }catch(e){if(version===requestVersion)status.textContent=String(e.message).includes("ACCESS_EXHAUSTED")?"Доступ закончился. Открой Профиль → Подписки.":e.message==="PILOT_ONLY"?"Идёт закрытая проверка текстовых функций.":"Генерация недоступна · "+String(e.message).slice(0,80)}
+ }catch{if(version===requestVersion)status.textContent="Не удалось получить ответ. Проверь соединение и попробуй ещё раз."}
  finally{if(version===requestVersion)$("makeText").disabled=trainer&&turnLog.length>=12}
 };
 function quickResult(){const i=$("quickType").selectedIndex; $("qa").textContent=["Исходная цена, ₽","Чистая прибыль, ₽","Расходы на рекламу, ₽"][i];$("qb").textContent=["Скидка, %","Вложения, ₽","Выручка, ₽"][i];const a=$("q1").valueAsNumber,b=$("q2").valueAsNumber;$("qr").textContent=!Number.isFinite(a+b)?"Введите оба значения.":(i!==1&&a<0)||(i===0?(b<0||b>100):b<=0)?"Проверь значения.":(i===0?a*(1-b/100):100*a/b).toLocaleString("ru-RU",{maximumFractionDigits:2})+(i===0?" ₽":" %")}
