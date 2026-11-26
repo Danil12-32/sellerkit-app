@@ -4312,13 +4312,20 @@ $("makeText").onclick=async()=>{
  if(payload.length>16000){status.textContent="Сократи текст переписки.";return}
  $("makeText").disabled=true;status.textContent="Готовим ответ…";
  try{
- const send=()=>fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({action:"seller_text",initData,tool:currentForm[0],input:payload})});
+ const requestBody=JSON.stringify({action:"seller_text",initData,tool:currentForm[0],input:payload});
+ const send=()=>fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:requestBody});
  let res=await send(), data=await res.json().catch(()=>({}));
- if(res.status===429 && data.error==="PROVIDER_HTTP_429" && (data.retryAfter??4)<=10){
- status.textContent="Сервис генерации занят. Пробуем ещё раз…";
- await new Promise(resolve=>setTimeout(resolve,1000*Math.max(3,data.retryAfter??4)));
  if(version!==requestVersion)return;
- res=await send();data=await res.json().catch(()=>({}));
+ const retryAfter=Number.isFinite(data.retryAfter)?data.retryAfter:4;
+ const rateLimited=res.status===429 && data.error==="PROVIDER_HTTP_429" && retryAfter<=10;
+ const providerTimedOut=res.status===504 && data.error==="PROVIDER_TIMEOUT";
+ if(rateLimited||providerTimedOut){
+  status.textContent=providerTimedOut
+   ?"Сервис не ответил вовремя. Пробуем ещё раз…"
+   :"Сервис генерации занят. Пробуем ещё раз…";
+  await new Promise(resolve=>setTimeout(resolve,1000*(rateLimited?Math.max(3,retryAfter):2)));
+  if(version!==requestVersion)return;
+  res=await send();data=await res.json().catch(()=>({}));
  }
  if(version!==requestVersion)return;
  if(!res.ok||typeof data.answer!=="string"){
