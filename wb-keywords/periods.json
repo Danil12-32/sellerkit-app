@@ -1,12 +1,18 @@
 {
   "day": {
-    "path": "manifest.json",
+    "path": "day-2026-11-26/manifest.json",
     "format": "parts"
   },
-  "week": null,
-  "month": null,
+  "week": {
+    "path": "week-2026-11-26/manifest.json",
+    "format": "parts"
+  },
+  "month": {
+    "path": "month-2026-11-26/manifest.json",
+    "format": "parts"
+  },
   "quarter": {
-    "path": "../keywords.json",
-    "format": "rows"
+    "path": "quarter-2026-11-26/manifest.json",
+    "format": "parts"
   }
 }
