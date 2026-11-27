@@ -80,6 +80,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .secondary{background:#314b39;color:white}
 #wbPeriods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:12px 0}
 #wbPeriods button{min-width:0;padding:10px 2px;font-size:clamp(12px,3.6vw,15px)}
+#seoResults .result{align-items:flex-start}
+.wbResultContent{min-width:0;flex:1;overflow-wrap:anywhere}
+.wbStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0 4px}
+.wbStats dt{font-size:11px;color:var(--muted);line-height:1.25}
+.wbStats dd{margin:3px 0 0;font-size:14px;font-weight:600}
+.wbStats .wbRise{color:#86e9ae}
+.wbStats .wbFall{color:#ffaaa8}
 @media(max-width:310px){#wbPeriods{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .actions{
  display:flex;
@@ -3995,30 +4002,42 @@ function renderResults(){
   item.className="result";
 
   const content=document.createElement("div");
+  content.className="wbResultContent";
   const title=document.createElement("strong");
   title.textContent=row.query;
 
-  const stats=document.createElement("div");
-  stats.className="muted";
-  stats.style.fontSize="12px";
-  stats.textContent=
-   "За период: "+number(row.volume)+
-   " · ранее: "+number(row.previous)+
-   " · в день: "+number(row.daily);
+  const stats=document.createElement("dl");
+  stats.className="wbStats";
+  const change=Number.isFinite(row.volume)&&Number.isFinite(row.previous)
+   ? row.volume-row.previous : null;
+  const changeLabel=change===null?"—":change>0?"+"+number(change)
+   :change<0?"−"+number(-change):"0";
+  for(const [label,value,className] of [
+   ["Запросов",Number.isFinite(row.volume)?number(row.volume):"—",""],
+   ["Динамика",changeLabel,change>0?"wbRise":change<0?"wbFall":""],
+   ["В среднем за день",Number.isFinite(row.daily)?number(row.daily):"—",""]
+  ]){
+   const metric=document.createElement("div");
+   const term=document.createElement("dt");
+   term.textContent=label;
+   const detail=document.createElement("dd");
+   detail.textContent=value;
+   detail.className=className;
+   metric.append(term,detail);
+   stats.append(metric);
+  }
 
   const category=document.createElement("small");
+  category.className="muted";
   category.textContent=row.category;
 
-  content.append(
-   title,
-   document.createElement("br"),
-   stats,
-   category
-  );
+  content.append(title,stats,category);
 
   const button=document.createElement("button");
-  button.textContent=selected.has(row.query)?"✓":"＋";
-  button.className=selected.has(row.query)?"secondary":"";
+  const isSelected=selected.has(row.query);
+  button.textContent=isSelected?"✓":"＋";
+  button.setAttribute("aria-label",(isSelected?"Убрать ключ ":"Добавить ключ ")+row.query);
+  button.className=isSelected?"secondary":"";
 
   button.onclick=()=>{
    if(selected.has(row.query)){
