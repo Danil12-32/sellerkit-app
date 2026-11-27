@@ -363,7 +363,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <div class="card">
 <h2>🔎 Поисковые запросы WB</h2>
 <p>Поиск ключевых слов Wildberries без загрузки Excel.</p>
-<div id="dbStatus" class="notice">Подключение базы запросов…</div>
+<div id="dbStatus" class="notice">Загружаем базу запросов WB…</div>
 <p class="muted"><small>Период и частотность берутся из загруженной базы WB. Это статистика за указанный период, а не данные в реальном времени.</small></p>
 
 <label>Поисковая фраза</label>
@@ -386,7 +386,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 
 <div class="actions">
 <button onclick="findKeywords()">Найти ключи</button>
-<button class="secondary" onclick="exportSEO()">Скачать CSV</button>
+<button class="secondary" id="seoExport" onclick="exportSEO()" disabled>Скачать CSV</button>
 </div>
 <p id="seoCount" class="muted"></p>
 <div id="seoResults" class="scroll"></div>
@@ -1094,6 +1094,7 @@ function openPage(id){
  if(["ai","ai-series"].includes(id))id="functions";
  const page=$(id);
  if(!page)return;
+ if(id==="seo")loadDatabase();
  if(id==="bug")$("bugReportForm").hidden=false;
  if(id==="admin-users"&&!$("supportManagement").hidden)updateSupportManagers();
  if(["profile","admin-users"].includes(id) && typeof loadTelegramBalance==="function")loadTelegramBalance();
@@ -3877,9 +3878,9 @@ calculate();
 
 /* SEO ANALYTICS */
 
-let database=[];
+let keywordWorker;
+let searchRequest=0;
 let found=[];
-let period="";
 const selected=new Map();
 
 function normalize(value){
@@ -3890,90 +3891,61 @@ function normalize(value){
   .trim();
 }
 
-async function loadDatabase(){
+function loadDatabase(){
+ if(keywordWorker)return;
  const status=$("dbStatus");
-
+ status.textContent="Загружаем базу запросов WB…";
  try{
-  const response=await fetch(
-   "./keywords.json?v=20261111",
-   {cache:"no-store"}
-  );
-
-  if(!response.ok){
-   throw Error("HTTP "+response.status);
-  }
-
-  const data=await response.json();
-
-  if(!Array.isArray(data.rows)){
-   throw Error("Неверный формат базы");
-  }
-
-  database=data.rows.map(row=>({
-   query:String(row[0]||""),
-   volume:Number(row[1])||0,
-   previous:Number(row[2])||0,
-   daily:Number(row[3])||0,
-   category:String(row[4]||"")
-  }));
-
-  period=data.period||"Период неизвестен";
-
-  status.textContent=
-   "✅ База готова: "+
-   number(database.length)+
-   " запросов WB. Период: "+period;
-
- }catch(error){
-  status.textContent=
-   "❌ База не подключена. Проверь файл keywords.json в GitHub. "+
-   error.message;
+  keywordWorker=new Worker("./wb-search-worker.js?v=1");
+  keywordWorker.onmessage=({data})=>{
+   if(data.type==="ready"){
+    status.textContent="В базе "+number(data.count)+" запросов WB · "+data.period
+     +(data.previousPeriod?" · сравнение с "+data.previousPeriod:"");
+   }else if(data.type==="results"&&data.id===searchRequest){
+    found=data.results;
+    $("seoCount").textContent="Найдено "+number(data.count)
+     +(data.count>found.length?". Показаны первые "+number(found.length)+".":".");
+    $("seoExport").disabled=!data.count;
+    renderResults();
+   }else if(data.type==="csv"){
+    const url=URL.createObjectURL(data.file);
+    const link=document.createElement("a");
+    link.href=url;
+    link.download="sellerkit_seo.csv";
+    link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+   }else if(data.type==="error"&&(data.id===undefined||data.id===searchRequest)){
+    status.textContent="Не удалось загрузить базу WB. Нажми «Найти ключи», чтобы повторить.";
+    if(data.id===searchRequest)$("seoCount").textContent="Поиск временно недоступен.";
+   }
+  };
+  keywordWorker.onerror=()=>{
+   keywordWorker.terminate();
+   keywordWorker=undefined;
+   $("seoExport").disabled=true;
+   status.textContent="Не удалось запустить поиск WB. Нажми «Найти ключи», чтобы повторить.";
+   if(searchRequest)$("seoCount").textContent="Поиск временно недоступен.";
+  };
+  keywordWorker.postMessage({type:"load"});
+ }catch{
+  status.textContent="Не удалось запустить поиск WB.";
  }
 }
 
 function findKeywords(){
- if(!database.length){
-  $("seoCount").textContent="База ещё не подключена.";
-  return;
- }
-
- const words=normalize($("seoSearch").value)
-  .split(" ")
-  .filter(Boolean);
-
- const min=Math.max(0,num("seoMin"));
-
- if(!words.length){
+ const query=$("seoSearch").value;
+ if(!normalize(query)){
   $("seoCount").textContent="Введи название товара.";
   return;
  }
-
- found=database.filter(row=>
-  row.volume>=min&&
-  words.every(word=>
-   normalize(row.query).split(" ").includes(word)
-  )
- );
-
- const sort=$("seoSort").value;
-
- if(sort==="volume"){
-  found.sort((a,b)=>b.volume-a.volume);
- }else if(sort==="growth"){
-  found.sort((a,b)=>
-   (b.volume-b.previous)-(a.volume-a.previous)
-  );
- }else{
-  found.sort((a,b)=>
-   a.query.localeCompare(b.query,"ru")
-  );
- }
-
- $("seoCount").textContent=
-  "Найдено "+number(found.length)+
-  " запросов. Показаны первые 100.";
-
- renderResults();
+ loadDatabase();
+ if(!keywordWorker)return;
+ $("seoCount").textContent="Ищем запросы…";
+ $("seoExport").disabled=true;
+ keywordWorker.postMessage({
+  type:"search",id:++searchRequest,query,
+  min:Math.max(0,num("seoMin")),sort:$("seoSort").value
+ });
 }
 
 function renderResults(){
@@ -4089,48 +4061,8 @@ function copyField(id){
  copyText($(id).value);
 }
 
-function csvCell(value){
- return '"'+String(value??"").replace(/"/g,'""')+'"';
-}
-
 function exportSEO(){
- if(!found.length){
-  alert("Сначала найди запросы.");
-  return;
- }
-
- const lines=[
-  [
-   "Запрос",
-   "За период",
-   "Предыдущий период",
-   "В день",
-   "Категория"
-  ].map(csvCell).join(";")
- ];
-
- for(const row of found){
-  lines.push([
-   row.query,
-   row.volume,
-   row.previous,
-   row.daily,
-   row.category
-  ].map(csvCell).join(";"));
- }
-
- const blob=new Blob(
-  ["\ufeff"+lines.join("\r\n")],
-  {type:"text/csv;charset=utf-8"}
- );
-
- const url=URL.createObjectURL(blob);
- const link=document.createElement("a");
- link.href=url;
- link.download="sellerkit_seo.csv";
- link.click();
-
- setTimeout(()=>URL.revokeObjectURL(url),2000);
+ if(!$("seoExport").disabled)keywordWorker?.postMessage({type:"export"});
 }
 
 $("seoSearch").addEventListener("keydown",event=>{
@@ -4350,7 +4282,6 @@ async function loadTelegramBalance(){
  return balanceRequest;
 }
 
-loadDatabase();
 window.addEventListener('DOMContentLoaded',()=>loadTelegramBalance(),{once:true});
 
 /* Прямая ссылка на AI Studio: ?section=ai и Telegram startapp=ai */
