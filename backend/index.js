@@ -10,7 +10,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-support-access-20261127";
+const SERVER_BUILD = "sellerkit-admin-controls-20261128";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -1151,7 +1151,7 @@ export async function handler(event) {
       return response(200,{received:true},origin);
     } catch { return response(503,{error:"PAYMENT_CONFIRMATION_PENDING"},origin); }
   }
-  if (!body || !["test_support_push","checkout","access","confirm_manual","admin_grant_credits","admin_find_grant_target","seller_text", "me", "report_error", "list_reports", "admin_list_support_managers", "admin_set_support_manager", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
+  if (!body || !["test_support_push","checkout","access","confirm_manual","admin_grant_credits","admin_deduct_credits","admin_find_grant_target","seller_text", "me", "report_error", "list_reports", "admin_list_support_managers", "admin_set_support_manager", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -1177,8 +1177,9 @@ export async function handler(event) {
     const reason=await notifySupport("🔔 SellerKit · проверка уведомлений об обращениях.");
     return response(200,{message:reason || "Тестовое сообщение доставлено в Telegram."},origin);
   }
-  if (["admin_grant_credits","admin_find_grant_target"].includes(body.action)) {
+  if (["admin_grant_credits","admin_deduct_credits","admin_find_grant_target"].includes(body.action)) {
     if (!ownerAuthorized(telegramUser)) return response(403,{error:"FORBIDDEN"},origin);
+    const deducting = body.action === "admin_deduct_credits";
     const input = typeof body.target === "string" ? body.target.trim() : "";
     const byId = /^[1-9][0-9]{4,15}$/.test(input) && Number.isSafeInteger(Number(input));
     const username = input.replace(/^@/,"");
@@ -1208,10 +1209,18 @@ export async function handler(event) {
         telegramId,displayName:target.display_name || "",username:target.username || ""
       },origin);
       if (!byId) return response(400,{error:"INVALID_TARGET"},origin);
-      const account = await billing.grantAccess(sql,telegramId,body.days,body.credits,body.requestId);
+      const account = deducting
+        ? await billing.deductCredits(sql, telegramId, body.credits, body.requestId)
+        : await billing.grantAccess(sql, telegramId, body.days, body.credits, body.requestId);
       return response(200,account,origin);
     } catch (error) {
       if (error?.message === "INVALID_GRANT") return response(400,{error:"INVALID_GRANT"},origin);
+      if (error?.message === "INVALID_DEDUCTION") return response(400,{error:"INVALID_DEDUCTION"},origin);
+      if (error?.message === "INSUFFICIENT_CREDITS") return response(409,{error:"INSUFFICIENT_CREDITS"},origin);
+      if (deducting) {
+        console.error("Admin deduction:", classifyYdbError(error, "DEDUCTION_FAILED"));
+        return response(503, {error:"DEDUCTION_FAILED"}, origin);
+      }
       console.error("Admin grant:",classifyYdbError(error,"GRANT_FAILED"));
       return response(503,{error:"GRANT_FAILED"},origin);
     }
@@ -1238,7 +1247,8 @@ export async function handler(event) {
         ...access,plusAvailable:true,
         referralAvailable:true,adminGrantAvailable:ownerAuthorized(telegramUser),
         supportAvailable,carryoverAvailable:true,
-        supportManagementAvailable:ownerAuthorized(telegramUser)
+        supportManagementAvailable:ownerAuthorized(telegramUser),
+        adminDeductionAvailable:ownerAuthorized(telegramUser)
       }
         : body.action==="confirm_manual" ? await billing.settle(sql,body.orderId,null)
         : await billing.checkout(sql,id,body.planId,body.method);
