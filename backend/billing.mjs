@@ -14,6 +14,51 @@ async function write(sql, key, value) {
     .parameter("id", new Text(key)).parameter("value", new Text(JSON.stringify(value)));
 }
 
+const DAY_MS = 86400000;
+
+async function addAccess(sql, userId, days, credits, now) {
+  const key = "user:" + userId;
+  const previous = await read(sql,key);
+  const account = {
+    ...previous,
+    until:Math.max(previous?.until || 0, now) + days * DAY_MS,
+    credits:(previous?.credits ?? 15) + credits,
+    trial:previous?.trial ?? true
+  };
+  await write(sql,key,account);
+  return account;
+}
+
+export async function grantAccess(sql, userId, days, credits, requestId) {
+  if (!Number.isSafeInteger(days) || days < 1 || days > 365 ||
+      !Number.isSafeInteger(credits) || credits < 1 || credits > 10000 ||
+      typeof requestId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+    throw Error("INVALID_GRANT");
+  }
+  return sql.begin(async tx => {
+    const key = "grant:" + requestId;
+    const existing = await read(tx,key);
+    if (existing) {
+      if (existing.userId !== userId || existing.days !== days || existing.credits !== credits) throw Error("INVALID_GRANT");
+      return {telegramId:userId, ...await balance(tx,userId)};
+    }
+    const now = Date.now();
+    const account = await addAccess(tx,userId,days,credits,now);
+    await write(tx,key,{userId,days,credits,createdAt:now});
+    return {telegramId:userId,...account};
+  });
+}
+
+export async function registerReferral(sql, userId, inviterId) {
+  await sql.begin(async tx => {
+    const key = "referral:" + userId;
+    if (await read(tx,key)) return;
+    const safeInviter = typeof inviterId === "string" && /^[1-9][0-9]{4,15}$/.test(inviterId) &&
+      Number.isSafeInteger(Number(inviterId)) && inviterId !== userId ? inviterId : null;
+    await write(tx,key,{inviterId:safeInviter,rewarded:false});
+  });
+}
+
 export async function checkout(sql, userId, planId, method) {
   if (!Object.hasOwn(plans, planId) || !["card","sbp","manager"].includes(method)) throw Error("INVALID_ORDER");
   const id = randomUUID();
@@ -46,10 +91,16 @@ export async function settle(sql,id,receipt) {
     const key = "user:"+o.userId;
     const previous = await read(tx,key);
     const now = Date.now();
-    const term = confirmedTerm(o.planId,previous?.trial ? 0 : previous?.until || 0,now);
-    const remaining = previous ? (previous.until > now ? previous.credits : 0) : 15;
-    const credits = remaining + plan.credits;
-    await write(tx,key,{until:term.until,credits});
+    const term = confirmedTerm(o.planId,previous?.until || 0,now);
+    const credits = (previous?.credits ?? 15) + plan.credits;
+    await write(tx,key,{...previous,until:term.until,credits,trial:false,paidBefore:true});
+    const referralKey = "referral:" + o.userId;
+    const referral = await read(tx,referralKey);
+    const firstPayment = !previous?.paidBefore && (!previous || previous.trial === true);
+    if (firstPayment && referral?.inviterId && !referral.rewarded) {
+      await addAccess(tx,referral.inviterId,14,30,now);
+      await write(tx,referralKey,{...referral,rewarded:true,orderId:id});
+    }
     const paid = {...o,paid:true,message:term.message,notified:false};
     await write(tx,id,paid);
     return paid;
