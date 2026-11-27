@@ -49,6 +49,31 @@ export async function grantAccess(sql, userId, days, credits, requestId) {
   });
 }
 
+export async function deductCredits(sql, userId, credits, requestId) {
+  if (!Number.isSafeInteger(credits) || credits < 1 || credits > 10000 ||
+      typeof requestId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+    throw Error("INVALID_DEDUCTION");
+  }
+  return sql.begin(async tx => {
+    const operationKey = "deduction:" + requestId;
+    const previous = await read(tx, operationKey);
+    if (previous) {
+      if (previous.userId !== userId || previous.credits !== credits) throw Error("INVALID_DEDUCTION");
+      return balance(tx, userId);
+    }
+
+    const key = "user:" + userId;
+    const account = await read(tx, key);
+    if (!account || !Number.isSafeInteger(account.credits) || account.credits < credits) {
+      throw Error("INSUFFICIENT_CREDITS");
+    }
+    const updated = { ...account, credits: account.credits - credits };
+    await write(tx, key, updated);
+    await write(tx, operationKey, { userId, credits, createdAt: Date.now() });
+    return updated;
+  });
+}
+
 export async function registerReferral(sql, userId, inviterId) {
   await sql.begin(async tx => {
     const key = "referral:" + userId;
