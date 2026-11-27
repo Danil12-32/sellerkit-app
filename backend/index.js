@@ -10,7 +10,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-registration-20261127";
+const SERVER_BUILD = "sellerkit-support-20261127";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -254,11 +254,13 @@ async function saveReport(telegramUser, category, description, reportId) {
 async function notifySupport(text) {
   const token=process.env.TELEGRAM_BOT_TOKEN;
   const chat=process.env.SELLERKIT_ALERT_CHAT_ID || process.env.SELLERKIT_SUPPORT_CHAT_ID;
-  if (!token || !chat) return "Укажи TELEGRAM_BOT_TOKEN и числовой ID чата для уведомлений.";
+  if (!token || !chat || !/^-?[1-9][0-9]*$/.test(chat.trim())) {
+    return "В настройках функции нужен токен бота и числовой ID чата для уведомлений.";
+  }
   try {
     const res=await fetch("https://api.telegram.org/bot"+token+"/sendMessage", {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({chat_id:chat,text}),signal:AbortSignal.timeout(12000)
+      body:JSON.stringify({chat_id:chat.trim(),text}),signal:AbortSignal.timeout(12000)
     });
     const data=await res.json();
     if (res.ok && data.ok) return "";
@@ -268,7 +270,9 @@ async function notifySupport(text) {
     return "Telegram вернул HTTP "+res.status+".";
   } catch (error) {
     const timedOut = ["TimeoutError","AbortError"].includes(error?.name);
-    console.warn("Support Telegram delivery:",timedOut ? "TIMEOUT" : "REQUEST_FAILED");
+    const code = String(error?.cause?.code || error?.code || "");
+    const safeCode = /^[A-Z][A-Z0-9_]{1,49}$/.test(code) ? code : "UNKNOWN";
+    console.warn("Support Telegram delivery:", timedOut ? "TIMEOUT" : safeCode);
     return timedOut
       ? "Telegram не ответил за 12 секунд. Проверь, пришло ли уведомление в чат с ботом."
       : "Серверу не удалось связаться с Telegram. Проверь журнал функции в Yandex Cloud.";
@@ -446,6 +450,12 @@ async function addAdminGenerationAccess(sql, user) {
     console.warn("Admin generation access:", classifyYdbError(error, "ADMIN_ACCESS_READ_FAILED"));
     return user;
   }
+}
+
+function supportAuthorized(user) {
+  return ownerAuthorized(user) ||
+    (process.env.SELLERKIT_SUPPORT_MANAGER_IDS || "").split(",")
+      .some(id => id.trim() === String(user.id));
 }
 
 async function adminUserLookup(rawId) {
@@ -1155,7 +1165,8 @@ export async function handler(event) {
       }
       const result = body.action==="access" ? {
         ...await billing.balance(sql,id),plusAvailable:true,
-        referralAvailable:true,adminGrantAvailable:ownerAuthorized(telegramUser),carryoverAvailable:true
+        referralAvailable:true,adminGrantAvailable:ownerAuthorized(telegramUser),
+        supportAvailable:supportAuthorized(telegramUser),carryoverAvailable:true
       }
         : body.action==="confirm_manual" ? await billing.settle(sql,body.orderId,null)
         : await billing.checkout(sql,id,body.planId,body.method);
@@ -1238,8 +1249,12 @@ export async function handler(event) {
     const sent = await sendSupportReport(telegramUser, body);
     return response(sent.status, sent.payload, origin);
   }
-  if (body.action === "list_reports" ||
-      body.action === "admin_user_lookup" ||
+  if (body.action === "list_reports") {
+    if (!supportAuthorized(telegramUser)) return response(403, { error: "FORBIDDEN" }, origin);
+    const result = await listSupportReports();
+    return response(result.status, result.payload, origin);
+  }
+  if (body.action === "admin_user_lookup" ||
       body.action === "admin_recent_users" ||
       body.action === "admin_ai_status" ||
       body.action === "admin_image_test" ||
@@ -1248,9 +1263,7 @@ export async function handler(event) {
       body.action === "admin_series_plan") {
     if (!ownerAuthorized(telegramUser))
       return response(403, { error: "FORBIDDEN" }, origin);
-    const result = body.action === "list_reports"
-      ? await listSupportReports()
-      : body.action === "admin_user_lookup"
+    const result = body.action === "admin_user_lookup"
         ? await adminUserLookup(body.telegramId)
         : body.action === "admin_ai_status"
           ? await adminVseGptStatus()
