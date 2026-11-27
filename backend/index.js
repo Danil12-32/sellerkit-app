@@ -10,7 +10,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-support-20261127";
+const SERVER_BUILD = "sellerkit-support-access-20261127";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -368,10 +368,7 @@ async function listSupportReports() {
 }
 
 
-/* Read-only administration. Every request is verified against Telegram's signed
- * initData AND the configured owner ID on the server; never trust a frontend flag.
- * Credit changes and payment confirmation are intentionally not enabled here.
- */
+/* Administrative actions require verified Telegram initData and the configured owner ID. */
 function ownerAuthorized(telegramUser) {
   return Boolean(
     process.env.SELLERKIT_SUPPORT_CHAT_ID &&
@@ -452,10 +449,78 @@ async function addAdminGenerationAccess(sql, user) {
   }
 }
 
-function supportAuthorized(user) {
-  return ownerAuthorized(user) ||
-    (process.env.SELLERKIT_SUPPORT_MANAGER_IDS || "").split(",")
-      .some(id => id.trim() === String(user.id));
+const SUPPORT_MANAGERS_KEY = "support:manager-access";
+
+function validManagerId(id) {
+  return typeof id === "string" && /^[1-9][0-9]{0,15}$/.test(id)
+    && Number.isSafeInteger(Number(id));
+}
+
+function configuredSupportManagers() {
+  return new Set((process.env.SELLERKIT_SUPPORT_MANAGER_IDS || "").split(",")
+    .map(id => id.trim()).filter(id => validManagerId(id) && !ownerAuthorized({ id })));
+}
+
+async function readSupportOverrides(sql) {
+  const [rows] = await sql`
+    DECLARE $id AS Utf8;
+    SELECT record FROM sellerkit_billing WHERE id = $id;
+  `.parameter("id", new Text(SUPPORT_MANAGERS_KEY));
+  return rows.length ? JSON.parse(String(rows[0].record)) : {};
+}
+
+function supportManagerIds(configured, overrides) {
+  const ids = new Set(configured);
+  for (const [id, enabled] of Object.entries(overrides)) {
+    if (!validManagerId(id) || ownerAuthorized({ id })) continue;
+    if (enabled === true) ids.add(id);
+    if (enabled === false) ids.delete(id);
+  }
+  return [...ids].sort((first, second) => Number(first) - Number(second));
+}
+
+async function supportAuthorized(user, sql) {
+  if (ownerAuthorized(user)) return true;
+  try {
+    const id = String(user.id);
+    const overrides = await readSupportOverrides(sql ?? await ydbQuery());
+    return Object.hasOwn(overrides, id)
+      ? overrides[id] === true : configuredSupportManagers().has(id);
+  } catch (error) {
+    console.warn("Support access read:", classifyYdbError(error, "SUPPORT_ACCESS_READ_FAILED"));
+    return false;
+  }
+}
+
+async function manageSupportAccess(body, user, origin) {
+  if (!ownerAuthorized(user)) return response(403, { error: "FORBIDDEN" }, origin);
+  const listing = body.action === "admin_list_support_managers";
+  const id = typeof body.telegramId === "string" ? body.telegramId.trim() : "";
+  if (!listing && (!validManagerId(id) || ownerAuthorized({ id }) || typeof body.enabled !== "boolean")) {
+    return response(400, { error: "INVALID_SUPPORT_MANAGER" }, origin);
+  }
+
+  try {
+    const sql = await ydbQuery();
+    const configured = configuredSupportManagers();
+    const overrides = listing ? await readSupportOverrides(sql) : await sql.begin(async tx => {
+      const current = await readSupportOverrides(tx);
+      if (body.enabled === configured.has(id)) delete current[id];
+      else current[id] = body.enabled;
+
+      await tx`
+        DECLARE $id AS Utf8;
+        DECLARE $record AS Utf8;
+        UPSERT INTO sellerkit_billing (id, record) VALUES ($id, $record);
+      `.parameter("id", new Text(SUPPORT_MANAGERS_KEY))
+        .parameter("record", new Text(JSON.stringify(current)));
+      return current;
+    });
+    return response(200, { managers: supportManagerIds(configured, overrides) }, origin);
+  } catch (error) {
+    console.warn("Support access update:", classifyYdbError(error, "SUPPORT_ACCESS_UNAVAILABLE"));
+    return response(503, { error: "SUPPORT_ACCESS_UNAVAILABLE" }, origin);
+  }
 }
 
 async function adminUserLookup(rawId) {
@@ -1086,7 +1151,7 @@ export async function handler(event) {
       return response(200,{received:true},origin);
     } catch { return response(503,{error:"PAYMENT_CONFIRMATION_PENDING"},origin); }
   }
-  if (!body || !["test_support_push","checkout","access","confirm_manual","admin_grant_credits","admin_find_grant_target","seller_text", "me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
+  if (!body || !["test_support_push","checkout","access","confirm_manual","admin_grant_credits","admin_find_grant_target","seller_text", "me", "report_error", "list_reports", "admin_list_support_managers", "admin_set_support_manager", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -1104,6 +1169,9 @@ export async function handler(event) {
     return response(401, { error: "INVALID_TELEGRAM_AUTH", build: SERVER_BUILD }, origin);
   }
 
+  if (["admin_list_support_managers", "admin_set_support_manager"].includes(body.action)) {
+    return manageSupportAccess(body, telegramUser, origin);
+  }
   if (body.action==="test_support_push") {
     if (!ownerAuthorized(telegramUser)) return response(403,{error:"FORBIDDEN"},origin);
     const reason=await notifySupport("🔔 SellerKit · проверка уведомлений об обращениях.");
@@ -1163,10 +1231,14 @@ export async function handler(event) {
           if (body.action === "checkout") throw error;
         }
       }
+      const [access, supportAvailable] = body.action === "access"
+        ? await Promise.all([billing.balance(sql, id), supportAuthorized(telegramUser, sql)])
+        : [];
       const result = body.action==="access" ? {
-        ...await billing.balance(sql,id),plusAvailable:true,
+        ...access,plusAvailable:true,
         referralAvailable:true,adminGrantAvailable:ownerAuthorized(telegramUser),
-        supportAvailable:supportAuthorized(telegramUser),carryoverAvailable:true
+        supportAvailable,carryoverAvailable:true,
+        supportManagementAvailable:ownerAuthorized(telegramUser)
       }
         : body.action==="confirm_manual" ? await billing.settle(sql,body.orderId,null)
         : await billing.checkout(sql,id,body.planId,body.method);
@@ -1250,7 +1322,7 @@ export async function handler(event) {
     return response(sent.status, sent.payload, origin);
   }
   if (body.action === "list_reports") {
-    if (!supportAuthorized(telegramUser)) return response(403, { error: "FORBIDDEN" }, origin);
+    if (!(await supportAuthorized(telegramUser))) return response(403, { error: "FORBIDDEN" }, origin);
     const result = await listSupportReports();
     return response(result.status, result.payload, origin);
   }
