@@ -803,10 +803,10 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <span id="generationBalance">—</span>
 
 </strong>
-<small id="balanceStatus">
+<small id="balanceStatus" role="status">
 Проверяем баланс через Telegram…
 </small>
-<button class="secondary" style="margin-top:12px;display:none" id="refreshBalanceBtn" onclick="loadTelegramBalance()">🔄 Обновить баланс</button>
+<button class="secondary" style="margin-top:12px;display:none" id="refreshBalanceBtn" onclick="loadTelegramBalance(true)">🔄 Обновить баланс</button>
 <button class="secondary" style="margin-top:10px;display:none" id="profileServerCheckBtn" onclick="checkProfileServer()">🔌 Проверить сервер и баланс</button>
 <p class="muted" id="profileServerCheckStatus" role="status" aria-live="polite"></p>
 <button class="wide" style="background:#65ed98;color:#082917;border:2px solid #82ffad;font-weight:700" onclick="openPage('plans')">Оплатить подписку
@@ -962,7 +962,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <section class="page" id="admin-users">
 <button class="back" onclick="openPage('profile')">← В профиль</button>
 <div class="card" id="supportManagement" hidden>
-<h2>Доступ к обращениям</h2>
+<h2><span aria-hidden="true">📥</span> Доступ к обращениям</h2>
 <p class="muted">Менеджер увидит входящие обращения в своём профиле.</p>
 <form id="supportManagerForm">
 <label for="supportManagerId">Telegram ID менеджера</label>
@@ -4307,21 +4307,23 @@ async function checkProfileServer(){
    "❌ Ошибка проверки: "+String(err?.message||err);
  }finally{clearTimeout(timer);btn.disabled=false;}
 }
-async function loadTelegramBalance(){
+async function loadTelegramBalance(manual=false){
  const status=$("balanceStatus");
  const display=$("generationBalance");
  const button=$("refreshBalanceBtn");
  if(balanceRequest)return balanceRequest;
  button.disabled=true;
+ if(manual)status.textContent="Обновляем баланс…";
  balanceRequest=(async()=>{
   try{
    const access=await billingRequest("access");
    const active=access.until>Date.now();
    applyReleaseCapabilities(access);
    display.textContent=active||access.carryoverAvailable&&access.until?number(access.credits):access.until?"0":"15";
-   status.textContent=active
+   const accessStatus=active
     ? (access.trial?"Пробный доступ":"Подписка")+" до "+new Date(access.until).toLocaleDateString("ru-RU")
     : access.until?(access.carryoverAvailable?"Доступ истёк. Остаток будет доступен после оплаты.":"Срок доступа закончился."):"Пробный доступ · 5 дней с первой генерации.";
+   status.textContent=manual?"Баланс обновлён. "+accessStatus:accessStatus;
   }catch(error){
    display.textContent="—";
    status.textContent=error.message;
