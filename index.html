@@ -996,7 +996,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <div class="card">
 <h2>📥 Входящие обращения</h2>
 <p class="muted">Заявки сохраняются в YDB, даже когда Telegram-уведомления недоступны.</p>
-<button class="secondary" onclick="testSupportPush(this)">Проверить уведомления Telegram</button><p id="pushStatus" role="status"></p><button class="secondary" onclick="loadSupportReports()">🔄 Обновить обращения</button>
+<button class="secondary" id="supportPushTest" hidden onclick="testSupportPush(this)">Проверить уведомления Telegram</button><p id="pushStatus" role="status"></p><button class="secondary" onclick="loadSupportReports()">🔄 Обновить обращения</button>
 <p id="reportsStatus" class="muted" role="status"></p>
 <div id="reportsList"></div>
 </div>
@@ -3557,7 +3557,7 @@ async function loadSupportReports(){
    description.style.overflowWrap="anywhere";
    card.append(title,user,description);
    const tid=String(report.telegramId||"");
-   if(/^[1-9][0-9]{4,15}$/.test(tid)){
+   if(/^[1-9][0-9]{4,15}$/.test(tid)&&$("adminUsersTile").style.display!=="none"){
     const account=document.createElement("button");
     account.className="secondary";
     account.textContent="👤 Проверить баланс";
@@ -4169,6 +4169,7 @@ try{
   if(user){
     if(String(user.id)==="1046253780"){
       $("adminReportsTile").style.display="flex";
+      $("supportPushTest").hidden=false;
       $("adminUsersTile").style.display="flex";
       $("adminAiPilot").style.display="block";
       $("aiOwnerLegacyToggle").style.display="block";
@@ -4441,6 +4442,7 @@ $("commission").value=(market==="Wildberries"?[24.5,22,17,21.5,20,21,18,20,21]:[
 let touchX=null,swiped=false;const strip=$("carousel");strip.addEventListener("touchstart",e=>{touchX=e.touches[0].clientX;swiped=false},{passive:true});strip.addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-touchX;if(touchX!==null&&Math.abs(dx)>40){swiped=true;showSlide(slideIndex+(dx<0?1:-1))}touchX=null},{passive:true});strip.addEventListener("click",e=>{if(swiped){e.stopPropagation();swiped=false}},true);
 setInterval(()=>{if(!document.hidden&&$("home").classList.contains("active")&&!strip.matches(":hover,:focus-within")&&touchX===null&&!matchMedia("(prefers-reduced-motion: reduce)").matches)showSlide(slideIndex+1)},6000);</script><script>
 function applyReleaseCapabilities(access){
+ if(access.supportAvailable===true)$("adminReportsTile").style.display="flex";
  $("carryoverNote").hidden=access.carryoverAvailable!==true;
  $("bonusShare").hidden=access.referralAvailable!==true;
  $("bonusUnavailable").hidden=access.referralAvailable===true;
