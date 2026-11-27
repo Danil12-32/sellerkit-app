@@ -306,9 +306,9 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 #functions .winterHeading{border:1px solid #345c50;border-radius:17px;padding:18px;min-height:86px;display:flex;align-items:center;margin-bottom:16px}
 #functions .winterHeading h1{margin:0}
 #toolAnswer>div{padding:8px 0;border-bottom:1px solid #345344}
-#adminGrantForm label{display:block;margin:8px 0 3px}
-#adminGrantForm output{display:block;margin-top:8px}
-#adminGrantForm [hidden],#bonusShare[hidden],#bonusUnavailable[hidden],#carryoverNote[hidden]{display:none}
+#adminGrantForm label,#supportManagerForm label{display:block;margin:8px 0 3px}
+#adminGrantForm output,#supportManagerStatus{display:block;margin-top:8px}
+#supportManagement[hidden],#adminGrantForm [hidden],#bonusShare[hidden],#bonusUnavailable[hidden],#carryoverNote[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -839,7 +839,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <button class="tile" id="adminReportsTile" style="display:none" onclick="openPage('reports');loadSupportReports()">
 <span>📥</span>
 Обращения
-<small>Для разработчика</small>
+<small>Входящие обращения</small>
 </button>
 <button class="tile" id="adminUsersTile" style="display:none" onclick="openPage('admin-users');loadAdminRecentUsers()">
 <span>🛡️</span>
@@ -957,8 +957,20 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 </section>
 
 <!-- АДМИН-ЦЕНТР -->
-<section class="page" id="admin-users"><div class="card"><h2>Оплата через менеджера</h2><label>Номер заказа от покупателя<input id="manualOrder" autocomplete="off" spellcheck="false" required></label><button onclick="approveOrder(this)">Подтвердить оплату и начислить генерации</button><p id="manualStatus" role="status"></p></div>
+<section class="page" id="admin-users">
 <button class="back" onclick="openPage('profile')">← В профиль</button>
+<div class="card" id="supportManagement" hidden>
+<h2>Доступ к обращениям</h2>
+<p class="muted">Менеджер увидит входящие обращения в своём профиле.</p>
+<form id="supportManagerForm">
+<label for="supportManagerId">Telegram ID менеджера</label>
+<input id="supportManagerId" type="text" inputmode="numeric" pattern="[1-9][0-9]{0,15}" maxlength="16" autocomplete="off" required>
+<button type="submit">Выдать доступ</button>
+</form>
+<p id="supportManagerStatus" class="muted" role="status"></p>
+<div id="supportManagerList"></div>
+</div>
+<div class="card"><h2>Оплата через менеджера</h2><label>Номер заказа от покупателя<input id="manualOrder" autocomplete="off" spellcheck="false" required></label><button onclick="approveOrder(this)">Подтвердить оплату и начислить генерации</button><p id="manualStatus" role="status"></p></div>
 <div class="card">
 <h2>🛡️ Админ-центр</h2>
 <p>Найди пользователя по Telegram ID и проверь баланс, который хранится на сервере.</p>
@@ -1064,6 +1076,7 @@ function openPage(id){
  const page=$(id);
  if(!page)return;
  if(id==="bug")$("bugReportForm").hidden=false;
+ if(id==="admin-users"&&!$("supportManagement").hidden)updateSupportManagers();
  if(["profile","admin-users"].includes(id) && typeof loadTelegramBalance==="function")loadTelegramBalance();
  document.querySelectorAll(".page").forEach(p=>{
   p.classList.toggle("active",p.id===id);
@@ -3537,7 +3550,7 @@ async function loadSupportReports(){
   const data=await response.json();
   if(!response.ok||!data?.success||!Array.isArray(data.reports)){
    if(data?.error==="SUPPORT_STORAGE_UNAVAILABLE")throw new Error("Таблица support_reports недоступна в YDB.");
-   if(response.status===403)throw new Error("Доступ разрешён только владельцу.");
+   if(response.status===403)throw new Error("У этого аккаунта нет доступа к обращениям.");
    throw new Error("Не удалось получить обращения: "+String(data?.error||response.status));
   }
   status.textContent=data.reports.length?"Найдено обращений: "+data.reports.length:"Пока нет обращений.";
@@ -4442,12 +4455,50 @@ $("commission").value=(market==="Wildberries"?[24.5,22,17,21.5,20,21,18,20,21]:[
 let touchX=null,swiped=false;const strip=$("carousel");strip.addEventListener("touchstart",e=>{touchX=e.touches[0].clientX;swiped=false},{passive:true});strip.addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-touchX;if(touchX!==null&&Math.abs(dx)>40){swiped=true;showSlide(slideIndex+(dx<0?1:-1))}touchX=null},{passive:true});strip.addEventListener("click",e=>{if(swiped){e.stopPropagation();swiped=false}},true);
 setInterval(()=>{if(!document.hidden&&$("home").classList.contains("active")&&!strip.matches(":hover,:focus-within")&&touchX===null&&!matchMedia("(prefers-reduced-motion: reduce)").matches)showSlide(slideIndex+1)},6000);</script><script>
 function applyReleaseCapabilities(access){
- if(access.supportAvailable===true)$("adminReportsTile").style.display="flex";
+ if(typeof access.supportAvailable==="boolean")$("adminReportsTile").style.display=access.supportAvailable?"flex":"none";
+ const management=$("supportManagement");
+ const wasHidden=management.hidden;
+ management.hidden=access.supportManagementAvailable!==true;
+ if(wasHidden&&!management.hidden&&$("admin-users").classList.contains("active"))updateSupportManagers();
  $("carryoverNote").hidden=access.carryoverAvailable!==true;
  $("bonusShare").hidden=access.referralAvailable!==true;
  $("bonusUnavailable").hidden=access.referralAvailable===true;
  $("adminGrantForm").hidden=access.adminGrantAvailable!==true;
 }
+const supportManagerForm=$("supportManagerForm");
+supportManagerForm.addEventListener("submit",event=>{
+ event.preventDefault();
+ const input=$("supportManagerId");
+ updateSupportManagers({telegramId:input.value.trim(),enabled:true});
+});
+
+async function updateSupportManagers(change){
+ const status=$("supportManagerStatus"),list=$("supportManagerList");
+ const controls=[...supportManagerForm.elements,...list.querySelectorAll("button")];
+ if(controls.some(control=>control.disabled))return;
+ controls.forEach(control=>control.disabled=true);
+ status.textContent=change?"Сохраняем доступ…":"Загружаем список…";
+ try{
+  const {managers}=await billingRequest(change?"admin_set_support_manager":"admin_list_support_managers",change);
+  list.replaceChildren();
+  for(const telegramId of managers){
+   const row=document.createElement("p"),button=document.createElement("button");
+   button.type="button";
+   button.className="secondary";
+   button.textContent="Отозвать доступ";
+   button.setAttribute("aria-label","Отозвать доступ у Telegram ID "+telegramId);
+   button.onclick=()=>updateSupportManagers({telegramId,enabled:false});
+   row.append("ID "+telegramId+" ",button);
+   list.append(row);
+  }
+  if(change?.enabled)supportManagerForm.reset();
+  status.textContent=change
+   ? (change.enabled?"Доступ выдан для ID ":"Доступ отозван у ID ")+change.telegramId+"."
+   : managers.length?"Менеджеры с доступом к обращениям":"Доступ менеджерам пока не выдан.";
+ }catch(error){status.textContent=error.message;}
+ finally{controls.forEach(control=>control.disabled=false);}
+}
+
 let pendingAdminGrant=null;
 async function grantAdminCredits(event){
  event.preventDefault();
@@ -4490,7 +4541,7 @@ async function billingRequest(action,fields={}) {
  if (!initData) throw Error("Открой SellerKit из Telegram.");
  const res=await fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({action,initData,...fields}),signal:AbortSignal.timeout(25000)});
  const data=await res.json();
- if (!res.ok) throw Error(({INVALID_TARGET:"Введи Telegram ID или @username.",USER_NOT_FOUND:"Получатель ещё не открывал SellerKit или ник не найден.",AMBIGUOUS_TARGET:"Найдено несколько записей. Используй Telegram ID.",INVALID_GRANT:"Проверь количество генераций и дней доступа.",GRANT_FAILED:"Выдача не подтверждена. Повтори с теми же данными.",FORBIDDEN:"Выдача доступна владельцу.",MERCHANT_NOT_CONFIGURED:"Онлайн-оплата пока не подключена. Напишите менеджеру в Telegram: @CardLab100.",UNKNOWN_ORDER:"Заказ не найден.",PAYMENT_MISMATCH:"Проверь способ оплаты заказа.",NOTIFICATION_PENDING:"Подписка записана. Повтори подтверждение для отправки сообщения."})[data.error] || "Не удалось связаться с сервером оплаты.");
+ if (!res.ok) throw Error(({INVALID_TARGET:"Введи Telegram ID или @username.",INVALID_SUPPORT_MANAGER:"Введи Telegram ID менеджера. Доступ владельца управляется отдельно.",SUPPORT_ACCESS_UNAVAILABLE:"Список доступов временно недоступен. Попробуй ещё раз.",USER_NOT_FOUND:"Получатель ещё не открывал SellerKit или ник не найден.",AMBIGUOUS_TARGET:"Найдено несколько записей. Используй Telegram ID.",INVALID_GRANT:"Проверь количество генераций и дней доступа.",GRANT_FAILED:"Выдача не подтверждена. Повтори с теми же данными.",FORBIDDEN:"Выдача доступна владельцу.",MERCHANT_NOT_CONFIGURED:"Онлайн-оплата пока не подключена. Напишите менеджеру в Telegram: @CardLab100.",UNKNOWN_ORDER:"Заказ не найден.",PAYMENT_MISMATCH:"Проверь способ оплаты заказа.",NOTIFICATION_PENDING:"Подписка записана. Повтори подтверждение для отправки сообщения."})[data.error] || "Не удалось связаться с сервером оплаты.");
  return data;
 }
 async function refreshAccess(){
