@@ -317,7 +317,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 #toolAnswer>div{padding:8px 0;border-bottom:1px solid #345344}
 #adminGrantForm label,#supportManagerForm label{display:block;margin:8px 0 3px}
 #adminGrantForm output,#supportManagerStatus{display:block;margin-top:8px}
-#supportManagement[hidden],#adminGrantForm [hidden],#bonusShare[hidden],#bonusUnavailable[hidden],#carryoverNote[hidden]{display:none}
+#calcShipping[hidden],#calcBuyoutField[hidden],#calcParcelSize[hidden],#auditPhotos[hidden],#auditPhotoInput[hidden],#auditClearPhotos[hidden],#supportManagement[hidden],#adminGrantForm [hidden],#bonusShare[hidden],#bonusUnavailable[hidden],#carryoverNote[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -328,21 +328,39 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <!-- ГЛАВНАЯ -->
 <section class="page active" id="home"><small>SELLERKIT STUDIO</small><h1>Рабочий кабинет</h1><div class="homeShortcuts" aria-label="Разделы SellerKit"><button onclick="openPage('functions')">Функции</button><button onclick="openPage('calc')">Расчёт</button><button onclick="openPage('profile')">Профиль</button></div><div class="skHero"><small>Экономика товара</small><h2 id="homeCalcName">Твой первый расчёт</h2><div class="econMatrix"><span></span><small>Прибыль</small><small>Вложено в закуп</small><span>Единица</span><b id="unitGain">—</b><b id="unitBuy">—</b><span>Партия</span><b id="batchGain">—</b><b id="batchBuy">—</b></div><p id="riskFlag">Сохрани расчёт, чтобы увидеть результат.</p><button onclick="openPage('calc')">Открыть расчёт →</button></div><details><summary>Быстрый доступ</summary><div class="skGrid" id="pinList"></div><details><summary>Настроить</summary><div id="pinChoices"></div></details></details><section id="carousel" aria-label="Подборка функций"><button id="featureSlide"><strong id="featureTitle"></strong><span id="featureAction"></span><i id="featureIcon" aria-hidden="true"></i></button><div id="slideDots"></div></section><a class="designSign" href="https://t.me/CardLab100" onclick="event.preventDefault();contact('design')"><span>CardLab</span><strong>Заказать дизайн ↗</strong></a><p><a class="muted" href="./review.html" style="font-size:.875rem">Документы и реквизиты</a></p></section>
 
-<section class="page" id="functions"><header class="winterHeading"><h1>Функции</h1></header><h3>Деньги</h3><div class="skGrid"><button class="skTile" style="--accent:#8be0af" onclick="openPage('calc')"><span class="costLabel free">Бесплатно</span><i aria-hidden="true">◒</i><strong>Юнит-экономика</strong><small>Прибыль за штуку, вложения и результат партии.</small></button><button class="skTile" style="--accent:#8be0af" onclick="openPage('quick')"><span class="costLabel free">Бесплатно</span><i aria-hidden="true">◒</i><strong>Скидки, ROI и ДРР</strong><small>Проверь скидку, окупаемость и долю рекламы.</small></button></div><h3>Товар</h3><div class="skGrid"><button class="skTile" style="--accent:#e5bb83" onclick="startTool('audit')"><span class="costLabel">1 генерация</span><i aria-hidden="true">◇</i><strong>Разбор карточки</strong><small>Найди пробелы в описании и порядке слайдов.</small></button><button class="skTile" style="--accent:#e5bb83" onclick="startTool('competitors')"><span class="costLabel">1 генерация</span><i aria-hidden="true">◇</i><strong>Сравнение конкурентов</strong><small>Сопоставь цены, свойства и подачу товаров.</small></button><button class="skTile" style="--accent:#e5bb83" onclick="startTool('analysis')"><span class="costLabel">1 генерация</span><i aria-hidden="true">◇</i><strong>Анализ отзывов</strong><small>Узнай, что покупатели хвалят и на что жалуются.</small></button><button class="skTile" style="--accent:#e5bb83" onclick="startTool('ideas')"><span class="costLabel">1 генерация</span><i aria-hidden="true">◇</i><strong>Идеи для закупки</strong><small>Подбери гипотезы под бюджет и нишу.</small></button></div><h3>Тексты</h3><div class="skGrid"><button class="skTile" style="--accent:#9cbff5" onclick="openPage('seo')"><span class="costLabel free">Бесплатно</span><i aria-hidden="true">✎</i><strong>Поисковые запросы WB</strong><small>Подбери ключи по частоте из базы WB.</small></button><button class="skTile" style="--accent:#9cbff5" onclick="startTool('seoText')"><span class="costLabel free">Бесплатно</span><i aria-hidden="true">✎</i><strong>SEO-описание</strong><small>Собери описание из свойств товара и ключей.</small></button><button class="skTile" style="--accent:#9cbff5" onclick="startTool('utpAI')"><span class="costLabel">1 генерация</span><i aria-hidden="true">✎</i><strong>УТП для карточки</strong><small>Преврати свойства в аргументы для покупки.</small></button><button class="skTile" style="--accent:#9cbff5" onclick="startTool('offers')"><span class="costLabel">1 генерация</span><i aria-hidden="true">✎</i><strong>Офферы</strong><small>Пять предложений под аудиторию, цену и тон.</small></button><button class="skTile" style="--accent:#9cbff5" onclick="startTool('ad')"><span class="costLabel">1 генерация</span><i aria-hidden="true">✎</i><strong>Объявление</strong><small>Заголовок и текст под выбранную площадку.</small></button></div><h3>Контент</h3><div class="skGrid"><button class="skTile" style="--accent:#c5abef" onclick="startTool('plan')"><span class="costLabel">1 генерация</span><i aria-hidden="true">▷</i><strong>Контент-план</strong><small>Темы и форматы на неделю или месяц.</small></button><button class="skTile" style="--accent:#c5abef" onclick="startTool('reels')"><span class="costLabel">1 генерация</span><i aria-hidden="true">▷</i><strong>Сценарий Reels</strong><small>Крючки, кадры и реплики на 15–60 секунд.</small></button></div><h3>Клиенты</h3><div class="skGrid"><button class="skTile" style="--accent:#8dd4de" onclick="startTool('reply')"><span class="costLabel">1 генерация</span><svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg><strong>Ответы клиентам</strong><small>Три варианта для вопросов, жалоб и торга.</small></button><button class="skTile" style="--accent:#8dd4de" onclick="startTool('review')"><span class="costLabel">1 генерация</span><svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg><strong>Ответ на отзыв</strong><small>Подготовь публичный ответ покупателю.</small></button><button class="skTile" style="--accent:#8dd4de" onclick="startTool('dialog')"><span class="costLabel">1 генерация</span><svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg><strong>Разбор переписки</strong><small>Разбери диалог и выбери следующую реплику.</small></button><button class="skTile" style="--accent:#8dd4de" onclick="startTool('trainer')"><span class="costLabel">1 генерация</span><svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg><strong>Тренажёр возражений</strong><small>Потренируй разговор с покупателем или оптовиком.</small></button></div></section>
+<section class="page" id="functions"><header class="winterHeading"><h1>Функции</h1></header><h3>Деньги</h3><div class="skGrid"><button class="skTile" style="--accent:#8be0af" onclick="openPage('calc')"><span class="costLabel free">Бесплатно</span><i aria-hidden="true">◒</i><strong>Юнит-экономика</strong><small>Прибыль за штуку, вложения и результат партии.</small></button><button class="skTile" style="--accent:#8be0af" onclick="openPage('quick')"><span class="costLabel free">Бесплатно</span><i aria-hidden="true">◒</i><strong>Скидки, ROI и ДРР</strong><small>Проверь скидку, окупаемость и долю рекламы.</small></button></div><h3>Товар</h3><div class="skGrid"><button class="skTile" style="--accent:#e5bb83" onclick="startTool('audit')"><span class="costLabel">1 генерация</span><i aria-hidden="true">◇</i><strong>Разбор карточки</strong><small>Разбери фото, заголовок и порядок слайдов.</small></button><button class="skTile" style="--accent:#e5bb83" onclick="startTool('competitors')"><span class="costLabel">1 генерация</span><i aria-hidden="true">◇</i><strong>Сравнение конкурентов</strong><small>Сопоставь цены, свойства и подачу товаров.</small></button><button class="skTile" style="--accent:#e5bb83" onclick="startTool('analysis')"><span class="costLabel">1 генерация</span><i aria-hidden="true">◇</i><strong>Анализ отзывов</strong><small>Узнай, что покупатели хвалят и на что жалуются.</small></button><button class="skTile" style="--accent:#e5bb83" onclick="startTool('ideas')"><span class="costLabel">1 генерация</span><i aria-hidden="true">◇</i><strong>Идеи для закупки</strong><small>Подбери гипотезы под бюджет и нишу.</small></button></div><h3>Тексты</h3><div class="skGrid"><button class="skTile" style="--accent:#9cbff5" onclick="openPage('seo')"><span class="costLabel free">Бесплатно</span><i aria-hidden="true">✎</i><strong>Поисковые запросы WB</strong><small>Подбери ключи по частоте из базы WB.</small></button><button class="skTile" style="--accent:#9cbff5" onclick="startTool('seoText')"><span class="costLabel free">Бесплатно</span><i aria-hidden="true">✎</i><strong>SEO-описание</strong><small>Собери описание из свойств товара и ключей.</small></button><button class="skTile" style="--accent:#9cbff5" onclick="startTool('utpAI')"><span class="costLabel">1 генерация</span><i aria-hidden="true">✎</i><strong>УТП для карточки</strong><small>Преврати свойства в аргументы для покупки.</small></button><button class="skTile" style="--accent:#9cbff5" onclick="startTool('offers')"><span class="costLabel">1 генерация</span><i aria-hidden="true">✎</i><strong>Офферы</strong><small>Пять предложений под аудиторию, цену и тон.</small></button><button class="skTile" style="--accent:#9cbff5" onclick="startTool('ad')"><span class="costLabel">1 генерация</span><i aria-hidden="true">✎</i><strong>Объявление</strong><small>Заголовок и текст под выбранную площадку.</small></button></div><h3>Контент</h3><div class="skGrid"><button class="skTile" style="--accent:#c5abef" onclick="startTool('plan')"><span class="costLabel">1 генерация</span><i aria-hidden="true">▷</i><strong>Контент-план</strong><small>Темы и форматы на неделю или месяц.</small></button><button class="skTile" style="--accent:#c5abef" onclick="startTool('reels')"><span class="costLabel">1 генерация</span><i aria-hidden="true">▷</i><strong>Сценарий Reels</strong><small>Крючки, кадры и реплики на 15–60 секунд.</small></button></div><h3>Клиенты</h3><div class="skGrid"><button class="skTile" style="--accent:#8dd4de" onclick="startTool('reply')"><span class="costLabel">1 генерация</span><svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg><strong>Ответы клиентам</strong><small>Три варианта для вопросов, жалоб и торга.</small></button><button class="skTile" style="--accent:#8dd4de" onclick="startTool('review')"><span class="costLabel">1 генерация</span><svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg><strong>Ответ на отзыв</strong><small>Подготовь публичный ответ покупателю.</small></button><button class="skTile" style="--accent:#8dd4de" onclick="startTool('dialog')"><span class="costLabel">1 генерация</span><svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg><strong>Разбор переписки</strong><small>Разбери диалог и выбери следующую реплику.</small></button><button class="skTile" style="--accent:#8dd4de" onclick="startTool('trainer')"><span class="costLabel">1 генерация</span><svg class="toolIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg><strong>Тренажёр возражений</strong><small>Потренируй разговор с покупателем или оптовиком.</small></button></div></section>
 <section class="page" id="quick"><div class="card"><h2>Быстрый расчёт</h2><select id="quickType"><option>Цена после скидки</option><option>ROI</option><option>ДРР</option></select><label id="qa"></label><input id="q1" type="number" step="any"><label id="qb"></label><input id="q2" type="number" step="any"><p id="qr" aria-live="polite"></p></div></section>
-<section class="page" id="textForm"><div class="card"><button class="back" onclick="openPage('functions')">← Функции</button><h2 id="toolTitle"></h2><span class="costLabel" id="toolCost"></span><label for="toolInput" id="toolLabel"></label><textarea id="toolInput" maxlength="7000"></textarea><div id="toolOptions"></div><label for="toolContext">Что ещё учесть? · необязательно</label><textarea id="toolContext" maxlength="2000" placeholder="Площадка, покупатель, проверенные отличия или условия"></textarea><button id="makeText">Сгенерировать</button><p role="status" id="textStatus"></p><div id="toolAnswer"></div></div></section>
+<section class="page" id="textForm"><div class="card"><button class="back" onclick="openPage('functions')">← Функции</button><h2 id="toolTitle"></h2><span class="costLabel" id="toolCost"></span><section id="auditPhotos" hidden><button type="button" class="secondary" id="auditAddPhotos">Добавить фото</button><input type="file" id="auditPhotoInput" accept="image/jpeg,image/png,image/webp" multiple hidden><button type="button" class="secondary" id="auditClearPhotos" hidden>Убрать фото</button><p class="muted"><small>До 3 фото или скриншотов. Для анализа они отправляются в VseGPT.</small></p><p id="auditPhotoStatus" role="status"></p></section><label for="toolInput" id="toolLabel"></label><textarea id="toolInput" maxlength="7000"></textarea><div id="toolOptions"></div><label for="toolContext">Что ещё учесть? · необязательно</label><textarea id="toolContext" maxlength="2000" placeholder="Площадка, покупатель, проверенные отличия или условия"></textarea><button id="makeText">Сгенерировать</button><p role="status" id="textStatus"></p><div id="toolAnswer"></div></div></section>
 <section class="page" id="textHistory"><div class="card"><h2>История на этом устройстве</h2><div id="savedTexts"></div></div></section>
 <!-- КАЛЬКУЛЯТОР -->
 <section class="page" id="calc">
 <div class="card">
 <h2>📊 Юнит-экономика</h2>
 <button class="ratesLink" onclick="openPage('rateGuide')">Тарифы площадок <b>→</b><small>Комиссия, выкуп и доставка</small></button>
-<label>Название товара · необязательно<input id="productName" type="text"  value=""></label><div class="grid"><label>Категория<select id="category"><option>Одежда и обувь</option><option>Красота и уход</option><option>Электроника и гаджеты</option><option>Дом и кухня</option><option>Детские товары</option><option>Спорт и туризм</option><option>Автотовары</option><option>Зоотовары</option><option>Канцелярия и хобби</option></select></label><label>Площадка<select id="market"><option>Wildberries</option><option>Ozon</option><option>Авито</option><option>Яндекс Маркет</option></select></label><label>Размер посылки<select id="size"><option>S · до 1 л</option><option>M · свыше 1 до 5 л</option><option>L · свыше 5 до 25 л</option><option>XL · свыше 25 л</option></select></label><label>Схема работы<select id="scheme"><option>FBO / FBY</option><option>FBS</option><option>DBS / доставка продавца</option><option>Другая</option></select></label></div><h3>Основные данные</h3><div class="grid"><label>Цена продажи, ₽<input id="price" type="number" min="0" step="any" value=""></label><label>Закуп за единицу, ₽<input id="cost" type="number" min="0" step="any" value=""></label><label>Комиссия, %<input id="commission" type="number" min="0" step="any" value=""></label><label>Выкуп, %<input id="buyout" type="number" min="0" step="any" value="100"></label><label>Отправка заказа, ₽<input id="logistics" type="number" min="0" step="any" value=""></label><label>Обратная доставка, ₽<input id="reverse" type="number" min="0" step="any" value="0"></label><label>Продажи из партии, шт.<input id="quantity" type="number" min="0" step="any" value="1"></label></div><section class="costPanel"><h3>Дополнительные расходы</h3><small>Заполни только свои расходы. Пустое поле считается за 0.</small><div class="grid"><label>Эквайринг, %<input id="acquiring" type="number" min="0" step="any" value="0"></label><label>Обработка на продажу, ₽<input id="handling" type="number" min="0" step="any" value="0"></label><label>Упаковка на продажу, ₽<input id="packaging" type="number" min="0" step="any" value="0"></label><label>Хранение в месяц, ₽<input id="storage" type="number" min="0" step="any" value="0"></label><label>Месяцев хранения<input id="months" type="number" min="0" step="any" value="1"></label><label>Доставка до склада на единицу, ₽<input id="delivery" type="number" min="0" step="any" value="0"></label><label>Прочие потери от возвратов на продажу, ₽<input id="returns" type="number" min="0" step="any" value="0"></label><label>Реклама, %<input id="ads" type="number" min="0" step="any" value="0"></label><label>Налог с выручки, %<input id="tax" type="number" min="0" step="any" value="0"></label><label>Прочие расходы на единицу, ₽<input id="other" type="number" min="0" step="any" value="0"></label></div></section><p id="logDetail"></p><div class="actions">
+<label>Название товара · необязательно<input id="productName" type="text"  value=""></label><div class="grid"><label>Категория<select id="category"><option>Одежда и обувь</option><option>Красота и уход</option><option>Электроника и гаджеты</option><option>Дом и кухня</option><option>Детские товары</option><option>Спорт и туризм</option><option>Автотовары</option><option>Зоотовары</option><option>Канцелярия и хобби</option></select></label><label>Площадка<select id="market"><option>Wildberries</option><option>Ozon</option><option>Авито</option><option>Яндекс Маркет</option></select></label><label id="calcParcelSize">Размер посылки<select id="size"><option>S · до 1 л</option><option>M · свыше 1 до 5 л</option><option>L · свыше 5 до 25 л</option><option>XL · свыше 25 л</option></select></label><label>Схема работы<select id="scheme"><option>FBO / FBY</option><option>FBS</option><option>DBS / доставка продавца</option><option>Другая</option><option>Самовывоз</option><option>Доставка покупателю</option></select></label></div><h3>Закупка</h3><div class="grid">
+<label>Цена закупки одной штуки, ₽<input id="cost" type="number" min="0" step="any"></label>
+<label>Купил, шт.<input id="batchSize" type="number" min="1" step="1" placeholder="Например, 150"></label>
+<label>Доставка всей партии до тебя, ₽<input id="batchFreight" type="number" min="0" step="any" placeholder="0"></label>
+</div>
+<h3>Продажа</h3>
+<div class="grid">
+<label>Цена продажи за штуку, ₽<input id="price" type="number" min="0" step="any"></label>
+<label>План успешных продаж, шт.<input id="quantity" type="number" min="0" step="1" placeholder="Вся партия"></label>
+<label>Комиссия площадки, %<input id="commission" type="number" min="0" max="100" step="any" aria-describedby="calcCommissionHint"></label>
+<label id="calcBuyoutField">Выкуп заказов, %<input id="buyout" type="number" min="0" max="100" step="any" aria-describedby="calcRateHint"></label>
+</div>
+<p class="muted"><small id="calcCommissionHint"></small></p>
+<p class="muted"><small id="calcRateHint"></small></p>
+<div class="grid" id="calcShipping">
+<label>Доставка покупателю за один заказ, ₽<input id="logistics" type="number" min="0" step="any"><small>Если платит покупатель, укажи 0.</small></label>
+<label>Возврат одного невыкупленного заказа, ₽<input id="reverse" type="number" min="0" step="any" value="0"></label>
+</div>
+<section class="costPanel"><h3>Дополнительные расходы</h3><small>Заполни только свои расходы. Пустое поле считается за 0.</small><div class="grid"><label>Эквайринг, %<input id="acquiring" type="number" min="0" step="any" value="0"></label><label>Обработка на продажу, ₽<input id="handling" type="number" min="0" step="any" value="0"></label><label>Упаковка на продажу, ₽<input id="packaging" type="number" min="0" step="any" value="0"></label><label>Хранение в месяц, ₽<input id="storage" type="number" min="0" step="any" value="0"></label><label>Месяцев хранения<input id="months" type="number" min="0" step="any" value="1"></label><label>Доставка от тебя до склада за штуку, ₽<input id="delivery" type="number" min="0" step="any" value="0"></label><label>Прочие потери от возвратов на продажу, ₽<input id="returns" type="number" min="0" step="any" value="0"></label><label>Реклама, %<input id="ads" type="number" min="0" step="any" value="0"></label><label>Налог с выручки, %<input id="tax" type="number" min="0" step="any" value="0"></label><label>Прочие расходы на единицу, ₽<input id="other" type="number" min="0" step="any" value="0"></label></div></section><p id="logDetail" class="muted"></p><div class="actions">
 <button class="saveProduct" onclick="saveCalc()">Сохранить расчёт товара</button>
 <button class="secondary" onclick="resetCalc()">Сбросить</button>
 </div>
 <p class="muted">
-<small>Тарифы вводятся вручную. Для точного расчёта используй данные своего кабинета. Налог рассчитан упрощённо.</small>
+<small>Подставленные ставки — ориентиры. Можно изменить их по данным кабинета. Налог рассчитан упрощённо.</small>
 </p>
 </div>
 
@@ -354,6 +372,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <div class="stat"><small>ROI себестоимости</small><b id="roi">—</b></div>
 <div class="stat"><small>Цена безубыточности</small><b id="breakEven">—</b></div>
 <div class="stat"><small>Расходы за штуку</small><b id="expenses">—</b></div>
+<div class="stat"><small>Вложено в закуп всей партии</small><b id="batchInvest">—</b></div>
 </div>
 <h3>📦 Результаты по плану продаж</h3>
 <p class="muted"><small>Количество продаж меняет выручку, расходы и общую прибыль, но не прибыль за одну штуку.</small></p>
@@ -367,7 +386,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 </div>
 </section>
 
-<section class="page" id="rateGuide"><button class="back" onclick="openPage('calc')">← К расчёту</button><div class="card"><h2>Тарифы площадок</h2><p>Примеры для предварительного расчёта. Точную комиссию возьми из своего кабинета. Выкуп — доля оплаченных и полученных заказов продавца.</p><div class="rateScroll"><table><caption>Комиссии площадок и пример выкупа по категории, %</caption><tr><th>Категория</th><th>Выкуп*</th><th>WB</th><th>Ozon</th><th>Авито</th><th>Яндекс</th></tr><tr><th>Одежда и обувь</th><td><b>35%</b></td><td>24.5</td><td>24</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Красота и уход</th><td><b>70%</b></td><td>22</td><td>19</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Электроника и гаджеты</th><td><b>78%</b></td><td>17</td><td>15</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Дом и кухня</th><td><b>62%</b></td><td>21.5</td><td>18</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Детские товары</th><td><b>58%</b></td><td>20</td><td>17</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Спорт и туризм</th><td><b>55%</b></td><td>21</td><td>18</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Автотовары</th><td><b>80%</b></td><td>18</td><td>15</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Зоотовары</th><td><b>75%</b></td><td>20</td><td>17</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Канцелярия и хобби</th><td><b>72%</b></td><td>21</td><td>18</td><td>свой тариф</td><td>свой тариф</td></tr></table></div><p>* Выкуп — ориентир из примера по категории. Для каждой площадки укажи свой фактический процент в расчёте.</p><h3>Выкуп</h3><p>Считай отдельно для каждой площадки: выкупы ÷ завершённые заказы × 100. Например, 82 из 100 — это 82%.</p><div class="rateScroll"><table><caption>Пример расходов на посылку, ₽</caption><tr><th>Объём</th><th>Отправка</th><th>Возврат</th><th>Хранение / мес.</th></tr><tr><th>до 1 л</th><td>55</td><td>50</td><td>3</td></tr><tr><th>1–5 л</th><td>95</td><td>50</td><td>8</td></tr><tr><th>5–25 л</th><td>165</td><td>65</td><td>20</td></tr><tr><th>свыше 25 л</th><td>320</td><td>90</td><td>48</td></tr></table></div><button id="applyRates">Подставить пример комиссии, выкупа и логистики</button></div></section><!-- SEO -->
+<section class="page" id="rateGuide"><button class="back" onclick="openPage('calc')">← К расчёту</button><div class="card"><h2>Тарифы площадок</h2><p>Примеры для предварительного расчёта. Точную комиссию возьми из своего кабинета. Выкуп — доля оплаченных и полученных заказов продавца.</p><div class="rateScroll"><table id="categoryRateTable"><caption>Комиссии площадок и пример выкупа по категории, %</caption><tr><th>Категория</th><th>Выкуп*</th><th>WB</th><th>Ozon</th><th>Авито</th><th>Яндекс</th></tr><tr><th>Одежда и обувь</th><td><b>35%</b></td><td>24.5</td><td>24</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Красота и уход</th><td><b>70%</b></td><td>22</td><td>19</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Электроника и гаджеты</th><td><b>78%</b></td><td>17</td><td>15</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Дом и кухня</th><td><b>62%</b></td><td>21.5</td><td>18</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Детские товары</th><td><b>58%</b></td><td>20</td><td>17</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Спорт и туризм</th><td><b>55%</b></td><td>21</td><td>18</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Автотовары</th><td><b>80%</b></td><td>18</td><td>15</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Зоотовары</th><td><b>75%</b></td><td>20</td><td>17</td><td>свой тариф</td><td>свой тариф</td></tr><tr><th>Канцелярия и хобби</th><td><b>72%</b></td><td>21</td><td>18</td><td>свой тариф</td><td>свой тариф</td></tr></table></div><p>* Выкуп — ориентир из примера по категории. Для каждой площадки укажи свой фактический процент в расчёте.</p><h3>Выкуп</h3><p>Считай отдельно для каждой площадки: выкупы ÷ завершённые заказы × 100. Например, 82 из 100 — это 82%.</p><div class="rateScroll"><table><caption>Пример расходов на посылку, ₽</caption><tr><th>Объём</th><th>Отправка</th><th>Возврат</th><th>Хранение / мес.</th></tr><tr><th>до 1 л</th><td>55</td><td>50</td><td>3</td></tr><tr><th>1–5 л</th><td>95</td><td>50</td><td>8</td></tr><tr><th>5–25 л</th><td>165</td><td>65</td><td>20</td></tr><tr><th>свыше 25 л</th><td>320</td><td>90</td><td>48</td></tr></table></div><button id="applyRates">Подставить пример комиссии, выкупа и логистики</button></div></section><!-- SEO -->
 <section class="page" id="seo">
 <div class="card">
 <h2>🔎 Поисковые запросы WB</h2>
@@ -1445,7 +1464,7 @@ async function aiExportHistory(item){
  setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
 
-async function adminPrepareJpeg(file){
+async function adminPrepareJpeg(file,{maxSide=1024,maxLength=900000}={}){
  if(!file||!/^image\/(jpeg|png|webp)$/.test(file.type))
    throw new Error("Выбери фото JPEG, PNG или WebP.");
  if(file.size>12*1024*1024)
@@ -1460,7 +1479,7 @@ async function adminPrepareJpeg(file){
   });
   if(img.naturalWidth<200||img.naturalHeight<200)
    throw new Error("Фото должно быть минимум 200×200 пикселей.");
-  const scale=Math.min(1,1024/Math.max(img.naturalWidth,img.naturalHeight));
+  const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
   const w=Math.max(1,Math.round(img.naturalWidth*scale));
   const h=Math.max(1,Math.round(img.naturalHeight*scale));
   const canvas=document.createElement("canvas");
@@ -1474,7 +1493,7 @@ async function adminPrepareJpeg(file){
    ctx.drawImage(img,0,0,canvas.width,canvas.height);
    for(const quality of [0.85,0.73,0.62,0.5]){
     const output=canvas.toDataURL("image/jpeg",quality);
-    if(output.length<900000)return output;
+    if(output.length<=maxLength)return output;
    }
   }
   throw new Error("Фото слишком большое. Сожми исходный файл.");
@@ -3771,11 +3790,34 @@ renderPackages();
 
 /* КАЛЬКУЛЯТОР */
 
+const categoryRates=new Map(Array.from($("categoryRateTable").rows).slice(1).map(row=>{
+ const [category,buyout,wb,ozon]=Array.from(row.cells,cell=>cell.textContent.trim());
+ return [category,{buyout:parseFloat(buyout),Wildberries:Number(wb),Ozon:Number(ozon)}];
+}));
+
+function applyCategoryRates(marketChanged=false){
+ const rates=categoryRates.get($("category").value);
+ const commission=rates?.[$("market").value];
+ $("buyout").value=rates?.buyout??"";
+ if(commission!==undefined||marketChanged)$("commission").value=commission??"";
+}
+
+function updateCalcMode(){
+ const pickup=$("scheme").value==="Самовывоз";
+ for(const id of ["calcShipping","calcBuyoutField","calcParcelSize"])$(id).hidden=pickup;
+ $("calcRateHint").textContent=pickup?"Самовывоз · считаем состоявшиеся продажи без расходов на доставку."
+  :"Выкуп подставляется по категории как ориентир. Можно ввести свой процент.";
+ $("calcCommissionHint").textContent=["Wildberries","Ozon"].includes($("market").value)
+  ?"Комиссия из справочника · ориентир по категории. Можно изменить."
+  :"Укажи ставку из кабинета. Если комиссии нет, введи 0%.";
+ return pickup;
+}
+
 const calcFields=[
  "market","scheme","price","cost","commission",
  "acquiring","logistics","handling","packaging",
  "storage","delivery","returns","ads","tax",
- "other","quantity","category","size","productName","buyout","reverse","months"
+ "other","quantity","category","size","productName","buyout","reverse","months","batchSize","batchFreight"
 ];
 
 const defaults=Object.fromEntries(
@@ -3783,7 +3825,10 @@ const defaults=Object.fromEntries(
 );
 
 function calculate(){
- const inputs=calcFields.filter(id=>$(id).type==="number");
+ const pickup=updateCalcMode();
+ const buyout=pickup?100:num("buyout");
+ const batchSize=num("batchSize"),freight=num("batchFreight");
+ const inputs=calcFields.filter(id=>$(id).type==="number"&&(!pickup||!["buyout","logistics","reverse"].includes(id)));
  const invalid=inputs.some(id=>{
   const raw=$(id).value.trim();
   return raw!==""&&(!Number.isFinite(Number(raw))||Number(raw)<0);
@@ -3792,20 +3837,27 @@ function calculate(){
   .some(id=>num(id)>100);
  const outputIds=[
   "profit","margin","roi","breakEven","expenses",
-  "planQuantity","totalRevenue","totalExpenses","totalProfit"
+  "planQuantity","totalRevenue","totalExpenses","totalProfit","batchInvest"
  ];
- if(invalid||percentInvalid||num("buyout")<=0||num("buyout")>100||["price","cost","commission","logistics"].some(id=>$(id).value==="")||num("price")<=0){$("logDetail").textContent="";
+ let warning="";
+ if(invalid||percentInvalid)warning="Проверь суммы и проценты. Проценты должны быть от 0 до 100.";
+ else if(($("batchSize").value!==""&&(!Number.isSafeInteger(batchSize)||batchSize<1))||(freight>0&&batchSize<1))warning="Укажи целое количество купленных штук, чтобы распределить доставку партии.";
+ else if(["price","cost","commission"].some(id=>$(id).value==="")||num("price")<=0)warning="Укажи цену продажи, цену закупки и комиссию.";
+ else if(!pickup&&($("logistics").value===""||buyout<=0||buyout>100))warning="Укажи стоимость доставки одного заказа и выкуп больше 0%.";
+ if(warning){
+  $("logDetail").textContent="";
   outputIds.forEach(id=>$(id).textContent="—");
-  $("calcWarning").textContent=invalid
-   ?"Заполни поля корректно: значения не могут быть отрицательными."
-   :"Укажи цену, закуп, комиссию, отправку и выкуп от 0,01 до 100%.";
+  $("calcWarning").textContent=warning;
   return;
  }
  const price=num("price");
- const cost=num("cost");
- const shipments=100/num("buyout");
- const transport=shipments*num("logistics")+(shipments-1)*num("reverse");
- $("logDetail").textContent="На продажу: "+shipments.toFixed(2)+" отправления · расход на логистику с возвратами −"+money(transport);
+ const freightPerUnit=batchSize?freight/batchSize:0;
+ const cost=num("cost")+freightPerUnit;
+ const shipments=100/buyout;
+ const transport=pickup?0:shipments*num("logistics")+(shipments-1)*num("reverse");
+ $("logDetail").textContent="На одну продажу · доставка партии "+money(freightPerUnit)
+  +" · доставка покупателю и возвраты "+money(transport)
+  +" · комиссия "+money(price*num("commission")/100);
  const fixed=cost+transport+num("handling")+
   num("packaging")+num("storage")*num("months")+num("delivery")+
   num("returns")+num("other");
@@ -3816,7 +3868,7 @@ function calculate(){
  const margin=price>0?profit/price*100:NaN;
  const roi=cost>0?profit/cost*100:NaN;
  const breakEven=rate<1?fixed/(1-rate):NaN;
- const amount=num("quantity");
+ const amount=$("quantity").value===""?(batchSize||1):num("quantity");
  const quantity=Math.max(0,Math.floor(amount));
  const revenue=price*quantity;
  const totalExpenses=expenses*quantity;
@@ -3829,12 +3881,15 @@ function calculate(){
  $("expenses").textContent="−"+money(expenses);
  for(const id of ["margin","roi"])$(id).className=profit<0?"bad":profit>0?"good":"";
  $("planQuantity").textContent=number(quantity);
+ $("batchInvest").textContent=batchSize?money(batchSize*num("cost")+freight):"—";
  $("totalRevenue").textContent=money(revenue);
  $("totalExpenses").textContent=money(totalExpenses);
  $("totalProfit").textContent=money(totalProfit);
  $("totalProfit").className=totalProfit>=0?"good":"bad";
  $("calcWarning").textContent=rate>=1
   ?"Сумма процентных расходов составляет 100% выручки или больше."
+  :batchSize&&quantity>batchSize
+  ?"План продаж больше закупленной партии."
   :amount!==quantity
   ?"Количество продаж округлено вниз до целого числа."
   :totalProfit<0
@@ -3844,8 +3899,17 @@ function calculate(){
   :"";
 }
 calcFields.forEach(id=>{
- $(id).addEventListener("input",calculate);
- $(id).addEventListener("change",calculate);
+ const field=$(id);
+ if(id==="market"||id==="category"){
+  field.addEventListener("change",()=>{
+   if(id==="market"){
+    if($("market").value==="Авито")$("scheme").value="Самовывоз";
+    else if($("scheme").value==="Самовывоз")$("scheme").value="FBO / FBY";
+   }
+   applyCategoryRates(id==="market");
+   calculate();
+  });
+ }else field.addEventListener("input",calculate);
 });
 
 function saveCalc(){if($("profit").textContent==="—"){alert("Заполни основные данные.");return}
@@ -3854,7 +3918,14 @@ function saveCalc(){if($("profit").textContent==="—"){alert("Заполни о
    calcFields.map(id=>[id,$(id).value])
   );
   localStorage.setItem("sellerkit_calc_v3",JSON.stringify(data));
-  if($("profit").textContent!=="—"){const summary={unit:$("profit").textContent,batch:$("totalProfit").textContent,buy:num("cost"),invest:num("cost")*Math.floor(num("quantity")),name:$("productName").value||"Сохранённый товар",text:"Прибыль с единицы "+$("profit").textContent+" · с партии "+$("totalProfit").textContent+" · вложено в закуп "+money(num("cost")*num("quantity"))};localStorage.setItem(historyKey+"-economy",JSON.stringify(summary));renderEconomy()}alert("Расчёт сохранён!");
+  const batchSize=num("batchSize"),freight=num("batchFreight");
+  const quantity=$("quantity").value===""?(batchSize||1):Math.floor(num("quantity"));
+  const buy=num("cost")+(batchSize?freight/batchSize:0);
+  const invest=buy*(batchSize||quantity);
+  const summary={unit:$("profit").textContent,batch:$("totalProfit").textContent,buy,invest,name:$("productName").value||"Сохранённый товар"};
+  localStorage.setItem(historyKey+"-economy",JSON.stringify(summary));
+  renderEconomy();
+  alert("Расчёт сохранён!");
  }catch(e){
   alert("Не удалось сохранить расчёт.");
  }
@@ -3862,9 +3933,11 @@ function saveCalc(){if($("profit").textContent==="—"){alert("Заполни о
 
 function resetCalc(){
  calcFields.forEach(id=>$(id).value=defaults[id]);
+ applyCategoryRates();
  calculate();
 }
 
+applyCategoryRates();
 try{
  const saved=JSON.parse(
   localStorage.getItem("sellerkit_calc_v3")
@@ -4371,13 +4444,43 @@ seriesCostPreview();
 let currentForm, turnLog=[], requestVersion=0;
 sellerForms.push(["offers","Офферы","Товар","Тон|Дружеский|Спокойный|Экспертный|Дерзкий",""],["ideas","Идеи для закупки","Ниша, бюджет и ограничения","",""]);
 const formExamples={"ad":["Что продаёшь и где разместишь объявление?","Авито. Продаю компьютерный стол 120 × 60 см за 4 500 ₽. Есть два ящика. Самовывоз в Кемерове.","Например: покупатели — студенты. Заголовок хочу до 45 символов вместе с пробелами."],"reels":["Что покажешь в ролике?","Распаковываю смарт-часы: покажу коробку, экран и как ремешок сидит на руке.","Например: снимаю дома на телефон, без диктора. В конце хочу пригласить в карточку товара."],"reply":["Что написал покупатель?","Почему у вас 2 300 ₽, если похожая модель стоит 1 890 ₽?","Например: переписка на Авито. Скидку дать не могу. Ссылку на другой товар пока не прислали."],"audit":["Что сейчас видит покупатель в карточке?","Худи на WB. Заголовок «Худи женское». На обложке модель в полный рост, дальше два фото спины. Размерной сетки нет.","Например: чаще всего спрашивают о длине рукава. Хочу понять, что вынести на второй слайд."],"plan":["О чём канал и для кого он?","Telegram магазина автотоваров. Пишем для водителей, хотим показать органайзеры в багажник.","Например: можем снять два видео за неделю, остальные публикации — фото и текст."],"utpAI":["Кому пригодится товар и чем он полезен?","Сумка для поездок на работу: три отделения, ремень регулируется, помещаются документы А4.","Например: нужен короткий текст для обложки WB до семи слов."],"review":["Вставь отзыв покупателя","Сумка удобная, но на фото казалась больше. Поставила четыре звезды.","Например: размеры указаны на третьем фото. Ответ будет виден всем на WB."],"analysis":["Вставь отзывы, разделяя их пустой строкой","Красивый цвет, но рукава короткие.\n\nРазмер подошёл, ткань приятная.\n\nХотелось бы таблицу с длиной рукава.","Например: выбираю, какую информацию добавить к фото худи."],"dialog":["Вставь переписку по ролям","Покупатель: есть скидка на десять штук?\nЯ: сколько готовы взять?\nПокупатель: сначала хочу узнать цену.","Например: оптовая цена от 10 штук — 850 ₽. Нужен следующий ответ."],"competitors":["Что продаёшь ты и что предлагают конкуренты?","Мой органайзер: 1 200 ₽, три кармана. Конкурент: 990 ₽, два кармана, на фото видны крепления.","Например: сравни обложки и подскажи, какое отличие показать первым."],"seoText":["Опиши товар и перечисли ключевые запросы","Худи свободного кроя, хлопок 80%, капюшон. Запросы: худи женское, худи оверсайз.","Например: текст для WB до 900 символов, без повторов одной фразы."],"trainer":["На каком товаре тренируемся?","Продаю офисное кресло за 8 500 ₽. Доставка отдельно, скидка до 5%.","Например: хочу потренироваться, когда клиент просит цену конкурента."],"offers":["Для какого товара нужны предложения?","Органайзер для багажника с тремя отделениями и креплением на липучке.","Например: текст для первого слайда WB. Можно упомянуть крепление."],"ideas":["Какие товары и бюджет рассматриваешь?","Ищу небольшой товар для дома на WB. Бюджет первой партии 40 000 ₽, хочу начать с 30 штук.","Например: могу хранить дома, хрупкие товары не подходят."]};
+let auditFiles=[];
+const auditPhotoInput=$("auditPhotoInput");
+function renderAuditFiles(message=""){
+ $("auditPhotoStatus").textContent=message||auditFiles.map((file,i)=>(i+1)+". "+file.name).join(" · ");
+ $("auditClearPhotos").hidden=!auditFiles.length;
+}
+$("auditAddPhotos").onclick=()=>auditPhotoInput.click();
+$("auditClearPhotos").onclick=()=>{
+ auditFiles=[];
+ renderAuditFiles();
+};
+auditPhotoInput.onchange=()=>{
+ const selected=[...auditPhotoInput.files];
+ auditPhotoInput.value="";
+ if(auditFiles.length+selected.length>3){
+  renderAuditFiles("Можно добавить до 3 фото. Уже выбрано: "+auditFiles.length+".");
+  return;
+ }
+ if(selected.some(file=>!/^image\/(jpeg|png|webp)$/.test(file.type)||file.size>12*1024*1024)){
+  renderAuditFiles("Подойдут JPG, PNG и WebP до 12 МБ. Уже выбрано: "+auditFiles.length+".");
+  return;
+ }
+ auditFiles.push(...selected);
+ renderAuditFiles();
+};
+
 function startTool(key){
  currentForm=sellerForms.find(row=>row[0]===key);turnLog=[];requestVersion++;
+ auditFiles=[];
+ renderAuditFiles();
+ $("auditPhotos").hidden=key!=="audit";
+ $("auditAddPhotos").disabled=$("auditClearPhotos").disabled=false;
  $("makeText").disabled=false;$("makeText").textContent="Сгенерировать";$("toolInput").value="";$("toolContext").value="";
  $("toolCost").textContent=key==="seoText"?"Бесплатно":"1 генерация";
  $("toolCost").classList.toggle("free",key==="seoText");
- $("makeText").textContent=key==="seoText"?"Собрать описание":"Сгенерировать";
- $("toolTitle").textContent=currentForm[1];const [label,example,context]=formExamples[key];$("toolLabel").textContent=label;$("toolInput").placeholder=example;$("toolContext").placeholder=context;$("toolAnswer").replaceChildren();$("textStatus").textContent="";
+ $("makeText").textContent=key==="seoText"?"Собрать описание":key==="audit"?"Разобрать карточку":"Сгенерировать";
+ $("toolTitle").textContent=currentForm[1];const [label,example,context]=formExamples[key];$("toolLabel").textContent=key==="audit"?"Описание и заголовок · необязательно с фото":label;$("toolInput").placeholder=example;$("toolContext").placeholder=context;$("toolAnswer").replaceChildren();$("textStatus").textContent="";
  $("toolOptions").replaceChildren();
  const contextInput=$("toolContext");
  const contextLabel=document.querySelector('label[for="toolContext"]');
@@ -4423,8 +4526,9 @@ function renderTextHistory(){const el=$("savedTexts");el.replaceChildren();for(c
 renderTextHistory();
 $("makeText").onclick=async()=>{
  const initData=window.Telegram?.WebApp?.initData, input=$("toolInput").value.trim(), status=$("textStatus");
- if(!input){status.textContent="Заполни основное поле.";return}
- if(currentForm[0]==="seoText"){
+ const tool=currentForm[0],files=tool==="audit"?auditFiles.slice():[];
+ if(!input&&!files.length){status.textContent=tool==="audit"?"Добавь фото или опиши карточку.":"Заполни основное поле.";return}
+ if(tool==="seoText"){
   const keywords=$("toolContext").value.split(/[,;\n]+/).map(word=>word.trim()).filter(Boolean);
   const uniqueWords=[...new Set(keywords)].slice(0,15);
   const lines=input.split(/\n+/).map(line=>line.trim().replace(/^[-•]\s+/,"")).filter(Boolean);
@@ -4443,16 +4547,28 @@ $("makeText").onclick=async()=>{
  const version=requestVersion, trainer=currentForm[0]==="trainer",log=[...turnLog,{role:turnLog.length?"Продавец":"Условия",text:input}];
  const payload=JSON.stringify({данные:trainer?log:input,контекст:$("toolContext").value,ограничения:"Скидка, рассрочка, надёжность, упаковка, сервис и материалы разрешены как аргументы только при прямом подтверждении продавцом. При двух ценах без фактов попроси ссылку на аналог и предложи сравнение. Не обещай никаких условий. Для ответов клиентам дай только три коротких готовых варианта с заголовками. Используй обращение на «вы», если тон строгий. Реплика покупателя не подтверждает факты о продавце. Не добавляй от себя проверку товара, гарантии, риск подделки или условия продажи.",поля:Object.fromEntries(Array.from($("toolOptions").querySelectorAll("input"),el=>[el.dataset.field,el.value])),настройки:Array.from($("toolOptions").querySelectorAll("select"),s=>s.value)});
  if(payload.length>16000){status.textContent="Сократи текст переписки.";return}
- $("makeText").disabled=true;status.textContent="Готовим ответ…";
+ $("makeText").disabled=true;
+ $("auditAddPhotos").disabled=$("auditClearPhotos").disabled=true;
+ status.textContent=files.length?"Готовим фото…":"Готовим ответ…";
  try{
- const requestBody=JSON.stringify({action:"seller_text",initData,tool:currentForm[0],input:payload});
+ const photos=[];
+ for(const file of files){
+  try{photos.push(await adminPrepareJpeg(file,{maxSide:1600,maxLength:600000}));}
+  catch(error){
+   if(version===requestVersion)status.textContent=error.message||"Не удалось подготовить фото.";
+   return;
+  }
+  if(version!==requestVersion)return;
+ }
+ if(photos.length)status.textContent="Разбираем карточку по фото…";
+ const requestBody=JSON.stringify({action:photos.length?"seller_photo_audit":"seller_text",initData,tool,input:payload,...(photos.length?{photos}:{})});
  const send=()=>fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:requestBody});
  let res=await send(), data=await res.json().catch(()=>({}));
  if(version!==requestVersion)return;
  const retryAfter=Number.isFinite(data.retryAfter)?data.retryAfter:4;
  const rateLimited=res.status===429 && data.error==="PROVIDER_HTTP_429" && retryAfter<=10;
  const providerTimedOut=res.status===504 && data.error==="PROVIDER_TIMEOUT";
- if(rateLimited||providerTimedOut){
+ if(!files.length&&(rateLimited||providerTimedOut)){
   status.textContent=providerTimedOut
    ?"Сервис не ответил вовремя. Пробуем ещё раз…"
    :"Сервис генерации занят. Пробуем ещё раз…";
@@ -4470,6 +4586,7 @@ $("makeText").onclick=async()=>{
   ["PROVIDER_TIMEOUT","Сервис генерации долго не отвечал. Попробуй ещё раз."],
   ["INVALID_TELEGRAM_AUTH","Сессия устарела. Закрой и снова открой приложение в Telegram."],
   ["INVALID_INPUT","Проверь заполнение формы и сократи текст, если он слишком длинный."],
+  ["INVALID_AUDIT_PHOTOS","Не удалось отправить фото. Выбери JPG, PNG или WebP и попробуй снова."],
   ["GENERATION_REFUND_PENDING","Не удалось сформировать ответ и подтвердить возврат генерации. Проверь остаток в профиле и сообщи об ошибке."],
   ["PILOT_ONLY","Идёт закрытая проверка текстовых функций."]
  ]).get(data.error);
@@ -4477,10 +4594,15 @@ $("makeText").onclick=async()=>{
  return;
  }
  resultBlocks($("toolAnswer"),data.answer);status.textContent="Готово";
- try{localStorage.setItem(historyKey,JSON.stringify([{title:currentForm[1]+" · "+input.slice(0,45),answer:data.answer},...historyItems()].slice(0,30)));renderTextHistory()}catch{status.textContent="Готово. История устройства недоступна."}
+ try{localStorage.setItem(historyKey,JSON.stringify([{title:currentForm[1]+" · "+(input.slice(0,45)||"По фото"),answer:data.answer},...historyItems()].slice(0,30)));renderTextHistory()}catch{status.textContent="Готово. История устройства недоступна."}
  if(trainer){turnLog=[...log,{role:"Клиент",text:data.answer}];$("toolInput").value="";$("toolLabel").textContent="Твой ответ клиенту";$("toolInput").placeholder="Напиши, как ответил бы в реальной переписке.";$("makeText").textContent="Отправить реплику"}
  }catch{if(version===requestVersion)status.textContent="Не удалось получить ответ. Проверь соединение и попробуй ещё раз."}
- finally{if(version===requestVersion)$("makeText").disabled=trainer&&turnLog.length>=12}
+ finally{
+  if(version===requestVersion){
+   $("makeText").disabled=trainer&&turnLog.length>=12;
+   $("auditAddPhotos").disabled=$("auditClearPhotos").disabled=false;
+  }
+ }
 };
 function quickResult(){const i=$("quickType").selectedIndex; $("qa").textContent=["Исходная цена, ₽","Чистая прибыль, ₽","Расходы на рекламу, ₽"][i];$("qb").textContent=["Скидка, %","Вложения, ₽","Выручка, ₽"][i];const a=$("q1").valueAsNumber,b=$("q2").valueAsNumber;$("qr").textContent=!Number.isFinite(a+b)?"Введите оба значения.":(i!==1&&a<0)||(i===0?(b<0||b>100):b<=0)?"Проверь значения.":(i===0?a*(1-b/100):100*a/b).toLocaleString("ru-RU",{maximumFractionDigits:2})+(i===0?" ₽":" %")}
 for(const id of ["quickType","q1","q2"])$(id).addEventListener("input",quickResult);quickResult();</script><script>const pinTools=[["calc","Юнит-экономика"],["quick","Скидки, ROI и ДРР"],["audit","Разбор карточки"],["competitors","Сравнение конкурентов"],["analysis","Анализ отзывов"],["ideas","Идеи для закупки"],["seo","Поисковые запросы WB"],["seoText","SEO-описание"],["utpAI","УТП для карточки"],["offers","Офферы"],["ad","Объявление"],["plan","Контент-план"],["reels","Сценарий Reels"],["reply","Ответы клиентам"],["review","Ответ на отзыв"],["dialog","Разбор переписки"],["trainer","Тренажёр возражений"],["textHistory","История текстов"],["utp","УТП по правилам"]];
@@ -4498,9 +4620,9 @@ function drawPins(){const list=$("pinList"),choices=$("pinChoices");list.replace
  let buy=data.buy;if(buy===undefined&&legacy){try{const saved=JSON.parse(localStorage.getItem("sellerkit_calc_v3"));if(saved?.productName===data.name&&Number(saved.cost)*Math.floor(Number(saved.quantity))===parseRub(legacy[3]))buy=Number(saved.cost)}catch{}}
  $("unitBuy").textContent=money(buy);$("riskFlag").textContent=unit<0?"В зоне риска · расходы выше цены продажи":unit>0?"Расчёт в плюсе":unit===0?"Точка безубыточности":"Обнови сохранённый расчёт";$("riskFlag").className=unit<0?"bad":unit>0?"good":"";
 }renderEconomy();
-$("applyRates").onclick=()=>{const cat=$("category").selectedIndex,size=$("size").selectedIndex,market=$("market").value;
+$("applyRates").onclick=()=>{const size=$("size").selectedIndex,market=$("market").value;
 if(!["Wildberries","Ozon"].includes(market)){alert("Для этой площадки введи собственные тарифы.");return}
-$("commission").value=(market==="Wildberries"?[24.5,22,17,21.5,20,21,18,20,21]:[24,19,15,18,17,18,15,17,18])[cat];$("buyout").value=[35,70,78,62,58,55,80,75,72][cat];$("logistics").value=[55,95,165,320][size];$("reverse").value=[50,50,65,90][size];$("storage").value=[3,8,20,48][size];calculate();openPage("calc")};</script><script>const slides=[["offers","Собери пять офферов для товара","Подобрать предложение","✦","#7ae2a3"],["seo","Узнай, как покупатели ищут твой товар","Найти запросы WB","⌕","#92c6f0"],["audit","Посмотри на карточку глазами покупателя","Разобрать карточку","◇","#bea8ee"],["ad","Преврати факты о товаре в объявление","Собрать объявление","✎","#f2be8c"],["trainer","Отработай сложный разговор с покупателем","Начать тренировку","◌","#f3a4b7"],["ideas","Найди идеи для следующей закупки","Подобрать товар","✧","#8edcce"]];let slideIndex=0;function showSlide(index){slideIndex=(index+slides.length)%slides.length;const [key,title,cta,icon,color]=slides[slideIndex];$("featureTitle").textContent=title;$("featureAction").textContent=cta+" →";$("featureIcon").textContent=icon;$("carousel").style.setProperty("--slide",color);$("featureSlide").onclick=()=>key==="seo"?openPage("seo"):startTool(key);Array.from($("slideDots").children).forEach((b,i)=>b.setAttribute("aria-current",String(i===slideIndex)))}for(const [i,slide] of slides.entries()){const b=document.createElement("button");b.setAttribute("aria-label",slide[1]);b.onclick=()=>showSlide(i);$("slideDots").append(b)}showSlide(0);
+applyCategoryRates();$("logistics").value=[55,95,165,320][size];$("reverse").value=[50,50,65,90][size];$("storage").value=[3,8,20,48][size];calculate();openPage("calc")};</script><script>const slides=[["offers","Собери пять офферов для товара","Подобрать предложение","✦","#7ae2a3"],["seo","Узнай, как покупатели ищут твой товар","Найти запросы WB","⌕","#92c6f0"],["audit","Посмотри на карточку глазами покупателя","Разобрать карточку","◇","#bea8ee"],["ad","Преврати факты о товаре в объявление","Собрать объявление","✎","#f2be8c"],["trainer","Отработай сложный разговор с покупателем","Начать тренировку","◌","#f3a4b7"],["ideas","Найди идеи для следующей закупки","Подобрать товар","✧","#8edcce"]];let slideIndex=0;function showSlide(index){slideIndex=(index+slides.length)%slides.length;const [key,title,cta,icon,color]=slides[slideIndex];$("featureTitle").textContent=title;$("featureAction").textContent=cta+" →";$("featureIcon").textContent=icon;$("carousel").style.setProperty("--slide",color);$("featureSlide").onclick=()=>key==="seo"?openPage("seo"):startTool(key);Array.from($("slideDots").children).forEach((b,i)=>b.setAttribute("aria-current",String(i===slideIndex)))}for(const [i,slide] of slides.entries()){const b=document.createElement("button");b.setAttribute("aria-label",slide[1]);b.onclick=()=>showSlide(i);$("slideDots").append(b)}showSlide(0);
 let touchX=null,swiped=false;const strip=$("carousel");strip.addEventListener("touchstart",e=>{touchX=e.touches[0].clientX;swiped=false},{passive:true});strip.addEventListener("touchend",e=>{const dx=e.changedTouches[0].clientX-touchX;if(touchX!==null&&Math.abs(dx)>40){swiped=true;showSlide(slideIndex+(dx<0?1:-1))}touchX=null},{passive:true});strip.addEventListener("click",e=>{if(swiped){e.stopPropagation();swiped=false}},true);
 setInterval(()=>{if(!document.hidden&&$("home").classList.contains("active")&&!strip.matches(":hover,:focus-within")&&touchX===null&&!matchMedia("(prefers-reduced-motion: reduce)").matches)showSlide(slideIndex+1)},6000);</script><script>
 function applyReleaseCapabilities(access){
