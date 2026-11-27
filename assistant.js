@@ -53,6 +53,24 @@
   const status = element("assistantStatus");
   const accessNode = element("assistantAccess");
 
+  function readableAnswer(value) {
+    return String(value ?? "")
+      .replace(/\r\n?/g, "\n")
+      .replace(/^[ \t]{0,3}(?:`{3,}|~{3,})[^\n]*$/gm, "")
+      .replace(/^[ \t]{0,3}#{1,6}(?:[ \t]+|$)/gm, "")
+      .replace(/[ \t]+#{1,6}[ \t]*$/gm, "")
+      .replace(/^[ \t]{0,3}(?:[-*_][ \t]*){3,}$/gm, "")
+      .replace(/^[ \t]{0,3}>[ \t]?/gm, "")
+      .replace(/!?\[([^\]\n]+)\]\([^)\n]+\)/g, "$1")
+      .replace(/\*\*([^*\n]+)\*\*|__([^_\n]+)__/g, (_, bold, underline) => bold ?? underline)
+      .replace(/(^|[\s([{"«–—])(?:\*([^*\s\n][^*\n]*?)\*|_([^_\s\n][^_\n]*?)_)(?=$|[\s.,!?;:)\]}"»–—])/gm,
+        (_, before, a, b) => before + (a ?? b))
+      .replace(/`([^`\n]+)`/g, "$1")
+      .replace(/^([ \t]*)[-*+][ \t]+/gm, "$1• ")
+      .replace(/\n(?:[ \t]*\n){2,}/g, "\n\n")
+      .trim();
+  }
+
   function renderHistory() {
     history.replaceChildren();
     element("assistantEmpty").hidden = dialogs.length > 0;
@@ -63,7 +81,7 @@
       const title = document.createElement("strong");
       title.textContent = dialog.title;
       const preview = document.createElement("small");
-      preview.textContent = dialog.messages.at(-1)?.content || "";
+      preview.textContent = readableAnswer(dialog.messages.at(-1)?.content);
       button.append(title, preview);
       button.onclick = () => start(dialog);
       history.append(button);
@@ -73,7 +91,7 @@
   function appendMessage(role, content) {
     const bubble = document.createElement("p");
     bubble.className = role === "user" ? "assistantBubble assistantBubbleUser" : "assistantBubble";
-    bubble.textContent = content;
+    bubble.textContent = role === "assistant" ? readableAnswer(content) : content;
     element("assistantMessages").append(bubble);
   }
 
@@ -176,11 +194,14 @@
     renderControls();
 
     try {
-      const messages = dialog.messages.slice(-8).map(({ role, content }) => ({ role, content: content.slice(0, 1800) }));
+      const messages = dialog.messages.slice(-8).map(({ role, content }) => ({
+        role, content: (role === "assistant" ? readableAnswer(content) || content : content).slice(0, 1800)
+      }));
       const data = await api("assistant_chat", { question: text, history: messages });
-      if (typeof data.answer !== "string" || !data.answer.trim()) throw Error("ASSISTANT_UNAVAILABLE");
+      const answer = typeof data.answer === "string" ? readableAnswer(data.answer) : "";
+      if (!answer) throw Error("ASSISTANT_UNAVAILABLE");
       dialog.title ||= text.slice(0, 56);
-      dialog.messages = [...dialog.messages, { role: "user", content: text }, { role: "assistant", content: data.answer }].slice(-80);
+      dialog.messages = [...dialog.messages, { role: "user", content: text }, { role: "assistant", content: answer }].slice(-80);
       const saved = save(dialog);
       if (current === dialog) {
         question.value = "";
