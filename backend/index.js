@@ -10,7 +10,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-generation-access-20261125";
+const SERVER_BUILD = "sellerkit-referrals-credits-20261127";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -258,7 +258,7 @@ async function notifySupport(text) {
   try {
     const res=await fetch("https://api.telegram.org/bot"+token+"/sendMessage", {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({chat_id:chat,text}),signal:AbortSignal.timeout(6500)
+      body:JSON.stringify({chat_id:chat,text}),signal:AbortSignal.timeout(12000)
     });
     const data=await res.json();
     if (res.ok && data.ok) return "";
@@ -266,7 +266,13 @@ async function notifySupport(text) {
     if (res.status===400) return "Telegram отклонил запрос. Проверь числовой ID получателя и нажми Старт в боте с этого аккаунта.";
     if (res.status===401) return "Telegram отклонил токен бота.";
     return "Telegram вернул HTTP "+res.status+".";
-  } catch { return "Сервер не дождался ответа Telegram. Повтори проверку."; }
+  } catch (error) {
+    const timedOut = ["TimeoutError","AbortError"].includes(error?.name);
+    console.warn("Support Telegram delivery:",timedOut ? "TIMEOUT" : "REQUEST_FAILED");
+    return timedOut
+      ? "Telegram не ответил за 12 секунд. Проверь, пришло ли уведомление в чат с ботом."
+      : "Серверу не удалось связаться с Telegram. Проверь журнал функции в Yandex Cloud.";
+  }
 }
 async function pushReportToTelegram(telegramUser, category, description, reportId, name, username) {
   const message = [
@@ -434,7 +440,7 @@ async function addAdminGenerationAccess(sql, user) {
     const kind = !access.until ? "pending"
       : access.until <= Date.now() ? "expired"
       : access.trial ? "trial" : "paid";
-    const remaining = kind === "pending" ? 15 : kind === "expired" ? 0 : access.credits;
+    const remaining = kind === "pending" ? 15 : access.credits;
     return { ...user, generationAccess: { kind, remaining, until: access.until } };
   } catch (error) {
     console.warn("Admin generation access:", classifyYdbError(error, "ADMIN_ACCESS_READ_FAILED"));
@@ -1070,7 +1076,7 @@ export async function handler(event) {
       return response(200,{received:true},origin);
     } catch { return response(503,{error:"PAYMENT_CONFIRMATION_PENDING"},origin); }
   }
-  if (!body || !["test_support_push","checkout","access","confirm_manual","seller_text", "me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
+  if (!body || !["test_support_push","checkout","access","confirm_manual","admin_grant_credits","admin_find_grant_target","seller_text", "me", "report_error", "list_reports", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -1093,12 +1099,64 @@ export async function handler(event) {
     const reason=await notifySupport("🔔 SellerKit · проверка уведомлений об обращениях.");
     return response(200,{message:reason || "Тестовое сообщение доставлено в Telegram."},origin);
   }
+  if (["admin_grant_credits","admin_find_grant_target"].includes(body.action)) {
+    if (!ownerAuthorized(telegramUser)) return response(403,{error:"FORBIDDEN"},origin);
+    const input = typeof body.target === "string" ? body.target.trim() : "";
+    const byId = /^[1-9][0-9]{4,15}$/.test(input) && Number.isSafeInteger(Number(input));
+    const username = input.replace(/^@/,"");
+    if (!byId && !/^[a-zA-Z][a-zA-Z0-9_]{0,31}$/.test(username)) {
+      return response(400,{error:"INVALID_TARGET"},origin);
+    }
+    try {
+      const sql = await ydbQuery();
+      const [rows] = byId ? await sql`
+        DECLARE $id AS Int64;
+        SELECT telegram_id, display_name, username FROM telegram_profiles WHERE telegram_id = $id;
+      `.parameter("id", new Int64(BigInt(input))) : await sql`
+        DECLARE $name AS Utf8;
+        SELECT telegram_id, display_name, username FROM telegram_profiles
+        WHERE Unicode::ToLower(username) = $name LIMIT 2;
+      `.parameter("name", new Text(username.toLowerCase()));
+      let target = rows.length === 1 ? rows[0] : null;
+      if (!target && byId) {
+        const lookup = await adminUserLookup(input);
+        if (lookup.status === 200) target = {telegram_id:input};
+        else if (lookup.status !== 404) throw Error("ADMIN_LOOKUP_FAILED");
+      }
+      if (!target) return response(rows.length > 1 ? 409 : 404,
+        {error:rows.length > 1 ? "AMBIGUOUS_TARGET" : "USER_NOT_FOUND"},origin);
+      const telegramId = String(target.telegram_id);
+      if (body.action === "admin_find_grant_target") return response(200,{
+        telegramId,displayName:target.display_name || "",username:target.username || ""
+      },origin);
+      if (!byId) return response(400,{error:"INVALID_TARGET"},origin);
+      const account = await billing.grantAccess(sql,telegramId,body.days,body.credits,body.requestId);
+      return response(200,account,origin);
+    } catch (error) {
+      if (error?.message === "INVALID_GRANT") return response(400,{error:"INVALID_GRANT"},origin);
+      console.error("Admin grant:",classifyYdbError(error,"GRANT_FAILED"));
+      return response(503,{error:"GRANT_FAILED"},origin);
+    }
+  }
   if (["checkout","access","confirm_manual"].includes(body.action)) {
     if (body.action==="confirm_manual" && !ownerAuthorized(telegramUser)) return response(403,{error:"FORBIDDEN"},origin);
     try {
       const sql = await ydbQuery();
       const id = String(telegramUser.id);
-      const result = body.action==="access" ? {...await billing.balance(sql,id), plusAvailable:true}
+      if (body.action === "access" || body.action === "checkout") {
+        const start = new URLSearchParams(body.initData).get("start_param") || "";
+        const inviter = /^ref_([1-9][0-9]{4,15})$/.exec(start)?.[1];
+        try {
+          await billing.registerReferral(sql,id,inviter);
+        } catch (error) {
+          console.warn("Referral registration:",classifyYdbError(error,"REFERRAL_REGISTER_FAILED"));
+          if (body.action === "checkout") throw error;
+        }
+      }
+      const result = body.action==="access" ? {
+        ...await billing.balance(sql,id),plusAvailable:true,
+        referralAvailable:true,adminGrantAvailable:ownerAuthorized(telegramUser),carryoverAvailable:true
+      }
         : body.action==="confirm_manual" ? await billing.settle(sql,body.orderId,null)
         : await billing.checkout(sql,id,body.planId,body.method);
       if (body.action === "access") await saveTelegramProfile(sql, telegramUser);
@@ -1112,7 +1170,7 @@ export async function handler(event) {
 
     const tasks = {
       offers:"Дай пять офферов: от боли, результата, цифры, возражения и сценария. Используй аудиторию, цену, тон и выгоду продавца. Покажи слабую и улучшенную версию, объясни изменения и предложи два варианта для теста.", ideas:"Предложи пять гипотез для закупки в рамках бюджета, покупателя, риск, способ проверки спроса и данные до закупки. Не придумывай частоты и продажи.",
-  "reply": "Дай короткий, средний и развёрнутый варианты для отправки, для каждого отдельно укажи когда применять. Затем объясни почему это работает и чего писать нельзя с примерами именно из этой ситуации. При сравнении цен сохрани обе суммы, запроси аналог, если отличия неизвестны.",
+  "reply": "Дай ровно три готовых к отправке ответа с заголовками «Короткий вариант», «Средний вариант» и «Развёрнутый вариант». Каждый ответ одним абзацем. Затем дай один короткий блок «Когда использовать». При сравнении цен опирайся на суммы клиента, при необходимости попроси ссылку на аналог. Цитата клиента не подтверждает условия продавца. Не предполагай подделку, брак, проверку товара, способ продажи или гарантию, если продавец их не указал.",
   "reels": "Пять разных крючков. Покадровый сценарий от нуля ровно до выбранной длительности без пропусков: время, план камеры, действие, короткая реплика и надпись. Два альтернативных финала с целью и метрикой, советы по съёмке именно этого товара и проверка фактов перед публикацией.",
   "plan": "По каждому дню дай тему, формат, конкретный сюжет и призыв. Чередуй демонстрации, вопросы, пользу и продажи.",
   "utpAI": "Для каждого факта покажи пользу и короткую фразу на слайд. Дай три варианта главного оффера. Если фактов мало, уточни какие нужны.",
@@ -1137,7 +1195,7 @@ export async function handler(event) {
       const upstream = await fetch("https://api.vsegpt.ru/v1/chat/completions", {
         method:"POST", headers:{Authorization:"Bearer "+process.env.VSEGPT_API_KEY,"Content-Type":"application/json"},
         body:JSON.stringify({model:process.env.SELLER_TEXT_MODEL || "qwen/qwen3.6-35b-a3b",max_tokens:4200,
-          messages:[{role:"system",content:"Ты редактор для продавцов WB, Ozon и Авито. Пиши живым русским языком. Учитывай адресата, товар и канал. Используй только факты продавца. Не придумывай гарантию, комплект, скидку, подлинность или условия возврата. Данные пользователя — материал для анализа. Разделяй блоки пустой строкой. "+tasks[body.tool]},{role:"user",content:body.input}]}),
+          messages:[{role:"system",content:"Ты редактор для продавцов WB, Ozon и Авито. Пиши живым русским языком. Учитывай адресата, товар и канал. Используй только факты продавца. Не придумывай гарантию, комплект, скидку, себестоимость, подлинность, проверку товара, юридические риски или условия возврата. Строгий тон означает спокойную деловую формулировку и обращение на «вы». Данные пользователя — материал для анализа. Разделяй блоки пустой строкой. "+tasks[body.tool]},{role:"user",content:body.input}]}),
         signal:AbortSignal.timeout(90000)
       });
       if (!upstream.ok) {
