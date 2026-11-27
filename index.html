@@ -965,7 +965,10 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <form id="supportManagerForm">
 <label for="supportManagerId">Telegram ID менеджера</label>
 <input id="supportManagerId" type="text" inputmode="numeric" pattern="[1-9][0-9]{0,15}" maxlength="16" autocomplete="off" required>
-<button type="submit">Выдать доступ</button>
+<div class="actions">
+<button type="submit" value="grant">Выдать доступ</button>
+<button type="submit" value="revoke" class="secondary">Отозвать доступ</button>
+</div>
 </form>
 <p id="supportManagerStatus" class="muted" role="status"></p>
 <div id="supportManagerList"></div>
@@ -973,6 +976,27 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <div class="card"><h2>Оплата через менеджера</h2><label>Номер заказа от покупателя<input id="manualOrder" autocomplete="off" spellcheck="false" required></label><button onclick="approveOrder(this)">Подтвердить оплату и начислить генерации</button><p id="manualStatus" role="status"></p></div>
 <div class="card">
 <h2>🛡️ Админ-центр</h2>
+<form id="adminGrantForm" hidden onsubmit="grantAdminCredits(event)">
+<h3>Генерации пользователя</h3>
+<div id="adminCreditModes" hidden>
+<label for="adminCreditMode">Действие</label>
+<select id="adminCreditMode">
+<option value="grant">Выдать генерации</option>
+<option value="deduct">Снять генерации</option>
+</select>
+</div>
+<label for="grantTarget">Telegram ID или @username</label>
+<input id="grantTarget" required maxlength="33" autocomplete="off" spellcheck="false">
+<label for="grantCount">Количество генераций</label>
+<input id="grantCount" type="number" min="1" max="10000" step="1" required>
+<div id="grantDaysFields">
+<label for="grantDays">Добавить дней доступа</label>
+<input id="grantDays" type="number" min="1" max="365" step="1" value="7" required>
+</div>
+<button type="submit">Проверить получателя</button>
+<output id="grantStatus" aria-live="polite"></output>
+</form>
+<hr>
 <p>Найди пользователя по Telegram ID и проверь баланс, который хранится на сервере.</p>
 
 <label for="adminTelegramId">Telegram ID пользователя</label>
@@ -983,17 +1007,6 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 </div>
 <p class="muted" id="adminUsersStatus" role="status" aria-live="polite"></p>
 <div id="adminUsersResults"></div>
-<form id="adminGrantForm" hidden onsubmit="grantAdminCredits(event)">
-<h3>Выдать генерации</h3>
-<label for="grantTarget">Telegram ID или @username</label>
-<input id="grantTarget" required maxlength="33" autocomplete="off" spellcheck="false">
-<label for="grantCount">Количество генераций</label>
-<input id="grantCount" type="number" min="1" max="10000" step="1" required>
-<label for="grantDays">Добавить дней доступа</label>
-<input id="grantDays" type="number" min="1" max="365" step="1" value="7" required>
-<button type="submit">Проверить получателя</button>
-<output id="grantStatus" aria-live="polite"></output>
-</form>
 <hr>
 <h3>🤖 Нейросеть VseGPT</h3>
 <p class="muted">Проверка API-подписки и отдельного денежного баланса без генераций и расходов.</p>
@@ -4464,12 +4477,15 @@ function applyReleaseCapabilities(access){
  $("bonusShare").hidden=access.referralAvailable!==true;
  $("bonusUnavailable").hidden=access.referralAvailable===true;
  $("adminGrantForm").hidden=access.adminGrantAvailable!==true;
+ $("adminCreditModes").hidden=access.adminDeductionAvailable!==true;
+ if($("adminCreditModes").hidden)$("adminCreditMode").value="grant";
+ syncCreditMode();
 }
 const supportManagerForm=$("supportManagerForm");
 supportManagerForm.addEventListener("submit",event=>{
  event.preventDefault();
  const input=$("supportManagerId");
- updateSupportManagers({telegramId:input.value.trim(),enabled:true});
+ updateSupportManagers({telegramId:input.value.trim(),enabled:event.submitter?.value!=="revoke"});
 });
 
 async function updateSupportManagers(change){
@@ -4491,7 +4507,7 @@ async function updateSupportManagers(change){
    row.append("ID "+telegramId+" ",button);
    list.append(row);
   }
-  if(change?.enabled)supportManagerForm.reset();
+  if(change&&$("supportManagerId").value.trim()===change.telegramId)supportManagerForm.reset();
   status.textContent=change
    ? (change.enabled?"Доступ выдан для ID ":"Доступ отозван у ID ")+change.telegramId+"."
    : managers.length?"Менеджеры с доступом к обращениям":"Доступ менеджерам пока не выдан.";
@@ -4499,31 +4515,40 @@ async function updateSupportManagers(change){
  finally{controls.forEach(control=>control.disabled=false);}
 }
 
+function syncCreditMode(){
+ const deducting=$("adminCreditMode").value==="deduct";
+ $("grantDaysFields").hidden=deducting;
+ $("grantDays").disabled=deducting;
+}
+
 let pendingAdminGrant=null;
 async function grantAdminCredits(event){
  event.preventDefault();
  const form=event.currentTarget,button=form.querySelector("button"),status=$("grantStatus");
  const target=$("grantTarget").value.trim();
- const credits=$("grantCount").valueAsNumber,days=$("grantDays").valueAsNumber;
+ const deducting=$("adminCreditMode").value==="deduct";
+ const credits=$("grantCount").valueAsNumber,days=deducting?0:$("grantDays").valueAsNumber;
  button.disabled=true;
  try{
-  if(!pendingAdminGrant||pendingAdminGrant.target!==target||pendingAdminGrant.credits!==credits||pendingAdminGrant.days!==days){
+  if(!pendingAdminGrant||pendingAdminGrant.target!==target||pendingAdminGrant.credits!==credits||pendingAdminGrant.days!==days||pendingAdminGrant.deducting!==deducting){
    pendingAdminGrant=null;
    status.textContent="Ищу получателя…";
    const user=await billingRequest("admin_find_grant_target",{target});
    const recipient=[user.displayName,user.username?"@"+user.username:"","ID "+user.telegramId].filter(Boolean).join(" · ");
-   pendingAdminGrant={target,credits,days,telegramId:user.telegramId,requestId:crypto.randomUUID()};
-   status.textContent=recipient+" · +"+credits+" генераций, +"+days+" дн.";
-   button.textContent="Подтвердить выдачу";
+   pendingAdminGrant={target,credits,days,deducting,telegramId:user.telegramId,requestId:crypto.randomUUID()};
+   status.textContent=recipient+(deducting?" · Снять "+credits+" генераций":" · +"+credits+" генераций, +"+days+" дн.");
+   button.textContent=deducting?"Подтвердить снятие":"Подтвердить выдачу";
    return;
   }
   const grant=pendingAdminGrant;
-  status.textContent="Начисляю генерации…";
-  const access=await billingRequest("admin_grant_credits",{target:grant.telegramId,credits,days,requestId:grant.requestId});
-  status.textContent="Начислено. Остаток: "+access.credits+" · доступ до "+new Date(access.until).toLocaleDateString("ru-RU")+".";
+  status.textContent=deducting?"Снимаю генерации…":"Начисляю генерации…";
+  const access=await billingRequest(deducting?"admin_deduct_credits":"admin_grant_credits",{target:grant.telegramId,credits,days,requestId:grant.requestId});
+  status.textContent=deducting?"Генерации сняты. Остаток: "+access.credits+"."
+   :"Начислено. Остаток: "+access.credits+" · доступ до "+new Date(access.until).toLocaleDateString("ru-RU")+".";
   pendingAdminGrant=null;
   button.textContent="Проверить получателя";
   form.reset();
+  syncCreditMode();
   $("adminTelegramId").value=grant.telegramId;
   await adminFindUser(grant.telegramId);
  }catch(error){status.textContent=error.message;}
@@ -4531,6 +4556,7 @@ async function grantAdminCredits(event){
 }
 $("adminGrantForm").addEventListener("input",event=>{
  const form=event.currentTarget;
+ syncCreditMode();
  if(form.querySelector("button").disabled)return;
  pendingAdminGrant=null;
  form.querySelector("button").textContent="Проверить получателя";
@@ -4541,7 +4567,7 @@ async function billingRequest(action,fields={}) {
  if (!initData) throw Error("Открой SellerKit из Telegram.");
  const res=await fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({action,initData,...fields}),signal:AbortSignal.timeout(25000)});
  const data=await res.json();
- if (!res.ok) throw Error(({INVALID_TARGET:"Введи Telegram ID или @username.",INVALID_SUPPORT_MANAGER:"Введи Telegram ID менеджера. Доступ владельца управляется отдельно.",SUPPORT_ACCESS_UNAVAILABLE:"Список доступов временно недоступен. Попробуй ещё раз.",USER_NOT_FOUND:"Получатель ещё не открывал SellerKit или ник не найден.",AMBIGUOUS_TARGET:"Найдено несколько записей. Используй Telegram ID.",INVALID_GRANT:"Проверь количество генераций и дней доступа.",GRANT_FAILED:"Выдача не подтверждена. Повтори с теми же данными.",FORBIDDEN:"Выдача доступна владельцу.",MERCHANT_NOT_CONFIGURED:"Онлайн-оплата пока не подключена. Напишите менеджеру в Telegram: @CardLab100.",UNKNOWN_ORDER:"Заказ не найден.",PAYMENT_MISMATCH:"Проверь способ оплаты заказа.",NOTIFICATION_PENDING:"Подписка записана. Повтори подтверждение для отправки сообщения."})[data.error] || "Не удалось связаться с сервером оплаты.");
+ if (!res.ok) throw Error(({INVALID_TARGET:"Введи Telegram ID или @username.",INVALID_SUPPORT_MANAGER:"Введи Telegram ID менеджера. Доступ владельца управляется отдельно.",SUPPORT_ACCESS_UNAVAILABLE:"Список доступов временно недоступен. Попробуй ещё раз.",USER_NOT_FOUND:"Получатель ещё не открывал SellerKit или ник не найден.",AMBIGUOUS_TARGET:"Найдено несколько записей. Используй Telegram ID.",INVALID_GRANT:"Проверь количество генераций и дней доступа.",INVALID_DEDUCTION:"Проверь количество генераций для снятия.",INSUFFICIENT_CREDITS:"На сохранённом балансе меньше генераций, чем указано. Списание не выполнено.",DEDUCTION_FAILED:"Снятие не подтверждено. Повтори с теми же данными.",GRANT_FAILED:"Выдача не подтверждена. Повтори с теми же данными.",FORBIDDEN:"Выдача доступна владельцу.",MERCHANT_NOT_CONFIGURED:"Онлайн-оплата пока не подключена. Напишите менеджеру в Telegram: @CardLab100.",UNKNOWN_ORDER:"Заказ не найден.",PAYMENT_MISMATCH:"Проверь способ оплаты заказа.",NOTIFICATION_PENDING:"Подписка записана. Повтори подтверждение для отправки сообщения."})[data.error] || "Не удалось связаться с сервером оплаты.");
  return data;
 }
 async function refreshAccess(){
