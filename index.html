@@ -1137,7 +1137,7 @@ async function submitBugReport(){
  if(!bugReportId && window.crypto?.randomUUID) bugReportId=window.crypto.randomUUID();
  status.textContent="Сохраняем обращение в SellerKit…";
  const controller=new AbortController();
- const timeout=setTimeout(()=>controller.abort(),11000);
+ const timeout=setTimeout(()=>controller.abort(),25000);
  try{
   const response=await fetch(SELLERKIT_API_URL,{
    method:"POST",
