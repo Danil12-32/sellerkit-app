@@ -3,14 +3,14 @@ import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 import { Driver } from "@ydbjs/core";
 import { query } from "@ydbjs/query";
 import { MetadataCredentialsProvider } from "@ydbjs/auth/metadata";
-import { Int64, Text } from "@ydbjs/value/primitive";
+import { Bool, Int64, Text } from "@ydbjs/value/primitive";
 
 // SellerKit Studio API: first production stage.
 // Read-only public functionality: authenticated Telegram profile/balance.
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-admin-controls-20261128";
+const SERVER_BUILD = "sellerkit-report-status-20261128";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -335,20 +335,35 @@ async function sendSupportReport(telegramUser, body) {
   }
 }
 
-async function listSupportReports() {
+const SUPPORT_REPORT_STATUS_PREFIX = "support:report:";
+
+// Store statuses separately so existing reports start open and need no backfill.
+async function listSupportReports(archived) {
   try {
     const sql = await supportSql();
     const [rows] = await sql`
-      SELECT report_id, telegram_id, sender_name, username, category, description, created_at
-      FROM support_reports
-      ORDER BY created_at DESC
+      DECLARE $prefix AS Utf8;
+      DECLARE $archived AS Bool;
+
+      $reports = SELECT report_id, telegram_id, sender_name, username, category,
+                        description, created_at, $prefix || report_id AS status_id
+                 FROM support_reports;
+      SELECT r.report_id AS report_id, r.telegram_id AS telegram_id,
+             r.sender_name AS sender_name, r.username AS username, r.category AS category,
+             r.description AS description, r.created_at AS created_at, s.record AS report_status
+      FROM $reports AS r
+      LEFT JOIN sellerkit_billing AS s ON r.status_id = s.id
+      WHERE (s.record IS NOT NULL) = $archived
+      ORDER BY r.created_at DESC, r.report_id DESC
       LIMIT 50;
-    `;
+    `.parameter("prefix", new Text(SUPPORT_REPORT_STATUS_PREFIX))
+      .parameter("archived", new Bool(archived));
     if (!Array.isArray(rows)) throw new Error("BAD_SUPPORT_RESULT");
     return {
       status: 200,
       payload: {
         success: true,
+        statusAvailable: true,
         reports: rows.map(row => ({
           reportId: String(row.report_id),
           telegramId: String(row.telegram_id),
@@ -356,6 +371,7 @@ async function listSupportReports() {
           username: String(row.username || ""),
           category: String(row.category || ""),
           description: String(row.description || ""),
+          status: row.report_status === '"resolved"' ? "resolved" : row.report_status === '"obsolete"' ? "obsolete" : "open",
           createdAt: row.created_at instanceof Date
             ? row.created_at.toISOString() : String(row.created_at || "")
         }))
@@ -367,6 +383,39 @@ async function listSupportReports() {
   }
 }
 
+
+async function updateSupportReportStatus(reportId, status) {
+  if (typeof reportId !== "string" || !/^[0-9a-f]{8}-[0-9a-f-]{27,40}$/i.test(reportId)
+      || !["open", "resolved", "obsolete"].includes(status)) {
+    return { status: 400, payload: { error: "INVALID_REPORT_STATUS" } };
+  }
+  try {
+    const sql = await supportSql();
+    const found = await sql.begin(async tx => {
+      if (!await findSavedReport(tx, reportId)) return false;
+      const key = new Text(SUPPORT_REPORT_STATUS_PREFIX + reportId);
+      if (status === "open") {
+        await tx`
+          DECLARE $id AS Utf8;
+          DELETE FROM sellerkit_billing WHERE id = $id;
+        `.parameter("id", key);
+      } else {
+        await tx`
+          DECLARE $id AS Utf8;
+          DECLARE $record AS Utf8;
+          UPSERT INTO sellerkit_billing (id, record) VALUES ($id, $record);
+        `.parameter("id", key).parameter("record", new Text(JSON.stringify(status)));
+      }
+      return true;
+    });
+    return found
+      ? { status: 200, payload: { success: true } }
+      : { status: 404, payload: { error: "SUPPORT_REPORT_NOT_FOUND" } };
+  } catch (error) {
+    console.warn("Update support status:", classifyYdbError(error, "SUPPORT_STATUS_WRITE_FAILED"));
+    return { status: 503, payload: { error: "SUPPORT_STORAGE_UNAVAILABLE" } };
+  }
+}
 
 /* Administrative actions require verified Telegram initData and the configured owner ID. */
 function ownerAuthorized(telegramUser) {
@@ -1151,7 +1200,7 @@ export async function handler(event) {
       return response(200,{received:true},origin);
     } catch { return response(503,{error:"PAYMENT_CONFIRMATION_PENDING"},origin); }
   }
-  if (!body || !["test_support_push","checkout","access","confirm_manual","admin_grant_credits","admin_deduct_credits","admin_find_grant_target","seller_text", "me", "report_error", "list_reports", "admin_list_support_managers", "admin_set_support_manager", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
+  if (!body || !["test_support_push","checkout","access","confirm_manual","admin_grant_credits","admin_deduct_credits","admin_find_grant_target","seller_text", "me", "report_error", "list_reports", "update_report_status", "admin_list_support_managers", "admin_set_support_manager", "admin_user_lookup", "admin_recent_users", "admin_ai_status", "admin_image_test", "admin_image_send", "admin_copy_assist", "admin_series_plan"].includes(body.action)) {
     return response(400, { error: "UNSUPPORTED_ACTION" }, origin);
   }
   let telegramUser;
@@ -1331,9 +1380,11 @@ export async function handler(event) {
     const sent = await sendSupportReport(telegramUser, body);
     return response(sent.status, sent.payload, origin);
   }
-  if (body.action === "list_reports") {
+  if (body.action === "list_reports" || body.action === "update_report_status") {
     if (!(await supportAuthorized(telegramUser))) return response(403, { error: "FORBIDDEN" }, origin);
-    const result = await listSupportReports();
+    const result = body.action === "list_reports"
+      ? await listSupportReports(body.archived === true)
+      : await updateSupportReportStatus(body.reportId, body.status);
     return response(result.status, result.payload, origin);
   }
   if (body.action === "admin_user_lookup" ||
