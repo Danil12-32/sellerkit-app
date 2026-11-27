@@ -78,7 +78,7 @@ button{
 }
 button:disabled{opacity:.5;cursor:not-allowed}
 .secondary{background:#314b39;color:white}
-#wbPeriods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:12px 0}
+#wbPeriods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:12px 0}
 #wbPeriods button{min-width:0;padding:10px 2px;font-size:clamp(12px,3.6vw,15px)}
 #seoResults .result{align-items:flex-start}
 .wbResultContent{min-width:0;flex:1;overflow-wrap:anywhere}
@@ -87,7 +87,6 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .wbStats dd{margin:3px 0 0;font-size:14px;font-weight:600}
 .wbStats .wbRise{color:#86e9ae}
 .wbStats .wbFall{color:#ffaaa8}
-@media(max-width:310px){#wbPeriods{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .actions{
  display:flex;
  flex-wrap:wrap;
@@ -374,8 +373,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <h2>🔎 Поисковые запросы WB</h2>
 <p>Поиск ключевых слов Wildberries без загрузки Excel.</p>
 <div id="wbPeriods" role="group" aria-label="Период частотности">
-<button type="button" data-period="day" aria-pressed="true">Вчера</button>
-<button type="button" data-period="week" class="secondary" aria-pressed="false">Неделя</button>
+<button type="button" data-period="week" aria-pressed="true">Неделя</button>
 <button type="button" data-period="month" class="secondary" aria-pressed="false">Месяц</button>
 <button type="button" data-period="quarter" class="secondary" aria-pressed="false">Квартал</button>
 </div>
@@ -3883,7 +3881,7 @@ calculate();
 /* SEO ANALYTICS */
 
 let keywordWorker;
-let keywordPeriod="day";
+let keywordPeriod="week";
 let keywordPeriodAvailable=true;
 let searchRequest=0;
 let found=[];
@@ -3926,7 +3924,7 @@ function loadDatabase(){
  const status=$("dbStatus");
  status.textContent="Загружаем базу запросов WB…";
  try{
-  const worker=new Worker("./wb-search-worker.js?v=2&period="+encodeURIComponent(keywordPeriod));
+  const worker=new Worker("./wb-search-worker.js?v=3&period="+encodeURIComponent(keywordPeriod));
   keywordWorker=worker;
   worker.onmessage=({data})=>{
    if(keywordWorker!==worker)return;

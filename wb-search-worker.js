@@ -2,7 +2,7 @@ let rows = [];
 let matches = [];
 let loading;
 const workerUrl = new URL(self.location.href);
-const period = workerUrl.searchParams.get("period") || "day";
+const period = workerUrl.searchParams.get("period") || "week";
 const prefix = new URL("./wb-keywords/", workerUrl);
 
 function normalize(value) {
