@@ -1,0 +1,36 @@
+.homeDesignTip{max-width:40ch;margin:0 0 14px;color:#bce5d0;line-height:1.5}
+.assistantBanner{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:start;margin:14px 0 18px;padding:19px;border-radius:20px;color:#102b21;background:radial-gradient(circle at 100% 0%,#c4f6df 0,transparent 52%),linear-gradient(125deg,#9aefb9,#63c8aa);border:1px solid #c1f5d5}
+.assistantBanner h2{margin:0 0 5px;line-height:1.14;font-size:clamp(21px,5.3vw,28px)}
+.assistantBanner p{margin:0;color:#254c3c;font-size:14px;line-height:1.42}
+.assistantBanner button{grid-column:1/-1;justify-self:start;background:#163b2d;color:#e5ffef;min-height:43px}
+.assistantMark{display:grid;place-items:center;flex:none;width:37px;height:37px;border-radius:12px;background:#b9f4d64a;color:#c3f8d6;font-size:22px;line-height:1}
+.assistantBanner>.assistantMark{background:#153e2d24;color:#174a35}
+.assistantFunctionLink{display:flex;gap:11px;align-items:center;width:100%;min-height:60px;margin:12px 0 4px;text-align:left;color:#e5f9ec;background:#203f33;border:1px solid #507765}
+.assistantFunctionLink>span:nth-child(2){flex:1;min-width:0}
+.assistantFunctionLink small{display:block;color:#b8d6c6;font-weight:500;margin-top:3px}
+nav button[data-page=assistant] .assistantMark{width:auto;height:21px;margin:0 auto 3px;color:inherit;background:none;font-size:21px}
+nav button[data-page=assistant]{line-height:1.1;overflow-wrap:anywhere;font-size:clamp(9px,2.6vw,11px)}
+.assistantHeader,.assistantChatHeader{display:flex;align-items:center;gap:11px}
+.assistantHeader{margin:4px 0 11px}
+.assistantHeader h1,.assistantChatHeader h2{margin:0}
+.assistantHeader p{margin:2px 0 0}
+.assistantAccess{margin:9px 0;color:#b9dbca;font-size:13px}
+.assistantHistoryTitle{margin:19px 0 9px}
+.assistantHistory{display:grid;gap:8px}
+.assistantHistoryRow{width:100%;min-width:0;text-align:left;background:var(--panel);border:1px solid #3d5c4d;color:#d6f5e4;padding:13px}
+.assistantHistoryRow small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#a7c7b8;font-weight:500;margin-top:6px}
+.assistantHistoryRow strong{overflow-wrap:anywhere}
+.assistantChatHeader{margin:16px 0 9px}
+.assistantChatHeader button{flex:none;padding:8px 10px;min-height:40px}
+.assistantChatHeader h2{min-width:0;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:17px}
+.assistantMessages{display:flex;flex-direction:column;gap:9px;min-height:154px;max-height:48vh;max-height:48dvh;overflow-y:auto;overscroll-behavior:contain;padding:13px 9px;margin:6px 0 10px;border-radius:16px;border:1px solid #35483f;background:#101a16}
+.assistantBubble{align-self:flex-start;max-width:92%;margin:0;padding:10px 12px;border-radius:13px 13px 13px 4px;background:#21362b;color:#edf6ef;white-space:pre-wrap;overflow-wrap:anywhere}
+.assistantBubbleUser{align-self:flex-end;border-radius:13px 13px 4px 13px;background:#80d8ac;color:#142b21}
+.assistantSuggestions{display:flex;gap:6px;overflow-x:auto;margin:7px 0 11px;padding:3px 1px}
+.assistantSuggestions button{flex:none;min-height:37px;padding:7px 9px;font-size:12px}
+.assistantForm{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:7px}
+.assistantForm textarea{min-height:49px;max-height:132px;padding:9px;font-size:16px}
+.assistantForm button{min-height:49px;padding:8px 11px}
+#assistantStatus{margin:6px 0 0;color:#c8e3d6;font-size:13px}
+#assistant [hidden]{display:none}
+.srAssistant{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}

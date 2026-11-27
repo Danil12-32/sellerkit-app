@@ -1,0 +1,232 @@
+(() => {
+  const element = (id) => document.getElementById(id);
+  const telegram = window.Telegram?.WebApp;
+  const name = String(telegram?.initDataUnsafe?.user?.first_name || "").trim().slice(0, 40);
+  const tips = [
+    "Обложка должна сразу отвечать на два вопроса. Что это и зачем мне?",
+    "Один слайд — одна мысль. Остальные аргументы разнеси по галерее.",
+    "Проверь главный слайд в размере выдачи. Мелкий текст в ленте почти исчезает.",
+    "Покажи товар в деле. Покупателю проще представить, как он им воспользуется.",
+    "Вынеси важный размер на отдельный кадр. На фото без масштаба легко ошибиться.",
+    "УТП работает лучше, когда его можно увидеть прямо на фото.",
+    "Начни разбор карточки с первого кадра, заголовка и вопросов из отзывов.",
+    "Если на обложке всё выделено, глаз не понимает, куда смотреть первым.",
+    "Дай покупателю разглядеть товар. Оставь отступ между ним и текстом.",
+    "Фраза «удобно в дороге» лучше работает вместе с кадром, где видно почему.",
+    "Для сравнения двух обложек меняй один элемент за раз.",
+    "Прочитай заголовок вслух. Если он звучит как список ключей, убери повторы."
+  ];
+
+  function greet() {
+    const hour = new Date().getHours();
+    const hello = hour < 6 ? "Доброй ночи" : hour < 12 ? "Доброе утро" : hour < 18 ? "Добрый день" : hour < 23 ? "Добрый вечер" : "Доброй ночи";
+    element("homeGreeting").textContent = name ? hello + ", " + name : hello;
+    const slot = Math.floor(Date.now() / 7_200_000);
+    const next = tips[(slot + Math.floor(slot / tips.length)) % tips.length];
+    element("homeDesignTip").textContent = next;
+  }
+
+  greet();
+  setInterval(() => { if (!document.hidden) greet(); }, 60_000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) greet(); });
+
+  const userId = telegram?.initDataUnsafe?.user?.id;
+  const storageKey = userId ? "sellerkit-assistant-dialogs:" + userId : null;
+  let dialogs = [];
+  if (storageKey) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      if (Array.isArray(saved)) dialogs = saved.filter(dialog =>
+        dialog && typeof dialog.id === "string" && Array.isArray(dialog.messages) &&
+        dialog.messages.length > 0 && typeof dialog.title === "string"
+      ).slice(0, 30);
+    } catch {}
+  }
+  let current = null;
+  let request = null;
+  let accessRequest = null;
+  let available = false;
+  let accessText = "";
+
+  const history = element("assistantHistory");
+  const question = element("assistantQuestion");
+  const status = element("assistantStatus");
+  const accessNode = element("assistantAccess");
+
+  function renderHistory() {
+    history.replaceChildren();
+    element("assistantEmpty").hidden = dialogs.length > 0;
+    for (const dialog of dialogs) {
+      const button = document.createElement("button");
+      button.className = "assistantHistoryRow";
+      button.type = "button";
+      const title = document.createElement("strong");
+      title.textContent = dialog.title;
+      const preview = document.createElement("small");
+      preview.textContent = dialog.messages.at(-1)?.content || "";
+      button.append(title, preview);
+      button.onclick = () => start(dialog);
+      history.append(button);
+    }
+  }
+
+  function appendMessage(role, content) {
+    const bubble = document.createElement("p");
+    bubble.className = role === "user" ? "assistantBubble assistantBubbleUser" : "assistantBubble";
+    bubble.textContent = content;
+    element("assistantMessages").append(bubble);
+  }
+
+  function renderThread() {
+    if (!current) return;
+    element("assistantTitle").textContent = current.title || "Новый диалог";
+    element("assistantMessages").replaceChildren();
+    if (!current.messages.length) appendMessage("assistant", "Я ИИ-дизайнер SellerKit. Расскажи, что продаёшь и что хочешь улучшить в карточке или тексте.");
+    for (const message of current.messages) appendMessage(message.role, message.content);
+    if (request?.dialog === current) appendMessage("user", request.text);
+    element("assistantSuggestions").hidden = current.messages.length > 0 || request?.dialog === current;
+    const list = element("assistantMessages");
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function renderControls() {
+    accessNode.textContent = accessText;
+    element("assistantSend").disabled = !available || Boolean(request);
+    question.readOnly = request?.dialog === current && Boolean(request);
+  }
+
+  async function api(action, fields = {}) {
+    const result = await fetch(SELLERKIT_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify({ action, initData: telegram.initData, ...fields }),
+      signal: AbortSignal.timeout(33000)
+    });
+    const data = await result.json().catch(() => ({}));
+    if (!result.ok) throw Object.assign(new Error(data.error || "ASSISTANT_UNAVAILABLE"), { resetAt: data.resetAt });
+    return data;
+  }
+
+  function refreshAccess() {
+    if (accessRequest) return accessRequest;
+    if (!telegram?.initData) {
+      available = false;
+      accessText = "Для переписки открой SellerKit через Telegram.";
+      renderControls();
+      return;
+    }
+    accessText = "Проверяем доступ…";
+    renderControls();
+    accessRequest = api("assistant_access").then((access) => {
+      available = access.available === true;
+      accessText = available
+        ? (access.until ? "Доступ до " + new Date(access.until).toLocaleDateString("ru-RU") + " · " : "")
+          + "до " + access.dailyLimit + " запросов в день"
+        : "Переписка доступна в течение оплаченного срока подписки.";
+    }).catch(error => {
+      available = false;
+      accessText = error.message === "INVALID_TELEGRAM_AUTH"
+        ? "Сессия устарела. Закрой и снова открой SellerKit в Telegram."
+        : "Не удалось проверить доступ к чату. Открой раздел ещё раз.";
+    }).finally(() => {
+      accessRequest = null;
+      renderControls();
+    });
+    return accessRequest;
+  }
+
+  function overview() {
+    current = null;
+    element("assistantOverview").hidden = false;
+    element("assistantThread").hidden = true;
+    renderHistory();
+    renderControls();
+  }
+
+  function start(dialog = null) {
+    if (!element("assistant").classList.contains("active")) openPage("assistant");
+    current = dialog || { id: crypto.randomUUID(), title: "", messages: [] };
+    element("assistantOverview").hidden = true;
+    element("assistantThread").hidden = false;
+    question.value = request?.dialog === current ? request.text : "";
+    status.textContent = request?.dialog === current ? "Готовлю ответ…" : "";
+    renderThread();
+    renderControls();
+  }
+
+  function save(dialog) {
+    dialogs = [dialog, ...dialogs.filter(item => item.id !== dialog.id)].slice(0, 30);
+    try {
+      if (!storageKey) return false;
+      localStorage.setItem(storageKey, JSON.stringify(dialogs));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  element("assistantForm").onsubmit = async event => {
+    event.preventDefault();
+    const text = question.value.trim();
+    if (!text || !current || !available || request) return;
+    const dialog = current;
+    request = { dialog, text };
+    status.textContent = "Готовлю ответ…";
+    renderThread();
+    renderControls();
+
+    try {
+      const messages = dialog.messages.slice(-8).map(({ role, content }) => ({ role, content: content.slice(0, 1800) }));
+      const data = await api("assistant_chat", { question: text, history: messages });
+      if (typeof data.answer !== "string" || !data.answer.trim()) throw Error("ASSISTANT_UNAVAILABLE");
+      dialog.title ||= text.slice(0, 56);
+      dialog.messages = [...dialog.messages, { role: "user", content: text }, { role: "assistant", content: data.answer }].slice(-80);
+      const saved = save(dialog);
+      if (current === dialog) {
+        question.value = "";
+        status.textContent = saved ? "" : "Диалог сохранён до закрытия страницы.";
+      }
+      if (!current) renderHistory();
+    } catch (error) {
+      let message = {
+        ASSISTANT_LIMIT: "Дневной лимит исчерпан. Попробуй позже.",
+        ASSISTANT_TIMEOUT: "Ответ задержался. Попробуй задать вопрос ещё раз.",
+        INVALID_ASSISTANT_INPUT: "Проверь текст вопроса. Максимум 2 000 символов.",
+        INVALID_TELEGRAM_AUTH: "Сессия устарела. Открой SellerKit заново в Telegram."
+      }[error.message] || "Ответ пока недоступен. Попробуй ещё раз.";
+      if (error.message === "ASSISTANT_LIMIT" && Number.isFinite(error.resetAt)) {
+        const reset = new Date(error.resetAt).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+        message = "Дневной лимит исчерпан. Восстановится " + reset + ".";
+      }
+      if (error.message === "ASSISTANT_ACCESS_REQUIRED") {
+        available = false;
+        accessText = "Переписка доступна в течение оплаченного срока подписки.";
+        message = "Проверь срок доступа в профиле.";
+      }
+      if (current === dialog) status.textContent = message;
+    } finally {
+      request = null;
+      renderThread();
+      renderControls();
+    }
+  };
+
+  question.addEventListener("keydown", event => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing && matchMedia("(pointer: fine)").matches) {
+      event.preventDefault();
+      element("assistantForm").requestSubmit();
+    }
+  });
+  for (const button of element("assistantSuggestions").querySelectorAll("button")) {
+    button.onclick = () => {
+      if (question.readOnly) return;
+      question.value = button.textContent;
+      question.focus();
+    };
+  }
+  for (const button of document.querySelectorAll("[data-assistant-new]")) button.onclick = () => start();
+  for (const button of document.querySelectorAll("[data-assistant-open]")) button.onclick = () => openPage("assistant");
+  element("assistantBack").onclick = overview;
+
+  window.sellerDesigner = { open() { overview(); refreshAccess(); } };
+})();
