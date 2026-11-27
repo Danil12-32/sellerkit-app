@@ -23,10 +23,10 @@ nav button[data-page=assistant]{line-height:1.1;overflow-wrap:anywhere;font-size
 .assistantChatHeader{margin:16px 0 9px}
 .assistantChatHeader button{flex:none;padding:8px 10px;min-height:40px}
 .assistantChatHeader h2{min-width:0;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:17px}
-.assistantMessages{display:flex;flex-direction:column;gap:9px;min-height:154px;max-height:48vh;max-height:48dvh;overflow-y:auto;overscroll-behavior:contain;padding:13px 9px;margin:6px 0 10px;border-radius:16px;border:1px solid #35483f;background:#101a16}
+.assistantMessages{display:flex;flex-direction:column;gap:9px;min-height:154px;max-height:38vh;max-height:38dvh;overflow-y:auto;overscroll-behavior:contain;padding:13px 9px;margin:6px 0 10px;border-radius:16px;border:1px solid #35483f;background:#101a16}
 .assistantBubble{align-self:flex-start;max-width:92%;margin:0;padding:10px 12px;border-radius:13px 13px 13px 4px;background:#21362b;color:#edf6ef;white-space:pre-wrap;overflow-wrap:anywhere}
 .assistantBubbleUser{align-self:flex-end;border-radius:13px 13px 4px 13px;background:#80d8ac;color:#142b21}
-.assistantSuggestions{display:flex;gap:6px;overflow-x:auto;margin:7px 0 11px;padding:3px 1px}
+.assistantSuggestions{display:flex;gap:6px;overflow-x:auto;margin:7px 0 11px;padding:3px 1px;scrollbar-width:thin;scrollbar-color:#4b6559 transparent}
 .assistantSuggestions button{flex:none;min-height:37px;padding:7px 9px;font-size:12px}
 .assistantForm{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:7px}
 .assistantForm textarea{min-height:49px;max-height:132px;padding:9px;font-size:16px}

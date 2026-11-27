@@ -1,7 +1,7 @@
 (() => {
   const element = (id) => document.getElementById(id);
   const telegram = window.Telegram?.WebApp;
-  const name = String(telegram?.initDataUnsafe?.user?.first_name || "").trim().slice(0, 40);
+  const name = String(telegram?.initDataUnsafe?.user?.first_name || "").split(/\s+[|｜]\s+/, 1)[0].trim().slice(0, 40);
   const tips = [
     "Обложка должна сразу отвечать на два вопроса. Что это и зачем мне?",
     "Один слайд — одна мысль. Остальные аргументы разнеси по галерее.",
