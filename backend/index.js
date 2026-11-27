@@ -10,7 +10,7 @@ import { Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-referrals-credits-20261127";
+const SERVER_BUILD = "sellerkit-registration-20261127";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -1159,7 +1159,14 @@ export async function handler(event) {
       }
         : body.action==="confirm_manual" ? await billing.settle(sql,body.orderId,null)
         : await billing.checkout(sql,id,body.planId,body.method);
-      if (body.action === "access") await saveTelegramProfile(sql, telegramUser);
+      if (body.action === "access") {
+        try {
+          await profile(telegramUser.id);
+        } catch (error) {
+          console.warn("User registration on access:", classifyYdbError(error, "USER_REGISTRATION_FAILED"));
+        }
+        await saveTelegramProfile(sql, telegramUser);
+      }
       return response(200,result,origin);
     } catch(e) {
       const reason=["UNKNOWN_ORDER","INVALID_ORDER","PAYMENT_MISMATCH","MERCHANT_NOT_CONFIGURED","NOTIFICATION_PENDING"].includes(e.message)?e.message:"PAYMENT_SERVICE_UNAVAILABLE";
