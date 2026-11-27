@@ -836,7 +836,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 Нашли ошибку?
 <small>Попробуем решить вместе</small>
 </button>
-<button class="tile" id="adminReportsTile" style="display:none" onclick="openPage('reports');loadSupportReports()">
+<button class="tile" id="adminReportsTile" style="display:none" onclick="openPage('reports');loadSupportReports(false)">
 <span>📥</span>
 Обращения
 <small>Входящие обращения</small>
@@ -1022,6 +1022,12 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <h2>📥 Входящие обращения</h2>
 <p class="muted">Заявки сохраняются в YDB, даже когда Telegram-уведомления недоступны.</p>
 <button class="secondary" id="supportPushTest" hidden onclick="testSupportPush(this)">Проверить уведомления Telegram</button><p id="pushStatus" role="status"></p><button class="secondary" onclick="loadSupportReports()">🔄 Обновить обращения</button>
+<div id="reportStatusTabs" hidden>
+<div class="actions">
+<button type="button" id="reportOpenTab" aria-pressed="true" onclick="loadSupportReports(false)">Открытые</button>
+<button type="button" id="reportArchiveTab" aria-pressed="false" onclick="loadSupportReports(true)">Архив</button>
+</div>
+</div>
 <p id="reportsStatus" class="muted" role="status"></p>
 <div id="reportsList"></div>
 </div>
@@ -3543,7 +3549,12 @@ async function loadAdminRecentUsers(){
  finally{btn.disabled=false;}
 }
 
-async function loadSupportReports(){
+let supportArchive=false;
+let supportListRequest=0;
+
+async function loadSupportReports(archived=supportArchive){
+ const request=++supportListRequest;
+ supportArchive=archived;
  const status=$("reportsStatus");
  const container=$("reportsList");
  container.replaceChildren();
@@ -3556,17 +3567,24 @@ async function loadSupportReports(){
   const response=await fetch(SELLERKIT_API_URL,{
    method:"POST",
    headers:{"Content-Type":"text/plain;charset=UTF-8"},
-   body:JSON.stringify({action:"list_reports",initData:tg.initData}),
+   body:JSON.stringify({action:"list_reports",initData:tg.initData,archived}),
    cache:"no-store",
    signal:controller.signal
   });
   const data=await response.json();
+  if(request!==supportListRequest)return;
   if(!response.ok||!data?.success||!Array.isArray(data.reports)){
    if(data?.error==="SUPPORT_STORAGE_UNAVAILABLE")throw new Error("Таблица support_reports недоступна в YDB.");
    if(response.status===403)throw new Error("У этого аккаунта нет доступа к обращениям.");
    throw new Error("Не удалось получить обращения: "+String(data?.error||response.status));
   }
-  status.textContent=data.reports.length?"Найдено обращений: "+data.reports.length:"Пока нет обращений.";
+  $("reportStatusTabs").hidden=data.statusAvailable!==true;
+  for(const [tab,selected] of [[$("reportOpenTab"),!archived],[$("reportArchiveTab"),archived]]){
+   tab.setAttribute("aria-pressed",String(selected));
+   tab.classList.toggle("secondary",!selected);
+  }
+  status.textContent=data.reports.length?"Показано обращений: "+data.reports.length
+   :archived?"Архив пуст.":"Открытых обращений нет.";
   const names={balance:"Баланс и оплата",ai:"AI Studio",seo:"SEO и аналитика",calc:"Юнит-экономика",app:"Вход в приложение",other:"Другая ошибка"};
   for(const report of data.reports){
    const card=document.createElement("div");card.className="notice";
@@ -3582,6 +3600,12 @@ async function loadSupportReports(){
    description.style.whiteSpace="pre-wrap";
    description.style.overflowWrap="anywhere";
    card.append(title,user,description);
+   if(archived){
+    const label=document.createElement("p");
+    label.className="muted";
+    label.textContent=report.status==="resolved"?"Решено":"Неактуально";
+    card.append(label);
+   }
    const tid=String(report.telegramId||"");
    if(/^[1-9][0-9]{4,15}$/.test(tid)&&$("adminUsersTile").style.display!=="none"){
     const account=document.createElement("button");
@@ -3598,13 +3622,42 @@ async function loadSupportReports(){
     btn.onclick=()=>openTelegram("https://t.me/"+username);
     card.append(btn);
    }
+   if(data.statusAvailable===true){
+    const actions=document.createElement("div");
+    actions.className="actions";
+    const choices=archived?[["open","Вернуть во входящие"]]
+     :[["resolved","Решено"],["obsolete","Неактуально"]];
+    for(const [value,label] of choices){
+     const button=document.createElement("button");
+     button.type="button";
+     button.className="secondary";
+     button.textContent=label;
+     button.onclick=()=>changeSupportReportStatus(actions,report.reportId,value);
+     actions.append(button);
+    }
+    card.append(actions);
+   }
    container.append(card);
   }
  }catch(error){
+  if(request!==supportListRequest)return;
   status.textContent=error?.name==="AbortError"
    ?"Сервер не ответил вовремя."
    :String(error?.message||"Не удалось получить обращения.");
  }finally{clearTimeout(timer);}
+}
+
+async function changeSupportReportStatus(actions,reportId,status){
+ const buttons=actions.querySelectorAll("button");
+ buttons.forEach(button=>button.disabled=true);
+ try{
+  await billingRequest("update_report_status",{reportId,status});
+  await loadSupportReports();
+ }catch(error){
+  $("reportsStatus").textContent=error.message;
+ }finally{
+  buttons.forEach(button=>button.disabled=false);
+ }
 }
 
 function shareApp(){
@@ -4567,7 +4620,7 @@ async function billingRequest(action,fields={}) {
  if (!initData) throw Error("Открой SellerKit из Telegram.");
  const res=await fetch(SELLERKIT_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({action,initData,...fields}),signal:AbortSignal.timeout(25000)});
  const data=await res.json();
- if (!res.ok) throw Error(({INVALID_TARGET:"Введи Telegram ID или @username.",INVALID_SUPPORT_MANAGER:"Введи Telegram ID менеджера. Доступ владельца управляется отдельно.",SUPPORT_ACCESS_UNAVAILABLE:"Список доступов временно недоступен. Попробуй ещё раз.",USER_NOT_FOUND:"Получатель ещё не открывал SellerKit или ник не найден.",AMBIGUOUS_TARGET:"Найдено несколько записей. Используй Telegram ID.",INVALID_GRANT:"Проверь количество генераций и дней доступа.",INVALID_DEDUCTION:"Проверь количество генераций для снятия.",INSUFFICIENT_CREDITS:"На сохранённом балансе меньше генераций, чем указано. Списание не выполнено.",DEDUCTION_FAILED:"Снятие не подтверждено. Повтори с теми же данными.",GRANT_FAILED:"Выдача не подтверждена. Повтори с теми же данными.",FORBIDDEN:"Выдача доступна владельцу.",MERCHANT_NOT_CONFIGURED:"Онлайн-оплата пока не подключена. Напишите менеджеру в Telegram: @CardLab100.",UNKNOWN_ORDER:"Заказ не найден.",PAYMENT_MISMATCH:"Проверь способ оплаты заказа.",NOTIFICATION_PENDING:"Подписка записана. Повтори подтверждение для отправки сообщения."})[data.error] || "Не удалось связаться с сервером оплаты.");
+ if (!res.ok) throw Error(({INVALID_TARGET:"Введи Telegram ID или @username.",INVALID_SUPPORT_MANAGER:"Введи Telegram ID менеджера. Доступ владельца управляется отдельно.",SUPPORT_ACCESS_UNAVAILABLE:"Список доступов временно недоступен. Попробуй ещё раз.",INVALID_REPORT_STATUS:"Не удалось определить обращение или статус.",SUPPORT_REPORT_NOT_FOUND:"Обращение не найдено. Обнови список.",SUPPORT_STORAGE_UNAVAILABLE:"Хранилище обращений временно недоступно.",USER_NOT_FOUND:"Получатель ещё не открывал SellerKit или ник не найден.",AMBIGUOUS_TARGET:"Найдено несколько записей. Используй Telegram ID.",INVALID_GRANT:"Проверь количество генераций и дней доступа.",INVALID_DEDUCTION:"Проверь количество генераций для снятия.",INSUFFICIENT_CREDITS:"На сохранённом балансе меньше генераций, чем указано. Списание не выполнено.",DEDUCTION_FAILED:"Снятие не подтверждено. Повтори с теми же данными.",GRANT_FAILED:"Выдача не подтверждена. Повтори с теми же данными.",FORBIDDEN:"Выдача доступна владельцу.",MERCHANT_NOT_CONFIGURED:"Онлайн-оплата пока не подключена. Напишите менеджеру в Telegram: @CardLab100.",UNKNOWN_ORDER:"Заказ не найден.",PAYMENT_MISMATCH:"Проверь способ оплаты заказа.",NOTIFICATION_PENDING:"Подписка записана. Повтори подтверждение для отправки сообщения."})[data.error] || "Не удалось связаться с сервером оплаты.");
  return data;
 }
 async function refreshAccess(){
