@@ -78,6 +78,9 @@ button{
 }
 button:disabled{opacity:.5;cursor:not-allowed}
 .secondary{background:#314b39;color:white}
+#wbPeriods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:12px 0}
+#wbPeriods button{min-width:0;padding:10px 2px;font-size:clamp(12px,3.6vw,15px)}
+@media(max-width:310px){#wbPeriods{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .actions{
  display:flex;
  flex-wrap:wrap;
@@ -363,29 +366,23 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
 <div class="card">
 <h2>🔎 Поисковые запросы WB</h2>
 <p>Поиск ключевых слов Wildberries без загрузки Excel.</p>
-<div id="dbStatus" class="notice">Загружаем базу запросов WB…</div>
-<p class="muted"><small>Период и частотность берутся из загруженной базы WB. Это статистика за указанный период, а не данные в реальном времени.</small></p>
+<div id="wbPeriods" role="group" aria-label="Период частотности">
+<button type="button" data-period="day" aria-pressed="true">Вчера</button>
+<button type="button" data-period="week" class="secondary" aria-pressed="false">Неделя</button>
+<button type="button" data-period="month" class="secondary" aria-pressed="false">Месяц</button>
+<button type="button" data-period="quarter" class="secondary" aria-pressed="false">Квартал</button>
+</div>
+<div id="dbStatus" class="notice" role="status">Загружаем базу запросов WB…</div>
+<p class="muted"><small>Частотность показана за даты выгрузки Wildberries.</small></p>
 
 <label>Поисковая фраза</label>
 <input id="seoSearch" placeholder="Например: джинсы женские">
 
-<div class="grid">
-<div>
-<label>Минимальная частотность</label>
-<input id="seoMin" type="number" value="0">
-</div>
-<div>
-<label>Сортировка</label>
-<select id="seoSort">
-<option value="volume">По частотности</option>
-<option value="growth">По приросту</option>
-<option value="alpha">По алфавиту</option>
-</select>
-</div>
-</div>
+<label for="seoMin">Минимальная частотность</label>
+<input id="seoMin" type="number" min="0" value="0">
 
 <div class="actions">
-<button onclick="findKeywords()">Найти ключи</button>
+<button id="wbFind" onclick="findKeywords()">Найти ключи</button>
 <button class="secondary" id="seoExport" onclick="exportSEO()" disabled>Скачать CSV</button>
 </div>
 <p id="seoCount" class="muted"></p>
@@ -3879,6 +3876,8 @@ calculate();
 /* SEO ANALYTICS */
 
 let keywordWorker;
+let keywordPeriod="day";
+let keywordPeriodAvailable=true;
 let searchRequest=0;
 let found=[];
 const selected=new Map();
@@ -3891,16 +3890,48 @@ function normalize(value){
   .trim();
 }
 
+const periodButtons=[...$("wbPeriods").querySelectorAll("button")];
+for(const button of periodButtons){
+ button.addEventListener("click",()=>{
+  const period=button.dataset.period;
+  if(period===keywordPeriod)return;
+  keywordWorker?.terminate();
+  keywordWorker=undefined;
+  keywordPeriod=period;
+  keywordPeriodAvailable=true;
+  found=[];
+  $("wbFind").disabled=false;
+  $("seoExport").disabled=true;
+  $("seoCount").textContent="";
+  $("seoResults").replaceChildren();
+  for(const option of periodButtons){
+   const active=option===button;
+   option.setAttribute("aria-pressed",String(active));
+   option.classList.toggle("secondary",!active);
+  }
+  if(normalize($("seoSearch").value))findKeywords();
+  else loadDatabase();
+ });
+}
+
 function loadDatabase(){
  if(keywordWorker)return;
  const status=$("dbStatus");
  status.textContent="Загружаем базу запросов WB…";
  try{
-  keywordWorker=new Worker("./wb-search-worker.js?v=1");
-  keywordWorker.onmessage=({data})=>{
+  const worker=new Worker("./wb-search-worker.js?v=2&period="+encodeURIComponent(keywordPeriod));
+  keywordWorker=worker;
+  worker.onmessage=({data})=>{
+   if(keywordWorker!==worker)return;
    if(data.type==="ready"){
-    status.textContent="В базе "+number(data.count)+" запросов WB · "+data.period
-     +(data.previousPeriod?" · сравнение с "+data.previousPeriod:"");
+    status.textContent="Данные WB за "+data.period
+     +(data.previousPeriod?" · сравнение с "+data.previousPeriod:"")
+     +" · в базе "+number(data.count)+" запросов";
+   }else if(data.type==="unavailable"){
+    keywordPeriodAvailable=false;
+    $("wbFind").disabled=true;
+    $("seoCount").textContent="";
+    status.textContent="Для этого периода ещё нет выгрузки WB.";
    }else if(data.type==="results"&&data.id===searchRequest){
     found=data.results;
     $("seoCount").textContent="Найдено "+number(data.count)
@@ -3911,7 +3942,7 @@ function loadDatabase(){
     const url=URL.createObjectURL(data.file);
     const link=document.createElement("a");
     link.href=url;
-    link.download="sellerkit_seo.csv";
+    link.download="sellerkit_seo_"+keywordPeriod+".csv";
     link.click();
     setTimeout(()=>URL.revokeObjectURL(url),2000);
    }else if(data.type==="error"&&(data.id===undefined||data.id===searchRequest)){
@@ -3919,20 +3950,22 @@ function loadDatabase(){
     if(data.id===searchRequest)$("seoCount").textContent="Поиск временно недоступен.";
    }
   };
-  keywordWorker.onerror=()=>{
-   keywordWorker.terminate();
+  worker.onerror=()=>{
+   if(keywordWorker!==worker)return;
+   worker.terminate();
    keywordWorker=undefined;
    $("seoExport").disabled=true;
    status.textContent="Не удалось запустить поиск WB. Нажми «Найти ключи», чтобы повторить.";
    if(searchRequest)$("seoCount").textContent="Поиск временно недоступен.";
   };
-  keywordWorker.postMessage({type:"load"});
+  worker.postMessage({type:"load"});
  }catch{
   status.textContent="Не удалось запустить поиск WB.";
  }
 }
 
 function findKeywords(){
+ if(!keywordPeriodAvailable)return;
  const query=$("seoSearch").value;
  if(!normalize(query)){
   $("seoCount").textContent="Введи название товара.";
@@ -3944,7 +3977,7 @@ function findKeywords(){
  $("seoExport").disabled=true;
  keywordWorker.postMessage({
   type:"search",id:++searchRequest,query,
-  min:Math.max(0,num("seoMin")),sort:$("seoSort").value
+  min:Math.max(0,num("seoMin"))
  });
 }
 
@@ -4016,7 +4049,7 @@ function renderSelected(){
   item.className="result";
 
   const title=document.createElement("span");
-  title.textContent=row.query+" · "+number(row.volume);
+  title.textContent=row.query;
 
   const button=document.createElement("button");
   button.className="secondary";

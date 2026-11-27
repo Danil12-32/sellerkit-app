@@ -1,8 +1,9 @@
 let rows = [];
 let matches = [];
 let loading;
-const alphabet = new Intl.Collator("ru");
-const prefix = new URL("./wb-keywords/", self.location.href);
+const workerUrl = new URL(self.location.href);
+const period = workerUrl.searchParams.get("period") || "day";
+const prefix = new URL("./wb-keywords/", workerUrl);
 
 function normalize(value) {
   return String(value ?? "").toLowerCase().replace(/ё/g, "е")
@@ -15,34 +16,49 @@ async function getJson(url, cache) {
   return response.json();
 }
 
+function appendRows(target, part) {
+  if (!Array.isArray(part)) throw Error("Неверный формат базы");
+  for (const row of part) {
+    target.push({
+      query: row[0], volume: row[1], previous: row[2], daily: row[3],
+      category: row[4], words: " " + normalize(row[0]) + " "
+    });
+  }
+}
+
 async function readKeywords() {
-  const manifest = await getJson(new URL("manifest.json", prefix), "no-store");
-  if (!Array.isArray(manifest.parts) || !manifest.parts.length ||
-      !Number.isSafeInteger(manifest.count) || manifest.count < 1) {
-    throw Error("Неверный формат базы");
+  const periods = await getJson(new URL("periods.json", prefix), "no-store");
+  const source = Object.hasOwn(periods, period) ? periods[period] : null;
+  if (!source) {
+    self.postMessage({ type: "unavailable" });
+    return false;
   }
 
+  const sourceUrl = new URL(source.path, prefix);
+  const data = await getJson(sourceUrl, "no-store");
   const loaded = [];
-  // Limit concurrent downloads and parsing so the full set fits on mobile devices.
-  for (let start = 0; start < manifest.parts.length; start += 2) {
-    const batch = await Promise.all(manifest.parts.slice(start, start + 2)
-      .map(part => getJson(new URL(part, prefix), "force-cache")));
-    for (const part of batch) {
-      if (!Array.isArray(part)) throw Error("Неверный формат базы");
-      for (const row of part) {
-        loaded.push({
-          query: row[0], volume: row[1], previous: row[2], daily: row[3],
-          category: row[4], words: " " + normalize(row[0]) + " "
-        });
-      }
+  if (source.format === "rows") {
+    appendRows(loaded, data.rows);
+  } else {
+    if (!Array.isArray(data.parts) || !data.parts.length ||
+        !Number.isSafeInteger(data.count) || data.count < 1) {
+      throw Error("Неверный формат базы");
     }
+    // Limit concurrent downloads and parsing so the full set fits on mobile devices.
+    for (let start = 0; start < data.parts.length; start += 2) {
+      const batch = await Promise.all(data.parts.slice(start, start + 2)
+        .map(part => getJson(new URL(part, sourceUrl), "force-cache")));
+      for (const part of batch) appendRows(loaded, part);
+    }
+    if (loaded.length !== data.count) throw Error("База загрузилась не полностью");
   }
-  if (loaded.length !== manifest.count) throw Error("База загрузилась не полностью");
+  if (!loaded.length || !data.period) throw Error("Неверный формат базы");
   rows = loaded;
   self.postMessage({
     type: "ready", count: rows.length,
-    period: manifest.period, previousPeriod: manifest.previousPeriod
+    period: data.period, previousPeriod: data.previousPeriod
   });
+  return true;
 }
 
 function load() {
@@ -55,14 +71,11 @@ function load() {
   return loading;
 }
 
-function search({ query, min, sort }) {
+function search({ query, min }) {
   const words = normalize(query).split(" ").filter(Boolean).map(word => " " + word + " ");
   if (!words.length) return [];
-  const list = rows.filter(row => row.volume >= min && words.every(word => row.words.includes(word)));
-  if (sort === "growth") list.sort((a, b) => (b.volume - b.previous) - (a.volume - a.previous));
-  else if (sort === "alpha") list.sort((a, b) => alphabet.compare(a.query, b.query));
-  else list.sort((a, b) => b.volume - a.volume);
-  return list;
+  return rows.filter(row => row.volume >= min && words.every(word => row.words.includes(word)))
+    .sort((a, b) => b.volume - a.volume);
 }
 
 function csvCell(value) {
@@ -79,7 +92,7 @@ function exportMatches() {
 
 self.addEventListener("message", async ({ data }) => {
   try {
-    await load();
+    if (!await load()) return;
     if (data.type === "search") {
       matches = search(data);
       const results = matches.slice(0, 100).map(({ words, ...row }) => row);

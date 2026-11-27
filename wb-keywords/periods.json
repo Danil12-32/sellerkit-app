@@ -1,0 +1,12 @@
+{
+  "day": {
+    "path": "manifest.json",
+    "format": "parts"
+  },
+  "week": null,
+  "month": null,
+  "quarter": {
+    "path": "../keywords.json",
+    "format": "rows"
+  }
+}
