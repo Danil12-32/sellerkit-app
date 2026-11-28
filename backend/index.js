@@ -10,7 +10,7 @@ import { Bool, Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-assistant-usage-20261128";
+const SERVER_BUILD = "sellerkit-assistant-limits-20261128";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -1283,7 +1283,12 @@ async function designerAccess(user) {
   if (ownerAuthorized(user)) return { available: true, until: null };
   const account = await billing.balance(await ydbQuery(), String(user.id));
   const until = Number.isSafeInteger(account.until) ? account.until : 0;
-  return { available: account.trial !== true && until > Date.now(), until };
+  const startedAt = account.accessStartedAt;
+  return {
+    available: account.trial !== true && until > Date.now(),
+    until,
+    accessStartedAt: Number.isSafeInteger(startedAt) && startedAt > 0 && startedAt < until ? startedAt : null
+  };
 }
 
 async function designerQuestionQuota(userId, { reserve = false } = {}) {

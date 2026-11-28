@@ -16,6 +16,13 @@ async function write(sql, key, value) {
 
 const DAY_MS = 86400000;
 
+function accessStartedAt(previous, now) {
+  const startedAt = previous?.accessStartedAt;
+  if (previous?.trial !== true && previous?.until > now &&
+      Number.isSafeInteger(startedAt) && startedAt > 0 && startedAt <= now) return startedAt;
+  return now;
+}
+
 async function addAccess(sql, userId, days, credits, now) {
   const key = "user:" + userId;
   const previous = await read(sql,key);
@@ -25,6 +32,7 @@ async function addAccess(sql, userId, days, credits, now) {
     credits:(previous?.credits ?? 15) + credits,
     trial:previous?.trial ?? true
   };
+  if (account.trial !== true) account.accessStartedAt = accessStartedAt(previous, now);
   await write(sql,key,account);
   return account;
 }
@@ -118,7 +126,8 @@ export async function settle(sql,id,receipt) {
     const now = Date.now();
     const term = confirmedTerm(o.planId,previous?.until || 0,now);
     const credits = (previous?.credits ?? 15) + plan.credits;
-    await write(tx,key,{...previous,until:term.until,credits,trial:false,paidBefore:true});
+    await write(tx,key,{...previous,until:term.until,credits,trial:false,paidBefore:true,
+      accessStartedAt:accessStartedAt(previous,now)});
     const referralKey = "referral:" + o.userId;
     const referral = await read(tx,referralKey);
     const firstPayment = !previous?.paidBefore && (!previous || previous.trial === true);

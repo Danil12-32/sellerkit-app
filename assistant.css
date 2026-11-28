@@ -32,5 +32,15 @@ nav button[data-page=assistant]{line-height:1.1;overflow-wrap:anywhere;font-size
 .assistantForm textarea{min-height:49px;max-height:132px;padding:9px;font-size:16px}
 .assistantForm button{min-height:49px;padding:8px 11px}
 #assistantStatus{margin:6px 0 0;color:#c8e3d6;font-size:13px}
+.assistantLimits{display:grid;gap:8px;margin:12px 0}
+.assistantLimitCard{min-width:0;padding:13px 15px 14px;border:1px solid #3b584b;border-radius:15px;background:#192c24;color:#edf8f0}
+.assistantLimitCard h3{margin:0;font-size:14px;line-height:1.35;font-weight:700}
+.assistantLimitValue{margin:4px 0 0;font-size:27px;font-weight:750;line-height:1.15;font-variant-numeric:tabular-nums;color:#a2edc2}
+.assistantLimitDetail{margin:3px 0 9px;color:#bfd5c9;font-size:13px;line-height:1.35}
+.assistantLimitTrack{height:7px;overflow:hidden;border-radius:8px;background:#344a40}
+.assistantLimitTrack progress{display:block;appearance:none;width:100%;height:100%;border:0;background:transparent;color:#83e4ad;accent-color:#83e4ad}
+.assistantLimitTrack progress::-webkit-progress-bar{background:transparent}
+.assistantLimitTrack progress::-webkit-progress-value{background:#83e4ad;border-radius:8px}
+.assistantLimitTrack progress::-moz-progress-bar{background:#83e4ad;border-radius:8px}
 #assistant [hidden]{display:none}
 .srAssistant{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}

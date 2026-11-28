@@ -27,8 +27,13 @@
   }
 
   greet();
-  setInterval(() => { if (!document.hidden) greet(); }, 60_000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) greet(); });
+  function refreshVisiblePage() {
+    if (document.hidden) return;
+    greet();
+    if (element("assistant").classList.contains("active")) renderControls();
+  }
+  setInterval(refreshVisiblePage, 60_000);
+  document.addEventListener("visibilitychange", refreshVisiblePage);
 
   const userId = telegram?.initDataUnsafe?.user?.id;
   const storageKey = userId ? "sellerkit-assistant-dialogs:" + userId : null;
@@ -47,6 +52,7 @@
   let accessRequest = null;
   let available = false;
   let accessText = "";
+  let access = null;
   let usage = null;
   let usageTimer;
 
@@ -54,7 +60,9 @@
   const question = element("assistantQuestion");
   const status = element("assistantStatus");
   const accessNode = element("assistantAccess");
-  const usageNode = element("assistantUsage");
+  const limits = element("assistantLimits");
+  const requestBar = element("assistantRequestsBar");
+  const daysBar = element("assistantDaysBar");
 
   function readableAnswer(value) {
     return String(value ?? "")
@@ -110,10 +118,45 @@
     list.scrollTop = list.scrollHeight;
   }
 
+  function renderLimits(now) {
+    limits.hidden = !access;
+    if (!access) return;
+
+    const today = available && usage?.resetAt > now ? usage : null;
+    element("assistantRequestsValue").textContent = today ? String(today.remaining) : "—";
+    element("assistantRequestsDetail").textContent = today
+      ? "из " + today.dailyLimit + " · обновится в " + new Date(today.resetAt).toLocaleTimeString("ru-RU", {
+        hour: "2-digit", minute: "2-digit"
+      })
+      : available ? "Дневной остаток пока недоступен" : "Нужна активная подписка";
+    requestBar.hidden = !today;
+    if (today) {
+      requestBar.max = today.dailyLimit;
+      requestBar.value = today.remaining;
+    }
+
+    const until = access.until;
+    const unlimited = available && until === null;
+    const days = available && Number.isFinite(until) ? Math.max(0, Math.ceil((until - now) / 86_400_000)) : 0;
+    element("assistantDaysValue").textContent = unlimited ? "Без срока" : String(days);
+    element("assistantDaysDetail").textContent = unlimited ? "Доступ владельца" : days > 0
+      ? "Активна до " + new Date(until).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+      : until > 0 && until <= now ? "Доступ закончился" : "Активируй подписку в профиле";
+    const start = access.accessStartedAt;
+    const hasTerm = available && Number.isFinite(until) && Number.isFinite(start) && start < until;
+    daysBar.hidden = !hasTerm;
+    if (hasTerm) daysBar.value = Math.min(1, Math.max(0, (until - now) / (until - start)));
+  }
+
   function renderControls() {
+    const now = Date.now();
+    if (available && Number.isFinite(access?.until) && access.until <= now) {
+      available = false;
+      accessText = "Срок доступа к ассистенту закончился.";
+    }
     accessNode.textContent = accessText;
-    usageNode.hidden = !available || !usage;
-    usageNode.textContent = usage ? "Использовано " + (usage.dailyLimit - usage.remaining) + " из " + usage.dailyLimit + " запросов" : "";
+    accessNode.hidden = !accessText;
+    renderLimits(now);
     element("assistantSend").disabled = !available || Boolean(request);
     question.readOnly = request?.dialog === current && Boolean(request);
   }
@@ -156,14 +199,13 @@
     }
     accessText = "Проверяем доступ…";
     renderControls();
-    accessRequest = api("assistant_access").then((access) => {
-      available = access.available === true;
-      updateUsage(access.usage);
-      accessText = available
-        ? (access.until ? "Доступ до " + new Date(access.until).toLocaleDateString("ru-RU") + " · " : "")
-          + "до " + access.dailyLimit + " запросов в день"
-        : "Переписка доступна в течение оплаченного срока подписки.";
+    accessRequest = api("assistant_access").then((result) => {
+      access = result;
+      available = result.available === true;
+      updateUsage(result.usage);
+      accessText = available ? "" : "Переписка доступна в течение оплаченного срока подписки.";
     }).catch(error => {
+      access = null;
       available = false;
       accessText = error.message === "INVALID_TELEGRAM_AUTH"
         ? "Сессия устарела. Закрой и снова открой SellerKit в Telegram."
@@ -179,6 +221,7 @@
     current = null;
     element("assistantOverview").hidden = false;
     element("assistantThread").hidden = true;
+    element("assistantOverview").insertBefore(limits, element("assistantHistoryHeading"));
     renderHistory();
     renderControls();
   }
@@ -188,6 +231,7 @@
     current = dialog || { id: crypto.randomUUID(), title: "", messages: [] };
     element("assistantOverview").hidden = true;
     element("assistantThread").hidden = false;
+    element("assistantThread").append(limits);
     question.value = request?.dialog === current ? request.text : "";
     status.textContent = request?.dialog === current ? "Готовлю ответ…" : "";
     renderThread();
