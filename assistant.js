@@ -99,7 +99,7 @@
     if (!current) return;
     element("assistantTitle").textContent = current.title || "Новый диалог";
     element("assistantMessages").replaceChildren();
-    if (!current.messages.length) appendMessage("assistant", "Я ИИ-дизайнер SellerKit. Расскажи, что продаёшь и что хочешь улучшить в карточке или тексте.");
+    if (!current.messages.length) appendMessage("assistant", "Я ИИ-дизайнер SellerKit. Расскажи, что продаёшь и что хочешь улучшить в карточке или тексте.\n\nРазработка @danyaaarrrrr52");
     for (const message of current.messages) appendMessage(message.role, message.content);
     if (request?.dialog === current) appendMessage("user", request.text);
     element("assistantSuggestions").hidden = current.messages.length > 0 || request?.dialog === current;
