@@ -10,7 +10,7 @@ import { Bool, Int64, Text } from "@ydbjs/value/primitive";
 // There are deliberately NO public credit, purchase or generation methods.
 const FRONTEND_ORIGIN = "https://danil12-32.github.io";
 const MAX_AUTH_AGE_SECONDS = 12 * 60 * 60;
-const SERVER_BUILD = "sellerkit-assistant-context-20261128";
+const SERVER_BUILD = "sellerkit-assistant-usage-20261128";
 const BUG_CATEGORIES = Object.freeze({
   balance: "Баланс и оплата",
   ai: "Генерация текстов",
@@ -1286,35 +1286,53 @@ async function designerAccess(user) {
   return { available: account.trial !== true && until > Date.now(), until };
 }
 
-async function reserveDesignerQuestion(userId) {
+async function designerQuestionQuota(userId, { reserve = false } = {}) {
   const db = await ydbQuery();
-  return db.begin(async tx => {
-    const day = Math.floor(Date.now() / ASSISTANT_DAY_MS);
-    const key = new Text("assistant:usage:" + userId);
-    const [rows] = await tx`
+  const key = new Text("assistant:usage:" + userId);
+  const checkQuota = async runQuery => {
+    const [rows] = await runQuery`
       DECLARE $id AS Utf8;
       SELECT record FROM sellerkit_billing WHERE id = $id;
     `.parameter("id", key);
     const previous = rows.length ? JSON.parse(String(rows[0].record)) : null;
+    const day = Math.floor(Date.now() / ASSISTANT_DAY_MS);
     const used = previous?.day === day ? previous.used : 0;
     if (!Number.isSafeInteger(used) || used < 0) throw Error("Invalid assistant usage");
-    const resetAt = (day + 1) * ASSISTANT_DAY_MS;
-    if (used >= ASSISTANT_DAILY_LIMIT) return { available: false, resetAt };
 
-    await tx`
-      DECLARE $id AS Utf8;
-      DECLARE $record AS Utf8;
-      UPSERT INTO sellerkit_billing (id, record) VALUES ($id, $record);
-    `.parameter("id", key).parameter("record", new Text(JSON.stringify({ day, used: used + 1 })));
-    return { available: true, remaining: ASSISTANT_DAILY_LIMIT - used - 1, resetAt };
-  });
+    const reserved = reserve && used < ASSISTANT_DAILY_LIMIT;
+    const counted = reserved ? used + 1 : used;
+    if (reserved) {
+      await runQuery`
+        DECLARE $id AS Utf8;
+        DECLARE $record AS Utf8;
+        UPSERT INTO sellerkit_billing (id, record) VALUES ($id, $record);
+      `.parameter("id", key).parameter("record", new Text(JSON.stringify({ day, used: counted })));
+    }
+    return {
+      reserved,
+      usage: {
+        dailyLimit: ASSISTANT_DAILY_LIMIT,
+        remaining: Math.max(0, ASSISTANT_DAILY_LIMIT - counted),
+        resetAt: (day + 1) * ASSISTANT_DAY_MS
+      }
+    };
+  };
+  return reserve ? db.begin(checkQuota) : checkQuota(db);
 }
 
 async function handleDesignerChat(body, user, origin) {
+  let usage;
   try {
     const access = await designerAccess(user);
     if (body.action === "assistant_access") {
-      return response(200, { ...access, dailyLimit: ASSISTANT_DAILY_LIMIT }, origin);
+      if (access.available) {
+        try {
+          ({ usage } = await designerQuestionQuota(String(user.id)));
+        } catch (error) {
+          console.warn("SellerKit assistant usage:", error?.name || "unknown");
+        }
+      }
+      return response(200, { ...access, dailyLimit: ASSISTANT_DAILY_LIMIT, usage }, origin);
     }
     if (!access.available) return response(403, { error: "ASSISTANT_ACCESS_REQUIRED" }, origin);
 
@@ -1340,8 +1358,9 @@ async function handleDesignerChat(body, user, origin) {
 
     const key = process.env.VSEGPT_API_KEY;
     if (!key) return response(503, { error: "ASSISTANT_UNAVAILABLE" }, origin);
-    const quota = await reserveDesignerQuestion(String(user.id));
-    if (!quota.available) return response(429, { error: "ASSISTANT_LIMIT", resetAt: quota.resetAt }, origin);
+    const quota = await designerQuestionQuota(String(user.id), { reserve: true });
+    usage = quota.usage;
+    if (!quota.reserved) return response(429, { error: "ASSISTANT_LIMIT", resetAt: usage.resetAt, usage }, origin);
 
     const result = await fetch("https://api.vsegpt.ru/v1/chat/completions", {
       method: "POST",
@@ -1360,20 +1379,21 @@ async function handleDesignerChat(body, user, origin) {
     const data = result.ok ? await result.json().catch(() => null) : null;
     const answer = data?.choices?.[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) {
-      return response(result.status === 429 ? 429 : 502, { error: "ASSISTANT_UNAVAILABLE" }, origin);
+      return response(result.status === 429 ? 429 : 502, { error: "ASSISTANT_UNAVAILABLE", usage }, origin);
     }
     const [, outcome, content] = ASSISTANT_RESULT.exec(answer.trim()) || [];
     const text = outcome === "SELLERKIT_ANSWER" ? content.trim() : "";
     const reply = text && !text.startsWith("SELLERKIT_OFF_TOPIC") ? text : assistantWebsiteOutline(normalized);
-    if (!reply && !outcome) return response(502, { error: "ASSISTANT_UNAVAILABLE" }, origin);
+    if (!reply && !outcome) return response(502, { error: "ASSISTANT_UNAVAILABLE", usage }, origin);
     return response(200, {
       answer: (reply || ASSISTANT_OFF_TOPIC).slice(0, 6000),
-      remaining: quota.remaining
+      remaining: usage.remaining,
+      usage
     }, origin);
   } catch (error) {
     const timeout = ["AbortError", "TimeoutError"].includes(error?.name);
     if (!timeout) console.warn("SellerKit assistant:", error?.name || "unknown");
-    return response(timeout ? 504 : 503, { error: timeout ? "ASSISTANT_TIMEOUT" : "ASSISTANT_UNAVAILABLE" }, origin);
+    return response(timeout ? 504 : 503, { error: timeout ? "ASSISTANT_TIMEOUT" : "ASSISTANT_UNAVAILABLE", usage }, origin);
   }
 }
 

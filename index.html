@@ -362,6 +362,7 @@ button.back{display:inline-flex;align-items:center;padding:9px 13px;min-height:4
    <textarea id="assistantQuestion" rows="2" maxlength="2000" enterkeyhint="send" placeholder="Задай вопрос своими словами"></textarea>
    <button id="assistantSend" type="submit">Отправить</button>
   </form>
+  <p id="assistantUsage" class="assistantAccess" aria-live="polite" hidden></p>
   <p id="assistantStatus" role="status"></p>
  </div>
 </section>
@@ -4797,6 +4798,6 @@ async function approveOrder(button){
  }catch(error){status.textContent=error.message;}
  finally{button.disabled=false;}
 }
-</script><script src="./assistant.js?v=4"></script>
+</script><script src="./assistant.js?v=5"></script>
 </body>
 </html>

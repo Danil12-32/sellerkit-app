@@ -47,11 +47,14 @@
   let accessRequest = null;
   let available = false;
   let accessText = "";
+  let usage = null;
+  let usageTimer;
 
   const history = element("assistantHistory");
   const question = element("assistantQuestion");
   const status = element("assistantStatus");
   const accessNode = element("assistantAccess");
+  const usageNode = element("assistantUsage");
 
   function readableAnswer(value) {
     return String(value ?? "")
@@ -109,8 +112,26 @@
 
   function renderControls() {
     accessNode.textContent = accessText;
+    usageNode.hidden = !available || !usage;
+    usageNode.textContent = usage ? "Использовано " + (usage.dailyLimit - usage.remaining) + " из " + usage.dailyLimit + " запросов" : "";
     element("assistantSend").disabled = !available || Boolean(request);
     question.readOnly = request?.dialog === current && Boolean(request);
+  }
+
+  function updateUsage(next) {
+    if (!next) return;
+    const { dailyLimit, remaining, resetAt } = next;
+    if (!Number.isSafeInteger(dailyLimit) || dailyLimit < 1 || !Number.isSafeInteger(remaining) ||
+        remaining < 0 || remaining > dailyLimit || !Number.isFinite(resetAt) || resetAt <= Date.now()) return;
+    if (usage && (resetAt < usage.resetAt || (resetAt === usage.resetAt && remaining > usage.remaining))) return;
+
+    usage = { dailyLimit, remaining, resetAt };
+    clearTimeout(usageTimer);
+    usageTimer = setTimeout(() => {
+      usage = null;
+      renderControls();
+      if (element("assistant").classList.contains("active")) refreshAccess();
+    }, resetAt - Date.now());
   }
 
   async function api(action, fields = {}) {
@@ -121,7 +142,7 @@
       signal: AbortSignal.timeout(33000)
     });
     const data = await result.json().catch(() => ({}));
-    if (!result.ok) throw Object.assign(new Error(data.error || "ASSISTANT_UNAVAILABLE"), { resetAt: data.resetAt });
+    if (!result.ok) throw Object.assign(new Error(data.error || "ASSISTANT_UNAVAILABLE"), { resetAt: data.resetAt, usage: data.usage });
     return data;
   }
 
@@ -137,6 +158,7 @@
     renderControls();
     accessRequest = api("assistant_access").then((access) => {
       available = access.available === true;
+      updateUsage(access.usage);
       accessText = available
         ? (access.until ? "Доступ до " + new Date(access.until).toLocaleDateString("ru-RU") + " · " : "")
           + "до " + access.dailyLimit + " запросов в день"
@@ -198,6 +220,7 @@
         role, content: (role === "assistant" ? readableAnswer(content) || content : content).slice(0, 1800)
       }));
       const data = await api("assistant_chat", { question: text, history: messages });
+      updateUsage(data.usage);
       const answer = typeof data.answer === "string" ? readableAnswer(data.answer) : "";
       if (!answer) throw Error("ASSISTANT_UNAVAILABLE");
       dialog.title ||= text.slice(0, 56);
@@ -209,6 +232,7 @@
       }
       if (!current) renderHistory();
     } catch (error) {
+      updateUsage(error.usage);
       let message = {
         ASSISTANT_LIMIT: "Дневной лимит исчерпан. Попробуй позже.",
         ASSISTANT_TIMEOUT: "Ответ задержался. Попробуй задать вопрос ещё раз.",
